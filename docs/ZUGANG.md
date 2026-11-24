@@ -133,8 +133,8 @@ sich danach mit E-Mail-Adresse und Passwort an.
 - **Zehn Fehlversuche** je Adresse sperren die Anmeldung mit Passwort und mit
   Wiederherstellungscode für fünf Minuten. Der Passkey derselben Person geht währenddessen
   weiter.
-- **Wechseln** kann die angemeldete Person ihr Passwort, wenn sie das bisherige nennt. Danach
-  enden ihre anderen Sitzungen.
+- **Wechseln oder entfernen** kann die angemeldete Person ihr Passwort, wenn sie das bisherige
+  nennt. Nach dem Wechseln enden ihre anderen Sitzungen.
 - **Beides zugleich** geht: Wer einen Passkey hat, kann ein Passwort dazu vergeben, und
   umgekehrt. Einer der beiden Wege muss bleiben.
 

@@ -253,8 +253,8 @@ dem jemand nicht hereinkommt, weil er keinen Passkey will oder sein Gerät keine
   Wiederherstellungscodes gelten wie bisher. Einen Versand „Passwort vergessen" gibt es nicht:
   er wäre ein dritter Weg herein, der am Postfach hängt.
 - **Die Wege.** Hinter dem Einladungslink wählt die Person Passkey oder Passwort. Angemeldet
-  kann sie den jeweils anderen Weg ergänzen, das Passwort wechseln (mit dem bisherigen) oder es
-  entfernen, solange ein Passkey bleibt. Mit Passwort darf auch der letzte Passkey gehen.
+  kann sie den jeweils anderen Weg ergänzen und das Passwort wechseln oder entfernen, beides
+  nur mit dem bisherigen; entfernen lässt es sich, solange ein Passkey bleibt. Mit Passwort darf auch der letzte Passkey gehen.
 
 **Was sich damit verschlechtert und so dastehen soll:** Ein Lesezugriff auf die Datenbank
 erlaubte bisher keine Anmeldung. Ein Passworthash lässt sich dagegen offline durchprobieren;

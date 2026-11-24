@@ -989,7 +989,11 @@ def test_mit_passwort_darf_der_letzte_passkey_gehen(client: TestClient) -> None:
 
 def test_das_passwort_geht_nur_wenn_ein_passkey_bleibt(client: TestClient) -> None:
     nur_passwort = passwort_einrichten(client, person_anlegen(client))
-    bleibt = client.post(f"{API}/auth/passwort/loeschen", headers=mit(nur_passwort["token"]))
+    bleibt = client.post(
+        f"{API}/auth/passwort/loeschen",
+        json={"bisher": PASSWORT},
+        headers=mit(nur_passwort["token"]),
+    )
     assert bleibt.status_code == 409
     assert "einzige Weg" in bleibt.json()["error"]["message"]
 
@@ -998,9 +1002,35 @@ def test_das_passwort_geht_nur_wenn_ein_passkey_bleibt(client: TestClient) -> No
     assert (
         client.post(f"{API}/auth/passwort", json={"neu": PASSWORT}, headers=kopf).status_code == 200
     )
-    assert client.post(f"{API}/auth/passwort/loeschen", headers=kopf).status_code == 200
+    weg = client.post(f"{API}/auth/passwort/loeschen", json={"bisher": PASSWORT}, headers=kopf)
+    assert weg.status_code == 200, weg.text
     assert client.get(f"{API}/auth/ich", headers=kopf).json()["passwort"] is False
     assert passwort_anmelden(client, PASSWORT, email="anna@example.org").status_code == 401
+
+
+def test_entfernen_verlangt_das_bisherige_passwort(client: TestClient) -> None:
+    """Eine liegengelassene Sitzung genügt nicht, um das Passwort zu ersetzen.
+
+    Ohne diese Prüfung ginge es auf einem Umweg: entfernen, dann ein neues vergeben, wofür
+    niemand mehr das bisherige nennen müsste (Fund im Review von PR 31).
+    """
+    beide = einrichten(client, person_anlegen(client), Geraet())
+    kopf = mit(beide["token"])
+    assert (
+        client.post(f"{API}/auth/passwort", json={"neu": PASSWORT}, headers=kopf).status_code == 200
+    )
+    ohne = client.post(f"{API}/auth/passwort/loeschen", json={"bisher": ""}, headers=kopf)
+    assert ohne.status_code == 400
+    falsch = client.post(
+        f"{API}/auth/passwort/loeschen", json={"bisher": "ein falsches Passwort"}, headers=kopf
+    )
+    assert falsch.status_code == 400
+    assert "bisherige" in falsch.json()["error"]["message"]
+    # Das Passwort steht noch, und ein neues lässt sich weiter nur mit dem bisherigen vergeben.
+    assert client.get(f"{API}/auth/ich", headers=kopf).json()["passwort"] is True
+    umweg = client.post(f"{API}/auth/passwort", json={"neu": "vom Angreifer gewählt"}, headers=kopf)
+    assert umweg.status_code == 400
+    assert passwort_anmelden(client, PASSWORT).status_code == 200
 
 
 def test_ein_dienst_hat_kein_eigenes_passwort(client: TestClient) -> None:

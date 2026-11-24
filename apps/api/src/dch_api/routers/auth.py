@@ -45,6 +45,7 @@ from dch_api.schemas import (
     PasskeyBeginnenIn,
     PasskeyOut,
     PasswortAnmeldenIn,
+    PasswortEntfernenIn,
     PasswortSetzenIn,
     PasswortUeberLinkIn,
     PersonAendernIn,
@@ -447,15 +448,20 @@ async def passwort_setzen(
 
 
 @router.post("/passwort/loeschen", summary="Passwort entfernen")
-async def passwort_loeschen(request: Request, ausweis: AngemeldetePerson) -> dict[str, bool]:
-    """Nimmt das Passwort weg. Nur mit mindestens einem Passkey, sonst bliebe kein Weg herein."""
+async def passwort_loeschen(
+    request: Request, daten: PasswortEntfernenIn, ausweis: AngemeldetePerson
+) -> dict[str, bool]:
+    """Nimmt das Passwort weg. Verlangt das bisherige Passwort und mindestens einen Passkey,
+    sonst bliebe kein Weg herein."""
     auth = await auth_oder_fehler(request)
     try:
-        await auth.passwort_entfernen(ausweis.person_id)
-    except passwort.PasswortError as fehler:
+        await auth.passwort_entfernen(ausweis.person_id, daten.bisher)
+    except auth_dienst.LetzterWegError as fehler:
         raise DchError("letztes_passwort", str(fehler), 409) from fehler
+    except passwort.PasswortError as fehler:
+        raise DchError("passwort", str(fehler), 400) from fehler
     except auth_dienst.ZugangError as fehler:
-        raise DchError("not_found", str(fehler), 404) from fehler
+        raise DchError("conflict", str(fehler), 409) from fehler
     return {"ok": True}
 
 

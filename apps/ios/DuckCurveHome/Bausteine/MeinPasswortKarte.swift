@@ -9,7 +9,9 @@ import SwiftUI
 /// Das Gegenstück zu `apps/web/src/components/zugang/MeinPasswort.tsx`, mit denselben Sätzen
 /// (``Anmeldeworte``) und denselben Regeln: Wer schon ein Passwort hat, nennt das bisherige.
 /// Entfernen lässt es sich nur, solange ein Passkey da ist, denn einer der beiden Wege herein
-/// muss bleiben. Der Dienst prüft beides; die Karte sagt es vorher.
+/// muss bleiben. Der Dienst prüft beides; die Karte sagt es vorher. Auch das Entfernen verlangt
+/// das bisherige Passwort, sonst ließe sich die Prüfung beim Wechseln umgehen; die Eingabe ist
+/// zugleich die Rückfrage.
 ///
 /// Die Karte steht nur da, wenn eine Person angemeldet ist (``Zugang/istPerson``). Ein Gerät mit
 /// dem API-Token hat kein Passwort.
@@ -18,14 +20,19 @@ struct MeinPasswortKarte: View {
 
     @State private var ich: IchOut?
     @State private var mindestlaenge = Anmeldeworte.mindestlaengeErsatz
-    @State private var offen = false
+    /// Welches Formular offen ist: vergeben oder wechseln, entfernen, oder keines.
+    enum Formular: Hashable {
+        case setzen
+        case entfernen
+    }
+
+    @State private var offen: Formular?
     @State private var bisher = ""
     @State private var neu = ""
     @State private var wiederholung = ""
     @State private var hinweis: String?
     @State private var fehler: String?
     @State private var laeuft = false
-    @State private var fragtEntfernen = false
 
     private var vorhanden: Bool { ich?.passwort ?? false }
     private var passkeys: Int { ich?.passkeys.count ?? 0 }
@@ -42,16 +49,17 @@ struct MeinPasswortKarte: View {
                     if let hinweis { satz(hinweis, farbe: Farbe.text2) }
                     if let fehler { satz(fehler, farbe: Farbe.amberWeich) }
                     if ich != nil {
-                        if offen { formular } else { knoepfe }
+                        switch offen {
+                        case .setzen: formular
+                        case .entfernen: entfernformular
+                        case nil: knoepfe
+                        }
                     }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .task { await lade() }
-        .confirmationDialog(Anmeldeworte.entfernenFrage, isPresented: $fragtEntfernen, titleVisibility: .visible) {
-            Button(Anmeldeworte.entfernen, role: .destructive) { Task { await entferne() } }
-        }
     }
 
     private var knoepfe: some View {
@@ -59,7 +67,7 @@ struct MeinPasswortKarte: View {
             Button {
                 hinweis = nil
                 fehler = nil
-                offen = true
+                offen = .setzen
             } label: {
                 knopfbild(Anmeldeworte.knopf(vorhanden: vorhanden))
             }
@@ -67,7 +75,9 @@ struct MeinPasswortKarte: View {
             .disabled(laeuft)
             if vorhanden {
                 Button {
-                    fragtEntfernen = true
+                    hinweis = nil
+                    fehler = nil
+                    offen = .entfernen
                 } label: {
                     Text(passkeys == 0 ? Anmeldeworte.entfernenGesperrt : Anmeldeworte.entfernen)
                         .font(Schrift.klein)
@@ -79,6 +89,35 @@ struct MeinPasswortKarte: View {
                 .opacity(passkeys == 0 ? 0.6 : 1)
             }
         }
+    }
+
+    private var entfernformular: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            feld(Anmeldeworte.bisherfeld, $bisher, art: .password)
+            HStack(spacing: 16) {
+                Button {
+                    Task { await entferne() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if laeuft { ProgressView().controlSize(.small) }
+                        knopfbild(Anmeldeworte.entfernen)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(laeuft || bisher.isEmpty)
+                abbrechknopf
+            }
+        }
+    }
+
+    private var abbrechknopf: some View {
+        Button(Anmeldeworte.abbrechen) {
+            leere()
+            offen = nil
+        }
+        .font(Schrift.klein)
+        .foregroundStyle(Farbe.text3)
+        .buttonStyle(.plain)
     }
 
     private var formular: some View {
@@ -99,13 +138,7 @@ struct MeinPasswortKarte: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(laeuft || neu.isEmpty)
-                Button(Anmeldeworte.abbrechen) {
-                    leere()
-                    offen = false
-                }
-                .font(Schrift.klein)
-                .foregroundStyle(Farbe.text3)
-                .buttonStyle(.plain)
+                abbrechknopf
             }
         }
     }
@@ -180,7 +213,7 @@ struct MeinPasswortKarte: View {
         do {
             try await haus.api.setzePasswort(neu: neu, bisher: bisher)
             leere()
-            offen = false
+            offen = nil
             hinweis = Anmeldeworte.gespeichert(vorher: vorher)
             await lade()
         } catch let f as ApiFehler {
@@ -198,7 +231,9 @@ struct MeinPasswortKarte: View {
         laeuft = true
         defer { laeuft = false }
         do {
-            try await haus.api.entfernePasswort()
+            try await haus.api.entfernePasswort(bisher: bisher)
+            leere()
+            offen = nil
             hinweis = Anmeldeworte.entfernt
             await lade()
         } catch let f as ApiFehler {

@@ -59,7 +59,6 @@ public enum Anmeldeworte {
     }
 
     public static let entfernen = "Passwort entfernen"
-    public static let entfernenFrage = "Passwort wirklich entfernen?"
     public static let entfernenGesperrt = "Entfernen geht erst mit einem Passkey"
     public static let entfernt = "Das Passwort ist entfernt."
 

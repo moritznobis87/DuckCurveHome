@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import { api } from "@/lib/api/client";
-import { BestaetigKnopf } from "./BestaetigKnopf";
 
 /**
  * Das eigene Passwort: vergeben, wechseln, entfernen.
@@ -12,6 +11,9 @@ import { BestaetigKnopf } from "./BestaetigKnopf";
  * mit Passkey angemeldet ist, kann hier eines dazu vergeben; wer schon eines hat, wechselt es mit
  * dem bisherigen. **Einer der beiden Wege muss bleiben:** Das Passwort lässt sich nur entfernen,
  * solange ein Passkey da ist. Der Dienst lehnt es sonst ab, und diese Seite sagt es vorher.
+ *
+ * **Auch das Entfernen verlangt das bisherige Passwort.** Sonst ließe sich die Prüfung beim
+ * Wechseln umgehen: entfernen, dann ein neues vergeben. Die Eingabe ist zugleich die Rückfrage.
  */
 
 const FELD = "min-w-[220px] rounded-[3px] border border-line-1 bg-surface-2 px-3 py-2 text-[14px] text-text-1";
@@ -34,7 +36,8 @@ export function MeinPasswort({
   /** Führt eine Änderung aus, zeigt ihren Fehler und lädt die Seite neu (`MeinZugang`). */
   fuehre: (was: () => Promise<unknown>) => Promise<boolean>;
 }) {
-  const [offen, setOffen] = useState(false);
+  /** Welches Formular offen ist: vergeben oder wechseln, entfernen, oder keines. */
+  const [offen, setOffen] = useState<false | "setzen" | "entfernen">(false);
   const [bisher, setBisher] = useState("");
   const [neu, setNeu] = useState("");
   const [wiederholung, setWiederholung] = useState("");
@@ -63,6 +66,15 @@ export function MeinPasswort({
     );
   }
 
+  async function entfernen() {
+    setHinweis(undefined);
+    const gelungen = await fuehre(() => api.passwortEntfernen(bisher));
+    if (!gelungen) return;
+    leeren();
+    setOffen(false);
+    setHinweis("Das Passwort ist entfernt.");
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <span className="kicker" style={{ fontSize: 11 }}>Mein Passwort</span>
@@ -72,7 +84,47 @@ export function MeinPasswort({
           : "Du hast kein Passwort. Mit einem Passwort kommst du auch an Geräten herein, die keinen Passkey können."}
       </p>
       {hinweis ? <p className="m-0 text-[14px] text-text-2">{hinweis}</p> : null}
-      {offen ? (
+      {offen === "entfernen" ? (
+        <form
+          className="flex flex-col gap-2"
+          action={() => {
+            void entfernen();
+          }}
+        >
+          <input type="hidden" name="username" autoComplete="username" value={email} readOnly />
+          <label className="flex flex-col gap-1 text-[13px] text-text-3">
+            Bisheriges Passwort
+            <input
+              type="password"
+              value={bisher}
+              onChange={(e) => setBisher(e.target.value)}
+              required
+              autoFocus
+              autoComplete="current-password"
+              className={FELD}
+            />
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={laeuft}
+              className="rounded-[3px] border border-line-1 px-4 py-2 text-[14px] text-text-1 disabled:opacity-50"
+            >
+              Passwort entfernen
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                leeren();
+                setOffen(false);
+              }}
+              className="text-[13px] text-text-3 underline decoration-dotted"
+            >
+              abbrechen
+            </button>
+          </div>
+        </form>
+      ) : offen === "setzen" ? (
         <form
           className="flex flex-col gap-2"
           action={() => {
@@ -144,26 +196,24 @@ export function MeinPasswort({
             disabled={laeuft}
             onClick={() => {
               setHinweis(undefined);
-              setOffen(true);
+              setOffen("setzen");
             }}
             className="rounded-[3px] border border-line-1 px-4 py-2 text-[14px] text-text-1 disabled:opacity-50"
           >
             {vorhanden ? "Passwort wechseln" : "Passwort vergeben"}
           </button>
           {vorhanden ? (
-            <BestaetigKnopf
-              frage="Passwort wirklich entfernen?"
+            <button
+              type="button"
               disabled={laeuft || passkeys === 0}
-              onBestaetigt={() =>
-                void (async () => {
-                  setHinweis(undefined);
-                  if (await fuehre(() => api.passwortEntfernen())) setHinweis("Das Passwort ist entfernt.");
-                })()
-              }
+              onClick={() => {
+                setHinweis(undefined);
+                setOffen("entfernen");
+              }}
               className="text-[13px] text-text-3 underline decoration-dotted disabled:opacity-40"
             >
               {passkeys === 0 ? "Entfernen geht erst mit einem Passkey" : "Passwort entfernen"}
-            </BestaetigKnopf>
+            </button>
           ) : null}
         </div>
       )}

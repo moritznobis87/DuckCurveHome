@@ -549,9 +549,12 @@ public struct Api: Sendable {
             rumpf: try rumpf(PasswortSetzenIn(neu: neu, bisher: bisher)))
     }
 
-    /// Das eigene Passwort entfernen. Der Dienst lehnt ab, wenn kein Passkey bleibt.
-    public func entfernePasswort() async throws {
-        let _: [String: Mischwert] = try await hole("/auth/passwort/loeschen", verfahren: "POST")
+    /// Das eigene Passwort entfernen. Der Dienst verlangt dafür das bisherige und lehnt ab, wenn
+    /// kein Passkey bleibt.
+    public func entfernePasswort(bisher: String) async throws {
+        let _: [String: Mischwert] = try await hole(
+            "/auth/passwort/loeschen", verfahren: "POST",
+            rumpf: try rumpf(PasswortEntfernenIn(bisher: bisher)))
     }
 
     /// Die Sitzung beenden, mit der diese App angemeldet ist.

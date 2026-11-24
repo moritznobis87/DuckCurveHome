@@ -8108,6 +8108,20 @@ public struct PasswortAnmeldenIn: Codable, Sendable, Hashable {
     }
 }
 
+/// Das eigene Passwort entfernen. Verlangt das bisherige, wie das Wechseln.
+public struct PasswortEntfernenIn: Codable, Sendable, Hashable {
+    public var bisher: String
+
+    public init(bisher: String) {
+        self.bisher = bisher
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.bisher = try c.decode(String.self, forKey: .bisher)
+    }
+}
+
 /// Das eigene Passwort vergeben oder wechseln.
 public struct PasswortSetzenIn: Codable, Sendable, Hashable {
     public var neu: String

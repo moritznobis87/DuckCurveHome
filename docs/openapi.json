@@ -723,8 +723,18 @@
           "Zugang"
         ],
         "summary": "Passwort entfernen",
-        "description": "Nimmt das Passwort weg. Nur mit mindestens einem Passkey, sonst bliebe kein Weg herein.",
+        "description": "Nimmt das Passwort weg. Verlangt das bisherige Passwort und mindestens einen Passkey,\nsonst bliebe kein Weg herein.",
         "operationId": "passwort_loeschen_api_v1_auth_passwort_loeschen_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswortEntfernenIn"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -736,6 +746,16 @@
                   },
                   "type": "object",
                   "title": "Response Passwort Loeschen Api V1 Auth Passwort Loeschen Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -15213,6 +15233,20 @@
           "passwort"
         ],
         "title": "PasswortAnmeldenIn"
+      },
+      "PasswortEntfernenIn": {
+        "properties": {
+          "bisher": {
+            "type": "string",
+            "title": "Bisher"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bisher"
+        ],
+        "title": "PasswortEntfernenIn",
+        "description": "Das eigene Passwort entfernen. Verlangt das bisherige, wie das Wechseln."
       },
       "PasswortSetzenIn": {
         "properties": {

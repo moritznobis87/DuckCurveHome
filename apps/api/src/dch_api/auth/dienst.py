@@ -36,6 +36,7 @@ __all__ = [
     "Angemeldet",
     "AngemeldetError",
     "AuthDienst",
+    "LetzterWegError",
     "PersonAngaben",
     "SitzungAngaben",
     "ZugangError",
@@ -54,6 +55,10 @@ def jetzt() -> datetime:
 
 class ZugangError(Exception):
     """Der Link oder die Eingabe gilt nicht. Der Text ist für die Oberfläche."""
+
+
+class LetzterWegError(Exception):
+    """Der letzte Weg herein bleibt: das Passwort geht nur, solange ein Passkey da ist."""
 
 
 class AngemeldetError(Exception):
@@ -630,7 +635,9 @@ class AuthDienst:
         """Löscht einen eigenen Passkey. Der letzte bleibt, außer die Person hat ein Passwort:
         dann kommt sie auch ohne Passkey herein."""
         async with self.maker() as s:
-            person = await s.get(m.Person, _kennung(person_id))
+            # Gesperrt gelesen, wie in `passwort_entfernen`: die beiden Wege herein werden nie
+            # gleichzeitig geprüft und entfernt.
+            person = await s.get(m.Person, _kennung(person_id), with_for_update=True)
             await passkeys.loeschen(
                 s,
                 _kennung(person_id),
@@ -762,19 +769,39 @@ class AuthDienst:
         log.info("passwort gesetzt", weg="angemeldet", person=person_id)
         return int(ergebnis.rowcount or 0)
 
-    async def passwort_entfernen(self, person_id: str) -> None:
+    async def passwort_entfernen(self, person_id: str, bisher: str) -> None:
         """Nimmt das Passwort weg. Nur mit mindestens einem Passkey: sonst käme die Person nur
-        noch über einen Wiederherstellungscode oder einen Link des Hausherrn herein."""
+        noch über einen Wiederherstellungscode oder einen Link des Hausherrn herein.
+
+        **Auch hier wird das bisherige Passwort verlangt.** Ohne das ließe sich die Prüfung beim
+        Wechseln umgehen: entfernen, dann ein neues vergeben, und der Besitzer wäre aus einer
+        liegengelassenen Sitzung heraus ausgesperrt (Fund im Review von PR 31).
+        """
         kennung = _kennung(person_id)
         async with self.maker() as s:
             person = await s.get(m.Person, kennung)
-            if person is None:
+            if person is None or not person.aktiv:
                 raise ZugangError("Diese Person gibt es nicht.")
+            email, gespeichert = person.email, person.passwort_hash
+        if not gespeichert:
+            raise passwort.PasswortError("Es gibt kein Passwort, das sich entfernen ließe.")
+        if drossel.gesperrt(email):
+            raise passwort.PasswortError("Zu viele Versuche. Bitte in fünf Minuten erneut.")
+        if not await passwort.stimmt(gespeichert, bisher):
+            drossel.fehlversuch(email)
+            raise passwort.PasswortError("Das bisherige Passwort stimmt nicht.")
+        async with self.maker() as s:
+            # Die Zeile der Person gesperrt gelesen, wie in `passkey_loeschen`: zwei gleichzeitige
+            # Anfragen, die den letzten Passkey und das Passwort entfernen, sähen sonst jede noch
+            # den anderen Weg und ließen zusammen keinen übrig.
+            person = await s.get(m.Person, kennung, with_for_update=True)
+            if person is None or not person.aktiv or person.passwort_hash != gespeichert:
+                raise ZugangError("Das Passwort wurde inzwischen an anderer Stelle geändert.")
             anzahl = await s.scalar(
                 select(func.count()).select_from(m.Passkey).where(m.Passkey.person_id == kennung)
             )
             if not anzahl:
-                raise passwort.PasswortError(
+                raise LetzterWegError(
                     "Das Passwort ist der einzige Weg herein. Erst einen Passkey anlegen, "
                     "dann das Passwort entfernen."
                 )

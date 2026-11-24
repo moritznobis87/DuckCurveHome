@@ -2533,6 +2533,12 @@ class PasswortUeberLinkIn(BaseModel):
     passwort: str
 
 
+class PasswortEntfernenIn(BaseModel):
+    """Das eigene Passwort entfernen. Verlangt das bisherige, wie das Wechseln."""
+
+    bisher: str
+
+
 class PasswortSetzenIn(BaseModel):
     """Das eigene Passwort vergeben oder wechseln."""
 

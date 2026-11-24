@@ -419,7 +419,8 @@ export interface paths {
         put?: never;
         /**
          * Passwort entfernen
-         * @description Nimmt das Passwort weg. Nur mit mindestens einem Passkey, sonst bliebe kein Weg herein.
+         * @description Nimmt das Passwort weg. Verlangt das bisherige Passwort und mindestens einen Passkey,
+         *     sonst bliebe kein Weg herein.
          */
         post: operations["passwort_loeschen_api_v1_auth_passwort_loeschen_post"];
         delete?: never;
@@ -6824,6 +6825,14 @@ export interface components {
             passwort: string;
         };
         /**
+         * PasswortEntfernenIn
+         * @description Das eigene Passwort entfernen. Verlangt das bisherige, wie das Wechseln.
+         */
+        PasswortEntfernenIn: {
+            /** Bisher */
+            bisher: string;
+        };
+        /**
          * PasswortSetzenIn
          * @description Das eigene Passwort vergeben oder wechseln.
          */
@@ -9857,7 +9866,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswortEntfernenIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -9868,6 +9881,15 @@ export interface operations {
                     "application/json": {
                         [key: string]: boolean;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
