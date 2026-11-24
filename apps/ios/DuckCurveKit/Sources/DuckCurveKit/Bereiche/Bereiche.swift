@@ -310,18 +310,25 @@ public enum Bereiche {
         // Die Verwaltung: selten gebraucht und nur vom Hausherrn. Hinter dem Zahnrad, nicht in
         // der Leiste.
         Bereich(
-            schluessel: .system, weg: "/system/mitteilungen", zeichen: .zahnrad, name: "System",
+            // Auch das System geht auf seiner Uebersicht auf (Vorgabe des Hausherrn vom
+            // 24.11.2026). Sie steht unter `/system/uebersicht`, weil `/system` die Adresse der
+            // Prognose ist und bleibt.
+            schluessel: .system, weg: "/system/uebersicht", zeichen: .zahnrad, name: "System",
             nurHausherr: true, inLeiste: false,
             reiter: [
                 Reiter(weg: "/system/mitteilungen", name: "Mitteilungen", nurHausherr: true,
-                    kicker: "Was aufs Handy kommt: Störungen und das Morning Briefing"),  // `system/mitteilungen/page.tsx:12`
+                    kicker: "Was aufs Handy kommt: Störungen und das Morning Briefing",  // `system/mitteilungen/page.tsx:12`
+                    beschreibung: "Welche Geräte Mitteilungen bekommen und was im Morgenbrief steht."),
                 Reiter(weg: "/system/haustuer", name: "Haustür", nurHausherr: true,
-                    kicker: "Wer sich am Reader erkennen ließ, und was geschah"),  // `system/haustuer/page.tsx:9`
+                    kicker: "Wer sich am Reader erkennen ließ, und was geschah",  // `system/haustuer/page.tsx:9`
+                    beschreibung: "Wer sich wann an der Haustür erkannt hat."),
                 // Der Rechner im Haus: Dienste, Gesundheit, Neustarts, Protokolle, Updates.
                 Reiter(weg: "/system/geraet", name: "Hausgerät", nurHausherr: true,
-                    kicker: "Dienste, Gesundheit, Sicherung und Updates des Rechners im Haus"),  // `system/geraet/page.tsx:9`
+                    kicker: "Dienste, Gesundheit, Sicherung und Updates des Rechners im Haus",  // `system/geraet/page.tsx:9`
+                    beschreibung: "Wie es dem Rechner im Haus und seinen Diensten geht."),
                 Reiter(weg: "/system/zugang", name: "Zugang und Sicherung", nurHausherr: true,
-                    kicker: "Geräte koppeln · wer zusieht · Daten sichern"),  // `system/zugang/page.tsx:58`
+                    kicker: "Geräte koppeln · wer zusieht · Daten sichern",  // `system/zugang/page.tsx:58`
+                    beschreibung: "Wer Zugang hat, wie groß die Datenbank ist und wie man sie sichert."),
                 Reiter(
                     // **Nur Tage.** Die Vorlage schaltet die Spannenwahl auf dieser Seite
                     // ausdrücklich ab (`DataCheck.tsx:59-68`, `showPeriods={false}`), weil die
@@ -329,7 +336,8 @@ public enum Bereiche {
                     // Bild, in dem nichts zu erkennen ist.
                     weg: "/system/daten", name: "Daten prüfen", mitZeitraum: true,
                     spannen: [.tag], nurHausherr: true,
-                    kicker: "Messreihen · Stundenbilanz · Rohdaten"),  // `DataCheck.tsx:61`
+                    kicker: "Messreihen · Stundenbilanz · Rohdaten",  // `DataCheck.tsx:61`
+                    beschreibung: "Ob die Messreihen lückenlos angekommen sind und zueinander passen."),
             ]
         ),
     ]

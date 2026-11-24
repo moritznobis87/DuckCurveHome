@@ -108,8 +108,15 @@ final class BereicheTests: XCTestCase {
         XCTAssertNil(Bereiche.ansichtVon(Bereiche.reiterVon(anlage, "/waerme/wirkung"), "/waerme/wirkung"))
     }
 
-    func testEnergieUndAnlageOeffnenAufIhrerUebersicht() {
-        XCTAssertEqual(Bereiche.alle.filter(\.hatUebersicht).map(\.weg), ["/energie", "/anlage"])
+    func testEnergieAnlageUndSystemOeffnenAufIhrerUebersicht() {
+        XCTAssertEqual(
+            Bereiche.alle.filter(\.hatUebersicht).map(\.weg), ["/energie", "/anlage", "/system/uebersicht"])
+        // `/system` selbst bleibt die Prognose im Bereich Energie; die Uebersicht des Systems
+        // liegt darunter und gehoert trotzdem zum System, weil die laengste Adresse gilt.
+        XCTAssertEqual(Bereiche.bereichVon("/system").schluessel, .energie)
+        XCTAssertEqual(Bereiche.bereichVon("/system/uebersicht").schluessel, .system)
+        XCTAssertTrue(Bereiche.istUebersicht("/system/uebersicht"))
+        XCTAssertNil(Bereiche.reiterVon(Bereiche.bereichVon("/system/uebersicht"), "/system/uebersicht"))
         // Die Startseite hat keine Reiter und damit auch keine Uebersicht.
         XCTAssertFalse(Bereiche.alle.first { $0.schluessel == .jetzt }!.hatUebersicht)
         // Die Karte auf der Uebersicht braucht je Seite einen Satz.
@@ -236,6 +243,7 @@ final class KickerTests: XCTestCase {
         // Die Uebersicht des Bereichs: kein Reiter, aber eine Zeile (`Bereichsuebersicht.tsx`).
         "/anlage": "Alle Seiten im Bereich Anlage",
         "/energie": "Alle Seiten im Bereich Energie",
+        "/system/uebersicht": "Alle Seiten im Bereich System",
         "/waerme/anlage": "Strom · Speicher · vier Kreise",
         "/waerme/wiedergabe": "Ein Tag am Anlagenschema · zum Durchfahren",
         "/waerme/waermepumpe": "Außengerät · Innengerät · Speicher",

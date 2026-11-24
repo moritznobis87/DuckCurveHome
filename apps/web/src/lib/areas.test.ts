@@ -105,11 +105,17 @@ describe("Bereiche", () => {
     }
   });
 
-  it("oeffnet Energie und Anlage auf ihrer Uebersicht, die anderen auf ihrer ersten Seite", () => {
+  it("oeffnet Energie, Anlage und System auf ihrer Uebersicht, die anderen auf ihrer ersten Seite", () => {
     expect(AREAS.filter(hatUebersicht).map((a) => [a.key, a.href])).toEqual([
       ["energie", "/energie"],
       ["anlage", "/anlage"],
+      ["system", "/system/uebersicht"],
     ]);
+    // `/system` selbst bleibt die Prognose im Bereich Energie; die Uebersicht des Systems liegt
+    // darunter und gehoert trotzdem zum System, weil die laengste passende Adresse gilt.
+    expect(areaOf("/system").key).toBe("energie");
+    expect(areaOf("/system/uebersicht").key).toBe("system");
+    expect(tabOf(areaOf("/system/uebersicht"), "/system/uebersicht")).toBeUndefined();
     // Die Startseite hat keine Reiter und damit auch keine Uebersicht.
     expect(hatUebersicht(AREAS.find((a) => a.key === "jetzt")!)).toBe(false);
     // Die Karte auf der Uebersicht braucht je Seite einen Satz.

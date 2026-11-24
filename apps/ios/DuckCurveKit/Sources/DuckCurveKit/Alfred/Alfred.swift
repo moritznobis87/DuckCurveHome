@@ -54,6 +54,7 @@ public enum Alfred {
         "/system": "Prognose zeigt, wie gut PV- und Verbrauchsprognosen waren. Nur mit Vollzugriff.",
         "/system/daten": "Daten prüfen zeigt, wie vollständig die Messreihen sind. Nur mit Vollzugriff.",
         "/waerme/annahmen": "Annahmen zeigt die Wärmeannahmen des Modells und lässt sie ändern. Nur mit Vollzugriff.",
+        "/system/uebersicht": "System ist die Übersicht über das, was das Haus am Laufen hält: Mitteilungen, Haustür, Hausgerät, Zugang und die Prüfung der Daten. Nur mit Vollzugriff.",
         "/system/mitteilungen": "Mitteilungen stellt das Morning Briefing und die angemeldeten Geräte ein. Nur mit Vollzugriff.",
         "/system/haustuer": "Haustür zeigt die Zutritte an der Haustür. Nur mit Vollzugriff.",
         "/system/geraet": "Hausgerät zeigt, wie es dem Rechner im Haus und seinen Diensten geht, holt Protokolle, startet Dienste neu und installiert Updates. Nur mit Vollzugriff.",

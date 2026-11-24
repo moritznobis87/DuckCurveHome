@@ -2014,6 +2014,9 @@ export interface paths {
          *     Der Schlüssel des Bereichs ist der aus `docs/seitenbaum.json`. Eine Übersicht gibt es für
          *     die Bereiche in `uebersicht.BEREICHE`. Welche Karten ein Betrachter sieht, entscheidet die
          *     Oberfläche wie bei den Seiten selbst.
+         *
+         *     Die Übersicht des Systems bleibt dem Hausherrn (`auth/rechte.py`, `AKTEN`): Ihre Karte der
+         *     Haustür liest das Protokoll der Haustür, und das ist eine Akte.
          */
         get: operations["bereichsuebersicht_api_v1_uebersicht__bereich__get"];
         put?: never;

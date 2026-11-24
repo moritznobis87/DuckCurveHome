@@ -201,18 +201,20 @@ export const AREAS: Area[] = [
   },
   {
     key: "system",
-    href: "/system/mitteilungen",
+    // Auch das System geht auf seiner Übersicht auf (Vorgabe des Hausherrn vom 24.11.2026). Sie
+    // steht unter `/system/uebersicht`, weil `/system` die Adresse der Prognose ist und bleibt.
+    href: "/system/uebersicht",
     icon: "gear",
     label: "System",
     ownerOnly: true,
     leiste: false,
     tabs: [
-      { href: "/system/mitteilungen", label: "Mitteilungen", ownerOnly: true },
-      { href: "/system/haustuer", label: "Haustür", ownerOnly: true },
+      { href: "/system/mitteilungen", label: "Mitteilungen", ownerOnly: true, beschreibung: "Welche Geräte Mitteilungen bekommen und was im Morgenbrief steht." },
+      { href: "/system/haustuer", label: "Haustür", ownerOnly: true, beschreibung: "Wer sich wann an der Haustür erkannt hat." },
       // Der Rechner im Haus selbst: Dienste, Gesundheit, Neustarts, Protokolle, Updates.
-      { href: "/system/geraet", label: "Hausgerät", ownerOnly: true },
-      { href: "/system/zugang", label: "Zugang und Sicherung", ownerOnly: true },
-      { href: "/system/daten", label: "Daten prüfen", dated: true, ownerOnly: true },
+      { href: "/system/geraet", label: "Hausgerät", ownerOnly: true, beschreibung: "Wie es dem Rechner im Haus und seinen Diensten geht." },
+      { href: "/system/zugang", label: "Zugang und Sicherung", ownerOnly: true, beschreibung: "Wer Zugang hat, wie groß die Datenbank ist und wie man sie sichert." },
+      { href: "/system/daten", label: "Daten prüfen", dated: true, ownerOnly: true, beschreibung: "Ob die Messreihen lückenlos angekommen sind und zueinander passen." },
     ],
   },
 ];

@@ -10,17 +10,27 @@ from dch_api.application import uebersicht
 from dch_api.schemas import (
     AnlageOut,
     AnlageSpeicherOut,
+    ApiSelbstOut,
+    CoverageOut,
+    CoverageSeriesOut,
+    DoorEntryOut,
+    DoorLogOut,
     EnergySummaryOut,
     EnergyTotalsOut,
     ForecastDayOut,
     ForecastEvaluationOut,
+    GeraetOut,
     HeatReportOut,
     KontaktwirkungOut,
     LiveStateOut,
     PlanIntervalOut,
     PlanOut,
+    PushGeraeteOut,
+    PushGeraetOut,
     RegelkreisOut,
     ReglerEinstellungenOut,
+    StorageReportOut,
+    StorageTableOut,
     WaermepumpeOut,
 )
 from hems_core.domain import EnergySnapshot, Measurement, Quality
@@ -346,5 +356,197 @@ def test_ein_speicher_ohne_brauchbaren_ladestand_zeigt_keine_zahl() -> None:
         Measurement(value=0.5, observed_at=JETZT, quality=Quality.UNAVAILABLE, source="t"),
     ):
         karte = uebersicht.karte_speicher(_augenblick(stand))
+        assert (karte.leitzahl_de, karte.ampel) == (None, "aus")
+        assert karte.grund_de
+
+
+def test_der_bereich_system_liefert_fuenf_karten_in_der_reihenfolge_des_seitenbaums(
+    client: TestClient,
+) -> None:
+    antwort = client.get("/api/v1/uebersicht/system")
+    assert antwort.status_code == 200
+    daten = antwort.json()
+    assert daten["bereich"] == "system"
+    assert [k["weg"] for k in daten["karten"]] == [
+        "/system/mitteilungen",
+        "/system/haustuer",
+        "/system/geraet",
+        "/system/zugang",
+        "/system/daten",
+    ]
+    for karte in daten["karten"]:
+        assert bool(karte["grund_de"]) == (karte["ampel"] != "gut"), karte
+
+
+def _angemeldet(*fehlversuche: int) -> PushGeraeteOut:
+    return PushGeraeteOut(
+        devices=[
+            PushGeraetOut(label=f"Gerät {i}", fehlversuche=f) for i, f in enumerate(fehlversuche)
+        ]
+    )
+
+
+def test_die_mitteilungen_zaehlen_die_angemeldeten_geraete_in_einzahl_und_mehrzahl() -> None:
+    eines = uebersicht.karte_mitteilungen(_angemeldet(0))
+    assert (eines.weg, eines.leitzahl_de, eines.dazu_de, eines.ampel, eines.grund_de) == (
+        "/system/mitteilungen",
+        "1",
+        "Gerät angemeldet",
+        "gut",
+        "",
+    )
+    drei = uebersicht.karte_mitteilungen(_angemeldet(0, 0, 0))
+    assert (drei.leitzahl_de, drei.dazu_de) == ("3", "Geräte angemeldet")
+
+
+def test_eine_gescheiterte_zustellung_macht_die_mitteilungen_gelb() -> None:
+    eine = uebersicht.karte_mitteilungen(_angemeldet(0, 2))
+    assert (eine.ampel, eine.grund_de) == (
+        "warn",
+        "Bei einem Gerät ist die Zustellung zuletzt gescheitert.",
+    )
+    zwei = uebersicht.karte_mitteilungen(_angemeldet(1, 4, 0))
+    assert zwei.grund_de == "Bei 2 Geräten ist die Zustellung zuletzt gescheitert."
+
+
+def test_ohne_angemeldetes_geraet_sagen_die_mitteilungen_das_statt_einer_null() -> None:
+    karte = uebersicht.karte_mitteilungen(_angemeldet())
+    assert (karte.leitzahl_de, karte.ampel) == (None, "aus")
+    assert karte.grund_de == "Kein Gerät ist für Mitteilungen angemeldet."
+
+
+def _tuer(*gewaehrt: bool) -> DoorLogOut:
+    return DoorLogOut(
+        entries=[
+            DoorEntryOut(
+                at=JETZT,
+                actor="jemand",
+                door="Haustür",
+                method="nfc",
+                outcome="",
+                granted=g,
+                reason="",
+            )
+            for g in gewaehrt
+        ],
+        days=1,
+        note_de="",
+    )
+
+
+def test_die_haustuer_zaehlt_die_zutritte_und_nicht_die_abgelehnten_versuche() -> None:
+    karte = uebersicht.karte_haustuer(_tuer(True, True, True))
+    assert (karte.weg, karte.leitzahl_de, karte.dazu_de, karte.ampel) == (
+        "/system/haustuer",
+        "3",
+        "Zutritte seit gestern",
+        "gut",
+    )
+    assert uebersicht.karte_haustuer(_tuer(True)).dazu_de == "Zutritt seit gestern"
+    # Niemand kam: das ist eine Auskunft und keine Luecke.
+    leer = uebersicht.karte_haustuer(_tuer())
+    assert (leer.leitzahl_de, leer.ampel) == ("0", "gut")
+
+
+def test_ein_abgelehnter_versuch_macht_die_haustuer_gelb() -> None:
+    einer = uebersicht.karte_haustuer(_tuer(True, False))
+    assert (einer.leitzahl_de, einer.ampel, einer.grund_de) == (
+        "1",
+        "warn",
+        "Ein Versuch an der Tür wurde abgelehnt.",
+    )
+    assert (
+        uebersicht.karte_haustuer(_tuer(False, False, False)).grund_de
+        == "3 Versuche an der Tür wurden abgelehnt."
+    )
+
+
+def _geraet(ampel: str, text: str = "") -> GeraetOut:
+    return GeraetOut.model_construct(
+        unterstuetzt=True, api=ApiSelbstOut.model_construct(), ampel=ampel, text_de=text
+    )
+
+
+def test_das_hausgeraet_uebernimmt_ampel_und_satz_seiner_seite() -> None:
+    gut = uebersicht.karte_geraet(_geraet("gut", "Alles in Ordnung."))
+    assert (gut.weg, gut.leitzahl_de, gut.ampel, gut.grund_de) == (
+        "/system/geraet",
+        None,
+        "gut",
+        "",
+    )
+    gestoert = uebersicht.karte_geraet(_geraet("schlecht", "Die Sicherung von heute Nacht fehlt."))
+    assert (gestoert.ampel, gestoert.grund_de) == (
+        "schlecht",
+        "Die Sicherung von heute Nacht fehlt.",
+    )
+    # Ein Zustand ohne Satz bleibt nicht stumm.
+    assert uebersicht.karte_geraet(_geraet("warn")).grund_de == uebersicht.KEINE_AUSKUNFT
+
+
+def _platz(bytes_gesamt: int) -> StorageReportOut:
+    tabellen = (
+        [
+            StorageTableOut(
+                name="measurements_minute",
+                total_bytes=bytes_gesamt,
+                table_bytes=bytes_gesamt,
+                index_bytes=0,
+                rows_estimate=1,
+            )
+        ]
+        if bytes_gesamt
+        else []
+    )
+    return StorageReportOut(
+        tables=tabellen,
+        total_bytes=bytes_gesamt,
+        raw_retention_days=14,
+        note_de="" if bytes_gesamt else "Ohne PostgreSQL gibt es keine Größenangaben.",
+    )
+
+
+def test_zugang_und_sicherung_nennt_die_groesse_der_datenbank() -> None:
+    gross = uebersicht.karte_zugang(_platz(2_340_000_000))
+    assert (gross.weg, gross.leitzahl_de, gross.dazu_de, gross.ampel) == (
+        "/system/zugang",
+        "2,3 GB",
+        "Größe der Datenbank",
+        "gut",
+    )
+    assert uebersicht.karte_zugang(_platz(412_000_000)).leitzahl_de == "412 MB"
+    ohne = uebersicht.karte_zugang(_platz(0))
+    assert (ohne.leitzahl_de, ohne.ampel, ohne.grund_de) == (
+        None,
+        "aus",
+        "Ohne PostgreSQL gibt es keine Größenangaben.",
+    )
+
+
+def _abdeckung(*anteile: tuple[float, int]) -> CoverageOut:
+    return CoverageOut.model_construct(
+        series=[
+            CoverageSeriesOut.model_construct(
+                coverage=anteil, minutes_seen=gesehen, minutes_expected=10_080
+            )
+            for anteil, gesehen in anteile
+        ]
+    )
+
+
+def test_daten_pruefen_nennt_die_abdeckung_der_schlechteren_reihe() -> None:
+    karte = uebersicht.karte_daten(_abdeckung((0.9987, 10_067), (0.9712, 9_790)))
+    assert (karte.weg, karte.leitzahl_de, karte.dazu_de, karte.ampel) == (
+        "/system/daten",
+        "97,1 %",
+        "Abdeckung in 7 Tagen",
+        "gut",
+    )
+
+
+def test_ohne_gezaehlte_minute_zeigt_daten_pruefen_keine_null() -> None:
+    # Ohne Datenbank ist in keiner Reihe etwas gezaehlt. 0,0 % waere eine Behauptung.
+    for abdeckung in (_abdeckung((0.0, 0), (0.0, 0)), _abdeckung()):
+        karte = uebersicht.karte_daten(abdeckung)
         assert (karte.leitzahl_de, karte.ampel) == (None, "aus")
         assert karte.grund_de

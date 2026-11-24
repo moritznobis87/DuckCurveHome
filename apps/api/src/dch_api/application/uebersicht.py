@@ -19,6 +19,12 @@ eine Rechnung, steht dort „Gerade keine Auskunft.“, und die anderen bleiben.
 Übersicht hat keinen Zeitraumwähler und nimmt deshalb den Tag, der läuft. Strom, Photovoltaik
 und Wallbox lesen aus derselben Tagesbilanz, die auch ihre Seiten zeigen, und die wird für alle
 drei nur einmal gerechnet.
+
+**Das System gehört dem Hausherrn.** Seine Karte der Haustür zählt, wer kam, und das Protokoll
+der Haustür ist eine Akte (`auth/rechte.py`). Die ganze Übersicht des Systems steht deshalb
+dort in der Liste der Akten. Ihre Quellen sind die Antworten der Seiten des Systems; die
+reicht der Router herein, weil sie am Gerät, am Push-Dienst und an der Datenbank hängen und
+nicht an der Laufzeit.
 """
 
 from __future__ import annotations
@@ -32,14 +38,19 @@ from dch_api.application.runtime import Runtime
 from dch_api.schemas import (
     Ampel,
     AnlageOut,
+    CoverageOut,
+    DoorLogOut,
     EnergySummaryOut,
     ForecastEvaluationOut,
+    GeraetOut,
     HeatReportOut,
     KontaktwirkungOut,
     LiveStateOut,
     PlanOut,
+    PushGeraeteOut,
     RegelkreisOut,
     ReglerEinstellungenOut,
+    StorageReportOut,
     UebersichtKarteOut,
     UebersichtOut,
     WaermepumpeOut,
@@ -60,7 +71,14 @@ WIRKUNG_OFFEN = "Für ein Urteil gibt es noch zu wenige Ereignisse."
 HEUTE_LEER = "Für heute liegen noch keine Messwerte vor."
 
 #: Die Bereiche, für die es Karten gibt, mit ihrem Schlüssel aus `docs/seitenbaum.json`.
-BEREICHE = ("anlage", "energie")
+BEREICHE = ("anlage", "energie", "system")
+
+#: Über wie viele Tage die Karte der Haustür zählt: der kürzeste Zeitraum, den ihr Protokoll
+#: kennt. Die Karte soll sagen, was seit gestern war.
+HAUSTUER_TAGE = 1
+
+#: Über wie viele Tage die Karte der Datenprüfung die Abdeckung nennt.
+ABDECKUNG_TAGE = 7
 
 
 def _ohne(weg: str, grund: str = KEINE_AUSKUNFT) -> UebersichtKarteOut:
@@ -252,6 +270,90 @@ def karte_speicher(zustand: LiveStateOut) -> UebersichtKarteOut:
     )
 
 
+def karte_mitteilungen(g: PushGeraeteOut) -> UebersichtKarteOut:
+    """Die Mitteilungen: wie viele Geräte angemeldet sind. Gelb, wenn bei einem die Zustellung
+    seit der letzten angenommenen Mitteilung gescheitert ist; das zählt der Dienst je Gerät."""
+    weg = "/system/mitteilungen"
+    n = len(g.devices)
+    if n == 0:
+        return _ohne(weg, "Kein Gerät ist für Mitteilungen angemeldet.")
+    gescheitert = sum(1 for d in g.devices if d.fehlversuche > 0)
+    if gescheitert == 0:
+        grund = ""
+    elif gescheitert == 1:
+        grund = "Bei einem Gerät ist die Zustellung zuletzt gescheitert."
+    else:
+        grund = f"Bei {gescheitert} Geräten ist die Zustellung zuletzt gescheitert."
+    return UebersichtKarteOut(
+        weg=weg,
+        leitzahl_de=str(n),
+        dazu_de="Gerät angemeldet" if n == 1 else "Geräte angemeldet",
+        ampel="warn" if grund else "gut",
+        grund_de=grund,
+    )
+
+
+def karte_haustuer(protokoll: DoorLogOut) -> UebersichtKarteOut:
+    """Die Haustür: wie viele Zutritte das Protokoll im Zeitraum kennt. Gelb, wenn ein Versuch
+    abgelehnt wurde: das ist die Frage, wegen der man in das Protokoll sieht."""
+    weg = "/system/haustuer"
+    gewaehrt = sum(1 for e in protokoll.entries if e.granted)
+    abgelehnt = len(protokoll.entries) - gewaehrt
+    if abgelehnt == 0:
+        grund = ""
+    elif abgelehnt == 1:
+        grund = "Ein Versuch an der Tür wurde abgelehnt."
+    else:
+        grund = f"{abgelehnt} Versuche an der Tür wurden abgelehnt."
+    return UebersichtKarteOut(
+        weg=weg,
+        leitzahl_de=str(gewaehrt),
+        dazu_de="Zutritt seit gestern" if gewaehrt == 1 else "Zutritte seit gestern",
+        ampel="warn" if grund else "gut",
+        grund_de=grund,
+    )
+
+
+def karte_geraet(g: GeraetOut) -> UebersichtKarteOut:
+    """Das Hausgerät: die Ampel und der Satz, die seine Seite oben zeigt. Eine Zahl hat es nicht."""
+    weg = "/system/geraet"
+    if g.ampel == "gut":
+        return UebersichtKarteOut(weg=weg, ampel="gut")
+    return UebersichtKarteOut(weg=weg, ampel=g.ampel, grund_de=g.text_de or KEINE_AUSKUNFT)
+
+
+def karte_zugang(platz: StorageReportOut) -> UebersichtKarteOut:
+    """Zugang und Sicherung: wie groß die Datenbank ist. Das ist, was zu sichern wäre."""
+    weg = "/system/zugang"
+    if not platz.tables:
+        return _ohne(weg, platz.note_de or KEINE_AUSKUNFT)
+    gb = platz.total_bytes / 1e9
+    groesse = f"{de(gb, 1)} GB" if gb >= 1 else f"{de(platz.total_bytes / 1e6, 0)} MB"
+    return UebersichtKarteOut(
+        weg=weg, leitzahl_de=groesse, dazu_de="Größe der Datenbank", ampel="gut"
+    )
+
+
+def karte_daten(abdeckung: CoverageOut) -> UebersichtKarteOut:
+    """Daten prüfen: die Abdeckung der schlechteren der Netzreihen. Ein Urteil fällt die Karte
+    nicht, weil die Seite keines fällt; sie nennt die Zahl.
+
+    Ist in keiner Reihe eine einzige Minute gezählt, gibt es keinen Bestand, an dem sich zählen
+    ließe (ohne Datenbank ist das so). Dann steht keine Null da, sondern dieser Satz.
+    """
+    weg = "/system/daten"
+    gezaehlt = [s for s in abdeckung.series if s.minutes_expected > 0]
+    if not gezaehlt or all(s.minutes_seen == 0 for s in gezaehlt):
+        return _ohne(weg, "Für die Messreihen gibt es gerade keine Zählung.")
+    schlechteste = min(s.coverage for s in gezaehlt)
+    return UebersichtKarteOut(
+        weg=weg,
+        leitzahl_de=f"{de(schlechteste * 100, 1)} %",
+        dazu_de=f"Abdeckung in {ABDECKUNG_TAGE} Tagen",
+        ampel="gut",
+    )
+
+
 async def _karte[T](
     weg: str, quelle: Callable[[], Awaitable[T]], bauen: Callable[[T], UebersichtKarteOut]
 ) -> UebersichtKarteOut:
@@ -314,10 +416,23 @@ async def energie(runner: Runtime) -> UebersichtOut:
     return UebersichtOut(bereich="energie", karten=list(karten))
 
 
-async def bereich(schluessel: str, runner: Runtime) -> UebersichtOut | None:
-    """Die Karten eines Bereichs, oder `None`, wenn es für ihn keine Übersicht gibt."""
-    if schluessel == "anlage":
-        return await anlage(runner)
-    if schluessel == "energie":
-        return await energie(runner)
-    return None
+async def system(
+    mitteilungen: Callable[[], Awaitable[PushGeraeteOut]],
+    haustuer: Callable[[], Awaitable[DoorLogOut]],
+    geraet: Callable[[], Awaitable[GeraetOut]],
+    platz: Callable[[], Awaitable[StorageReportOut]],
+    abdeckung: Callable[[], Awaitable[CoverageOut]],
+) -> UebersichtOut:
+    """Die Karten des Bereichs System, in der Reihenfolge des Seitenbaums.
+
+    Die Quellen sind die Antworten der fünf Seiten. Der Router reicht sie als Aufrufe herein,
+    damit jede einzeln ausfallen darf und diese Datei nichts vom Router wissen muss.
+    """
+    karten = await asyncio.gather(
+        _karte("/system/mitteilungen", mitteilungen, karte_mitteilungen),
+        _karte("/system/haustuer", haustuer, karte_haustuer),
+        _karte("/system/geraet", geraet, karte_geraet),
+        _karte("/system/zugang", platz, karte_zugang),
+        _karte("/system/daten", abdeckung, karte_daten),
+    )
+    return UebersichtOut(bereich="system", karten=list(karten))
