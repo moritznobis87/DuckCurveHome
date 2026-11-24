@@ -1,7 +1,7 @@
 // Erzeugt von tools/gen-zeichen.py aus apps/web/src/components/ui/Icon.tsx.
 // Nicht von Hand aendern - neu erzeugen mit `tools/gen-zeichen.py`.
 //
-// Die Zeichen des Dashboards: 25 Strichzeichnungen auf einem 24-Punkt-Raster, 1,75 Punkt
+// Die Zeichen des Dashboards: 29 Strichzeichnungen auf einem 24-Punkt-Raster, 1,75 Punkt
 // Strich, runde Enden, kein Emoji. Kreise und Rechtecke sind beim Uebernehmen zu
 // Pfadangaben gerechnet worden.
 
@@ -15,14 +15,17 @@ public enum Zeichenart: String, Sendable, Hashable, CaseIterable {
     case ente
     case euro
     case flamme
+    case glocke
     case haus
     case kaffee
     case kalender
+    case kreis
     case lampe
     case mond
     case netz
     case ofen
     case person
+    case schieber
     case schild
     case sonne
     case tabelle
@@ -32,6 +35,7 @@ public enum Zeichenart: String, Sendable, Hashable, CaseIterable {
     case waermepumpe
     case warnung
     case zahnrad
+    case ziel
 }
 
 extension Zeichenart {
@@ -88,6 +92,12 @@ extension Zeichenart {
                 (d: "M12 2.5c.9 3.3 4.6 5 5.6 8.6 1.1 4-1.6 8.4-5.6 8.4s-6.7-4.4-5.6-8.4c.4-1.6 1.4-2.9 2.4-4.1.4 1.4 1.1 2.4 2.2 2.9C10.5 7.6 10.8 5 12 2.5z", gefuellt: false),
                 (d: "M12 19.5c-1.8 0-3-1.4-2.7-3 .2-1 .9-1.8 1.6-2.6.3.8.8 1.3 1.5 1.5.3-1 .5-1.8 1-2.6 1.1 1.1 1.9 2.4 1.6 3.8-.3 1.7-1.4 2.9-3 2.9z", gefuellt: false),
             ]
+        case .glocke:
+            return [
+                (d: "M6.2 16.8h11.6c-1.1-1.2-1.6-2.9-1.6-4.9v-1.1a4.2 4.2 0 0 0-8.4 0v1.1c0 2-.5 3.7-1.6 4.9z", gefuellt: false),
+                (d: "M10.3 19.6a1.8 1.8 0 0 0 3.4 0", gefuellt: false),
+                (d: "M12 4.1v2.5", gefuellt: false),
+            ]
         case .haus:
             return [
                 (d: "M3.5 11.2 12 4l8.5 7.2", gefuellt: false),
@@ -107,6 +117,14 @@ extension Zeichenart {
                 (d: "M3 9h18", gefuellt: false),
                 (d: "M9 9v12M15 9v12", gefuellt: false),
                 (d: "M3 15h18", gefuellt: false),
+            ]
+        case .kreis:
+            return [
+                (d: "M3 8h5", gefuellt: false),
+                (d: "M 9.4 5.0 L 14.6 5.0 C 15.373198649763111 5.0 16.0 5.62680135023689 16.0 6.4 L 16.0 9.6 C 16.0 10.373198649763111 15.373198649763111 11.0 14.6 11.0 L 9.4 11.0 C 8.626801350236889 11.0 8.0 10.373198649763111 8.0 9.6 L 8.0 6.4 C 8.0 5.62680135023689 8.626801350236889 5.0 9.4 5.0 Z", gefuellt: false),
+                (d: "M16 8h5", gefuellt: false),
+                (d: "M18.5 8v9.5h-13v-6.9", gefuellt: false),
+                (d: "M3.6 12.4l1.9-1.9 1.9 1.9", gefuellt: false),
             ]
         case .lampe:
             return [
@@ -136,6 +154,13 @@ extension Zeichenart {
             return [
                 (d: "M 12.0 4.1 C 14.153910524340095 4.1 15.9 5.846089475659905 15.9 8.0 C 15.9 10.153910524340095 14.153910524340095 11.9 12.0 11.9 C 9.846089475659905 11.9 8.1 10.153910524340095 8.1 8.0 C 8.1 5.846089475659905 9.846089475659905 4.1 12.0 4.1 Z", gefuellt: false),
                 (d: "M4.3 20.5c.7-3.9 3.8-6.4 7.7-6.4s7 2.5 7.7 6.4", gefuellt: false),
+            ]
+        case .schieber:
+            return [
+                (d: "M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1", gefuellt: false),
+                (d: "M 15.0 5.0 C 16.104569499661586 5.0 17.0 5.895430500338413 17.0 7.0 C 17.0 8.104569499661586 16.104569499661586 9.0 15.0 9.0 C 13.895430500338414 9.0 13.0 8.104569499661586 13.0 7.0 C 13.0 5.895430500338413 13.895430500338414 5.0 15.0 5.0 Z", gefuellt: false),
+                (d: "M 9.0 10.0 C 10.104569499661586 10.0 11.0 10.895430500338414 11.0 12.0 C 11.0 13.104569499661586 10.104569499661586 14.0 9.0 14.0 C 7.895430500338413 14.0 7.0 13.104569499661586 7.0 12.0 C 7.0 10.895430500338414 7.895430500338413 10.0 9.0 10.0 Z", gefuellt: false),
+                (d: "M 17.0 15.0 C 18.104569499661586 15.0 19.0 15.895430500338414 19.0 17.0 C 19.0 18.104569499661586 18.104569499661586 19.0 17.0 19.0 C 15.895430500338414 19.0 15.0 18.104569499661586 15.0 17.0 C 15.0 15.895430500338414 15.895430500338414 15.0 17.0 15.0 Z", gefuellt: false),
             ]
         case .schild:
             return [
@@ -190,6 +215,84 @@ extension Zeichenart {
                 (d: "M21.86 10.36 L21.86 13.64 L19.18 13.78 L18.34 15.82 L20.14 17.81 L17.81 20.14 L15.82 18.34 L13.78 19.18 L13.64 21.86 L10.36 21.86 L10.22 19.18 L8.18 18.34 L6.19 20.14 L3.86 17.81 L5.66 15.82 L4.82 13.78 L2.14 13.64 L2.14 10.36 L4.82 10.22 L5.66 8.18 L3.86 6.19 L6.19 3.86 L8.18 5.66 L10.22 4.82 L10.36 2.14 L13.64 2.14 L13.78 4.82 L15.82 5.66 L17.81 3.86 L20.14 6.19 L18.34 8.18 L19.18 10.22 Z", gefuellt: false),
                 (d: "M 12.0 8.4 C 13.988225099390856 8.4 15.6 10.011774900609144 15.6 12.0 C 15.6 13.988225099390856 13.988225099390856 15.6 12.0 15.6 C 10.011774900609144 15.6 8.4 13.988225099390856 8.4 12.0 C 8.4 10.011774900609144 10.011774900609144 8.4 12.0 8.4 Z", gefuellt: false),
             ]
+        case .ziel:
+            return [
+                (d: "M 12.0 3.5 C 16.694420373561744 3.5 20.5 7.305579626438255 20.5 12.0 C 20.5 16.694420373561744 16.694420373561744 20.5 12.0 20.5 C 7.305579626438255 20.5 3.5 16.694420373561744 3.5 12.0 C 3.5 7.305579626438255 7.305579626438255 3.5 12.0 3.5 Z", gefuellt: false),
+                (d: "M 12.0 7.4 C 14.54050984922165 7.4 16.6 9.45949015077835 16.6 12.0 C 16.6 14.54050984922165 14.54050984922165 16.6 12.0 16.6 C 9.45949015077835 16.6 7.4 14.54050984922165 7.4 12.0 C 7.4 9.45949015077835 9.45949015077835 7.4 12.0 7.4 Z", gefuellt: false),
+                (d: "M 12.0 10.8 C 12.662741699796952 10.8 13.2 11.337258300203048 13.2 12.0 C 13.2 12.662741699796952 12.662741699796952 13.2 12.0 13.2 C 11.337258300203048 13.2 10.8 12.662741699796952 10.8 12.0 C 10.8 11.337258300203048 11.337258300203048 10.8 12.0 10.8 Z", gefuellt: true),
+            ]
+        }
+    }
+
+    /// Der Name dieses Zeichens im Dashboard (`Icon.tsx`).
+    public var vorlage: String {
+        switch self {
+        case .anzeige: return "dashboard"
+        case .auto: return "car"
+        case .batterie: return "battery"
+        case .blitz: return "bolt"
+        case .diagramm: return "chart"
+        case .ente: return "duck"
+        case .euro: return "euro"
+        case .flamme: return "flame"
+        case .glocke: return "bell"
+        case .haus: return "house"
+        case .kaffee: return "coffee"
+        case .kalender: return "calendar"
+        case .kreis: return "loop"
+        case .lampe: return "bulb"
+        case .mond: return "moon"
+        case .netz: return "grid"
+        case .ofen: return "stove"
+        case .person: return "person"
+        case .schieber: return "sliders"
+        case .schild: return "shield"
+        case .sonne: return "sun"
+        case .tabelle: return "table"
+        case .thermometer: return "thermo"
+        case .tuer: return "door"
+        case .uhr: return "clock"
+        case .waermepumpe: return "pump"
+        case .warnung: return "alert"
+        case .zahnrad: return "gear"
+        case .ziel: return "target"
+        }
+    }
+
+    /// Das Zeichen zu einem Namen des Dashboards, wie `docs/seitenbaum.json` ihn nennt.
+    public init?(vorlage: String) {
+        switch vorlage {
+        case "alert": self = .warnung
+        case "battery": self = .batterie
+        case "bell": self = .glocke
+        case "bolt": self = .blitz
+        case "bulb": self = .lampe
+        case "calendar": self = .kalender
+        case "car": self = .auto
+        case "chart": self = .diagramm
+        case "clock": self = .uhr
+        case "coffee": self = .kaffee
+        case "dashboard": self = .anzeige
+        case "door": self = .tuer
+        case "duck": self = .ente
+        case "euro": self = .euro
+        case "flame": self = .flamme
+        case "gear": self = .zahnrad
+        case "grid": self = .netz
+        case "home": self = .haus
+        case "house": self = .haus
+        case "loop": self = .kreis
+        case "moon": self = .mond
+        case "person": self = .person
+        case "pump": self = .waermepumpe
+        case "shield": self = .schild
+        case "sliders": self = .schieber
+        case "stove": self = .ofen
+        case "sun": self = .sonne
+        case "table": self = .tabelle
+        case "target": self = .ziel
+        case "thermo": self = .thermometer
+        default: return nil
         }
     }
 }

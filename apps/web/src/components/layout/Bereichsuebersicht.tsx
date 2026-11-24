@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { Zustandszeichen } from "@/components/ui/Zustandszeichen";
 import { api } from "@/lib/api/client";
 import type { Uebersichtskarte } from "@/lib/api/models";
-import { AREAS, hatUebersicht, tabsDerGruppe, type Area } from "@/lib/areas";
+import { Icon } from "@/components/ui/Icon";
+import { AREAS, SEITENFARBE, hatUebersicht, tabsDerGruppe, type Area } from "@/lib/areas";
 import { useSitzung } from "@/lib/live/useRole";
 import { AreaShell } from "./AreaShell";
 
@@ -41,21 +42,36 @@ function useKarten(bereich: string): Record<string, Uebersichtskarte> {
 }
 
 /**
- * Die Übersicht eines Bereichs: jede Karte eine Seite. Hat der Bereich Gruppen, steht je Gruppe
- * eine Spalte Karten unter ihrem Namen; hat er keine, stehen alle Karten in einem Raster.
+ * Die Leitzahl in Zahl und Einheit zerlegt: „19,1 kWh“ wird zu „19,1“ und „kWh“.
  *
- * Sie ersetzt die lange Reiterzeile als Einstieg. Wer den Bereich öffnet, sieht zuerst, welche
- * Seiten es gibt und wovon jede handelt, und muss dafür keine Zeile durchrollen. Den Satz auf
- * der Karte trägt der Seitenbaum (`beschreibung`), damit er im Dashboard und in der App
- * derselbe ist.
+ * Der Dienst liefert sie als einen Text. Auf der Kachel steht die Zahl groß und die Einheit
+ * klein dahinter; das ist die ganze Zerlegung, gerechnet wird hier nichts. Ein Text ohne
+ * Leerzeichen bleibt ganz die Zahl.
+ */
+export function zahlUndEinheit(leitzahl: string): { zahl: string; einheit: string } {
+  const schnitt = leitzahl.lastIndexOf(" ");
+  if (schnitt < 0) return { zahl: leitzahl, einheit: "" };
+  return { zahl: leitzahl.slice(0, schnitt), einheit: leitzahl.slice(schnitt + 1) };
+}
+
+/**
+ * Die Übersicht eines Bereichs: jede Kachel eine Seite. Hat der Bereich Gruppen, steht je Gruppe
+ * eine Reihe Kacheln unter ihrem Namen; hat er keine, stehen alle in einem Raster.
  *
- * Was nur der Hausherr sieht, fehlt einem Gast hier wie in der Reiterzeile. Eine Gruppe, von
+ * **Eine Kachel zeigt, sie erklärt nicht.** Bis zum 24.11.2026 stand auf jeder Karte ein Satz
+ * darüber, wovon die Seite handelt, und darunter ihre Ansichten. Am Telefon waren das sechs
+ * Kästen voll Text, und der Hausherr hat es so genannt: grafisch schwach, viel zu viel Text.
+ * Jetzt trägt jede Kachel das Zeichen der Seite in der Farbe ihrer Sache, den Namen, die
+ * Leitzahl groß und ein Wort dazu. Der Satz steht weiter da, für die Vorlesehilfe und als
+ * Hinweis unter dem Zeiger, und sichtbar nur dort, wo eine Seite keine Zahl hat.
+ *
+ * Was nur der Hausherr sieht, fehlt den anderen hier wie in der Reiterzeile. Eine Gruppe, von
  * der danach nichts übrig ist, wird nicht gezeichnet.
  *
  * **Leitzahl und Ampel kommen vom Dienst** (`GET /uebersicht/{bereich}`): je Seite ihre
  * wichtigste Zahl und ein Zustand, fertig formuliert, damit das Dashboard und die App dasselbe
- * zeigen. Eine Ampel, die nicht gut ist, bringt ihren Grund als Satz mit; er steht auf der Karte.
- * Eine Seite ohne Karte des Dienstes (die Annahmen, die Jahreskarte) zeigt nur ihren festen Satz.
+ * zeigen. Eine Ampel, die nicht gut ist, bringt ihren Grund als Satz mit; er steht auf der
+ * Kachel an der Stelle des Wortes. Zeichen und Farbe trägt der Seitenbaum.
  */
 export function Bereichsuebersicht({ bereich }: { bereich: Area["key"] }) {
   const { hausherr } = useSitzung();
@@ -81,21 +97,36 @@ export function Bereichsuebersicht({ bereich }: { bereich: Area["key"] }) {
               <div className="uebersicht-karten">
                 {seiten.map((seite) => {
                   const karte = karten[seite.href];
+                  const leitzahl = karte?.leitzahl_de ? zahlUndEinheit(karte.leitzahl_de) : null;
                   return (
-                    <Link key={seite.href} href={seite.href} className="uebersicht-karte" data-ampel={karte?.ampel}>
+                    <Link
+                      key={seite.href}
+                      href={seite.href}
+                      className="uebersicht-karte"
+                      data-ampel={karte?.ampel}
+                      title={seite.beschreibung}
+                      style={{ "--kachelfarbe": SEITENFARBE[seite.farbe] } as React.CSSProperties}
+                    >
                       <span className="uebersicht-kopfzeile">
-                        <span className="uebersicht-titel">{seite.label}</span>
+                        <span className="uebersicht-zeichen" aria-hidden="true">
+                          <Icon name={seite.icon} size={22} />
+                        </span>
                         {karte ? <Zustandszeichen zustand={karte.ampel ?? "aus"} /> : null}
                       </span>
-                      {karte?.leitzahl_de ? (
+                      <span className="uebersicht-titel">{seite.label}</span>
+                      {leitzahl ? (
                         <span className="uebersicht-zahl">
-                          <span className="mono uebersicht-leitzahl">{karte.leitzahl_de}</span>
-                          <span className="uebersicht-dazu">{karte.dazu_de}</span>
+                          <span className="mono uebersicht-leitzahl">{leitzahl.zahl}</span>
+                          {leitzahl.einheit ? <span className="mono uebersicht-einheit">{leitzahl.einheit}</span> : null}
                         </span>
                       ) : null}
-                      {karte?.grund_de ? <span className="uebersicht-grund">{karte.grund_de}</span> : null}
-                      <span className="uebersicht-satz">{seite.beschreibung}</span>
-                      {seite.unter ? <span className="uebersicht-ansichten">{seite.unter.map((u) => u.label).join(" · ")}</span> : null}
+                      {karte?.grund_de ? (
+                        <span className="uebersicht-grund">{karte.grund_de}</span>
+                      ) : karte?.dazu_de ? (
+                        <span className="uebersicht-dazu">{karte.dazu_de}</span>
+                      ) : !leitzahl && seite.beschreibung ? (
+                        <span className="uebersicht-satz">{seite.beschreibung}</span>
+                      ) : null}
                     </Link>
                   );
                 })}

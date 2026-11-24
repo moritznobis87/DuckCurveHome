@@ -42,6 +42,8 @@ final class SeitenbaumTests: XCTestCase {
     private struct Reiterzeile: Decodable, Equatable {
         let weg: String
         let name: String
+        let zeichen: String
+        let farbe: String
         let zeitraum: Bool
         let nurHausherr: Bool
         let gruppe: String?
@@ -68,6 +70,8 @@ final class SeitenbaumTests: XCTestCase {
                     Reiterzeile(
                         weg: reiter.weg,
                         name: reiter.name,
+                        zeichen: reiter.zeichen.vorlage,
+                        farbe: reiter.farbe.rawValue,
                         zeitraum: reiter.mitZeitraum,
                         nurHausherr: reiter.nurHausherr,
                         gruppe: reiter.gruppe,
@@ -95,6 +99,29 @@ final class SeitenbaumTests: XCTestCase {
         for (eigen, soll) in zip(app, gemeinsam) {
             XCTAssertEqual(eigen, soll, "Der Bereich \(soll.name) weicht vom Dashboard ab")
         }
+    }
+
+    /// Jedes Zeichen, das der Seitenbaum nennt, kennt die App unter diesem Namen. Sonst stünde
+    /// auf einer Kachel kein Zeichen, und niemand merkte es vor dem Gerät.
+    func testJedesZeichenDesSeitenbaumsIstBekannt() throws {
+        for bereich in try gemeinsameDatei().bereiche {
+            for reiter in bereich.reiter {
+                XCTAssertNotNil(Zeichenart(vorlage: reiter.zeichen), "\(reiter.weg): \(reiter.zeichen)")
+                XCTAssertNotNil(Seitenfarbe(rawValue: reiter.farbe), "\(reiter.weg): \(reiter.farbe)")
+            }
+        }
+    }
+
+    /// Die Leitzahl zerfällt am letzten Leerzeichen in Zahl und Einheit, wie im Dashboard
+    /// (`zahlUndEinheit`). Ein Text ohne Leerzeichen bleibt ganz die Zahl.
+    func testLeitzahlZerfaelltInZahlUndEinheit() {
+        XCTAssertEqual(Leitzahl("19,1 kWh").zahl, "19,1")
+        XCTAssertEqual(Leitzahl("19,1 kWh").einheit, "kWh")
+        XCTAssertEqual(Leitzahl("−80 %").zahl, "−80")
+        XCTAssertEqual(Leitzahl("−80 %").einheit, "%")
+        XCTAssertEqual(Leitzahl("0").zahl, "0")
+        XCTAssertEqual(Leitzahl("0").einheit, "")
+        XCTAssertEqual(Leitzahl("1 234,5 kWh").zahl, "1 234,5")
     }
 
     /// Die Seiten außerhalb der Bereiche sind in der App dieselben wie im Dashboard: gleiche

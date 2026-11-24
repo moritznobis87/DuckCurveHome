@@ -20,6 +20,8 @@
         {
           "weg": "/haus",
           "name": "Räume",
+          "zeichen": "house",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": false,
           "gruppe": null,
@@ -29,6 +31,8 @@
         {
           "weg": "/waerme/raeume",
           "name": "Über den Tag",
+          "zeichen": "thermo",
+          "farbe": "ruhig",
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
@@ -48,6 +52,8 @@
         {
           "weg": "/strom",
           "name": "Strom",
+          "zeichen": "bolt",
+          "farbe": "haus",
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
@@ -57,6 +63,8 @@
         {
           "weg": "/waerme",
           "name": "Wärme",
+          "zeichen": "flame",
+          "farbe": "waermepumpe",
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
@@ -66,6 +74,8 @@
         {
           "weg": "/strom/pv",
           "name": "Photovoltaik",
+          "zeichen": "sun",
+          "farbe": "pv",
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
@@ -75,6 +85,8 @@
         {
           "weg": "/system",
           "name": "Prognose",
+          "zeichen": "chart",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": true,
           "gruppe": null,
@@ -84,6 +96,8 @@
         {
           "weg": "/strom/speicher",
           "name": "Speicher",
+          "zeichen": "battery",
+          "farbe": "speicher",
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
@@ -93,6 +107,8 @@
         {
           "weg": "/strom/wallbox",
           "name": "Wallbox",
+          "zeichen": "car",
+          "farbe": "wallbox",
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
@@ -102,6 +118,8 @@
         {
           "weg": "/strom/jahr",
           "name": "Jahreskarte",
+          "zeichen": "calendar",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": false,
           "gruppe": null,
@@ -121,6 +139,8 @@
         {
           "weg": "/geld",
           "name": "Kosten",
+          "zeichen": "euro",
+          "farbe": "ruhig",
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
@@ -130,6 +150,8 @@
         {
           "weg": "/geld/pv-abrechnung",
           "name": "PV-Abrechnung",
+          "zeichen": "sun",
+          "farbe": "pv",
           "zeitraum": true,
           "nurHausherr": true,
           "gruppe": null,
@@ -139,6 +161,8 @@
         {
           "weg": "/geld/rechnungen",
           "name": "Rechnungen",
+          "zeichen": "table",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": true,
           "gruppe": null,
@@ -171,6 +195,8 @@
         {
           "weg": "/waerme/anlage",
           "name": "Anlage",
+          "zeichen": "thermo",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": false,
           "gruppe": "Maschine",
@@ -189,6 +215,8 @@
         {
           "weg": "/waerme/waermepumpe",
           "name": "Wärmepumpe",
+          "zeichen": "pump",
+          "farbe": "waermepumpe",
           "zeitraum": false,
           "nurHausherr": false,
           "gruppe": "Maschine",
@@ -211,6 +239,8 @@
         {
           "weg": "/waerme/fahrplan",
           "name": "Fahrplan",
+          "zeichen": "clock",
+          "farbe": "waermepumpe",
           "zeitraum": false,
           "nurHausherr": false,
           "gruppe": "Regelung",
@@ -229,6 +259,8 @@
         {
           "weg": "/waerme/wirkung",
           "name": "Wirkung",
+          "zeichen": "target",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": false,
           "gruppe": "Regelung",
@@ -238,6 +270,8 @@
         {
           "weg": "/waerme/regelkreis",
           "name": "Regelkreis",
+          "zeichen": "loop",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": true,
           "gruppe": "Regelung",
@@ -247,6 +281,8 @@
         {
           "weg": "/waerme/annahmen",
           "name": "Annahmen",
+          "zeichen": "table",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": true,
           "gruppe": "Abstimmung",
@@ -256,6 +292,8 @@
         {
           "weg": "/waerme/waermepumpe/regler",
           "name": "Regler",
+          "zeichen": "sliders",
+          "farbe": "waermepumpe",
           "zeitraum": false,
           "nurHausherr": false,
           "gruppe": "Abstimmung",
@@ -275,6 +313,8 @@
         {
           "weg": "/system/mitteilungen",
           "name": "Mitteilungen",
+          "zeichen": "bell",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": true,
           "gruppe": null,
@@ -284,6 +324,8 @@
         {
           "weg": "/system/haustuer",
           "name": "Haustür",
+          "zeichen": "door",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": true,
           "gruppe": null,
@@ -293,6 +335,8 @@
         {
           "weg": "/system/geraet",
           "name": "Hausgerät",
+          "zeichen": "dashboard",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": true,
           "gruppe": null,
@@ -302,6 +346,8 @@
         {
           "weg": "/system/zugang",
           "name": "Zugang und Sicherung",
+          "zeichen": "shield",
+          "farbe": "ruhig",
           "zeitraum": false,
           "nurHausherr": true,
           "gruppe": null,
@@ -311,6 +357,8 @@
         {
           "weg": "/system/daten",
           "name": "Daten prüfen",
+          "zeichen": "table",
+          "farbe": "ruhig",
           "zeitraum": true,
           "nurHausherr": true,
           "gruppe": null,

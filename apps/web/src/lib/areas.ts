@@ -31,6 +31,26 @@ export type Tab = {
   gruppe?: string;
   /** Ein Satz fuer die Karte auf der Uebersicht des Bereichs: was die Seite beantwortet. */
   beschreibung?: string;
+  /** Das Zeichen der Seite auf ihrer Kachel in der Uebersicht. */
+  icon: IconName;
+  /**
+   * Die Farbe der Sache, von der die Seite handelt: dieselbe, die sie im Energiefluss und in
+   * den Diagrammen traegt. `ruhig` heisst: die Seite handelt von keiner der gefaerbten Sachen.
+   */
+  farbe: Seitenfarbe;
+};
+
+/** Die Farben, die eine Seite tragen kann; die Werte stehen in `tokens.css`. */
+export type Seitenfarbe = "pv" | "haus" | "waermepumpe" | "speicher" | "wallbox" | "ruhig";
+
+/** Der Farbwert zu einer Seitenfarbe, als CSS-Variable. */
+export const SEITENFARBE: Record<Seitenfarbe, string> = {
+  pv: "var(--pv)",
+  haus: "var(--text-1)",
+  waermepumpe: "var(--heat-pump)",
+  speicher: "var(--battery)",
+  wallbox: "var(--ev)",
+  ruhig: "var(--mist)",
 };
 
 export type Ansicht = { href: string; label: string };
@@ -86,8 +106,8 @@ export const AREAS: Area[] = [
     icon: "house",
     label: "Haus",
     tabs: [
-      { href: "/haus", label: "Räume" },
-      { href: "/waerme/raeume", label: "Über den Tag", dated: true },
+      { href: "/haus", label: "Räume", icon: "house", farbe: "ruhig" },
+      { href: "/waerme/raeume", label: "Über den Tag", icon: "thermo", farbe: "ruhig", dated: true },
     ],
   },
   {
@@ -98,15 +118,15 @@ export const AREAS: Area[] = [
     icon: "bolt",
     label: "Energie",
     tabs: [
-      { href: "/strom", label: "Strom", dated: true, beschreibung: "Woher der Strom kam und wer ihn verbraucht hat." },
-      { href: "/waerme", label: "Wärme", dated: true, beschreibung: "Was die Wärmepumpe gebraucht hat und woher die Wärme kam." },
-      { href: "/strom/pv", label: "Photovoltaik", dated: true, beschreibung: "Was die Anlage erzeugt hat und wohin der Sonnenstrom ging." },
+      { href: "/strom", label: "Strom", icon: "bolt", farbe: "haus", dated: true, beschreibung: "Woher der Strom kam und wer ihn verbraucht hat." },
+      { href: "/waerme", label: "Wärme", icon: "flame", farbe: "waermepumpe", dated: true, beschreibung: "Was die Wärmepumpe gebraucht hat und woher die Wärme kam." },
+      { href: "/strom/pv", label: "Photovoltaik", icon: "sun", farbe: "pv", dated: true, beschreibung: "Was die Anlage erzeugt hat und wohin der Sonnenstrom ging." },
       // Die Prognose der Photovoltaik gegen das, was wirklich kam. Sie steht neben ihr und nicht
       // als Ansicht darunter, weil sie keinen Zeitraum kennt und die Photovoltaik einen hat.
-      { href: "/system", label: "Prognose", ownerOnly: true, beschreibung: "Wie gut die Vorhersage des Sonnenertrags getroffen hat." },
-      { href: "/strom/speicher", label: "Speicher", dated: true, beschreibung: "Wann der Speicher geladen und entladen hat." },
-      { href: "/strom/wallbox", label: "Wallbox", dated: true, beschreibung: "Wann das Auto geladen hat und mit welchem Strom." },
-      { href: "/strom/jahr", label: "Jahreskarte", beschreibung: "Jede Stunde eines Jahres als Bild." },
+      { href: "/system", label: "Prognose", icon: "chart", farbe: "ruhig", ownerOnly: true, beschreibung: "Wie gut die Vorhersage des Sonnenertrags getroffen hat." },
+      { href: "/strom/speicher", label: "Speicher", icon: "battery", farbe: "speicher", dated: true, beschreibung: "Wann der Speicher geladen und entladen hat." },
+      { href: "/strom/wallbox", label: "Wallbox", icon: "car", farbe: "wallbox", dated: true, beschreibung: "Wann das Auto geladen hat und mit welchem Strom." },
+      { href: "/strom/jahr", label: "Jahreskarte", icon: "calendar", farbe: "ruhig", beschreibung: "Jede Stunde eines Jahres als Bild." },
     ],
   },
   {
@@ -115,9 +135,9 @@ export const AREAS: Area[] = [
     icon: "euro",
     label: "Geld",
     tabs: [
-      { href: "/geld", label: "Kosten", dated: true },
-      { href: "/geld/pv-abrechnung", label: "PV-Abrechnung", dated: true, ownerOnly: true },
-      { href: "/geld/rechnungen", label: "Rechnungen", ownerOnly: true },
+      { href: "/geld", label: "Kosten", icon: "euro", farbe: "ruhig", dated: true },
+      { href: "/geld/pv-abrechnung", label: "PV-Abrechnung", icon: "sun", farbe: "pv", dated: true, ownerOnly: true },
+      { href: "/geld/rechnungen", label: "Rechnungen", icon: "table", farbe: "ruhig", ownerOnly: true },
     ],
   },
   {
@@ -131,9 +151,7 @@ export const AREAS: Area[] = [
       { name: "Abstimmung", wort: "Womit gerechnet wird" },
     ],
     tabs: [
-      {
-        href: "/waerme/anlage",
-        label: "Anlage",
+      { href: "/waerme/anlage", label: "Anlage", icon: "thermo", farbe: "ruhig",
         gruppe: "Maschine",
         beschreibung: "Speicher, Vorlauf und Heizkreise im Schema, im Augenblick und über einen Tag.",
         // Die Wiedergabe ist die Anlage ueber einen Tag.
@@ -143,9 +161,7 @@ export const AREAS: Area[] = [
         ],
       },
       // Die Wärmepumpe allein, mit allem, was ihr eigener Bus meldet (seit dem 14.11.2026).
-      {
-        href: "/waerme/waermepumpe",
-        label: "Wärmepumpe",
+      { href: "/waerme/waermepumpe", label: "Wärmepumpe", icon: "pump", farbe: "waermepumpe",
         gruppe: "Maschine",
         beschreibung: "Der Zustand des Geräts, seine Läufe und die gemessene Arbeitszahl.",
         // Der Augenblick, der Betrieb über Tage und die gemessene Kennlinie: dieselbe Maschine,
@@ -156,9 +172,7 @@ export const AREAS: Area[] = [
           { href: "/waerme/waermepumpe/kennlinie", label: "Kennlinie" },
         ],
       },
-      {
-        href: "/waerme/fahrplan",
-        label: "Fahrplan",
+      { href: "/waerme/fahrplan", label: "Fahrplan", icon: "clock", farbe: "waermepumpe",
         gruppe: "Regelung",
         beschreibung: "Wann die Wärmepumpe laufen soll und was der Plan von gestern gehalten hat.",
         // Die Nachbetrachtung ist der Fahrplan im Rueckblick.
@@ -167,33 +181,25 @@ export const AREAS: Area[] = [
           { href: "/waerme/nachbetrachtung", label: "Rückblick" },
         ],
       },
-      {
-        href: "/waerme/wirkung",
-        label: "Wirkung",
+      { href: "/waerme/wirkung", label: "Wirkung", icon: "target", farbe: "ruhig",
         gruppe: "Regelung",
         beschreibung: "Ob die Wärmepumpe der Anforderung folgt, gemessen an ihren Läufen.",
       },
       // Die Regelung selbst, als Blockschaltbild: fünf Kaskadenebenen, ihre Störgrößen und der
       // Lernstand jedes Parameters. Steht hinter der Wirkung, weil sie deren Zahlen verwendet.
-      {
-        href: "/waerme/regelkreis",
-        label: "Regelkreis",
+      { href: "/waerme/regelkreis", label: "Regelkreis", icon: "loop", farbe: "ruhig",
         gruppe: "Regelung",
         ownerOnly: true,
         beschreibung: "Die Regelung mit ihren Ebenen, Stellgrößen und Parametern.",
       },
-      {
-        href: "/waerme/annahmen",
-        label: "Annahmen",
+      { href: "/waerme/annahmen", label: "Annahmen", icon: "table", farbe: "ruhig",
         gruppe: "Abstimmung",
         ownerOnly: true,
         beschreibung: "Die Werte, mit denen das Modell des Hauses rechnet.",
       },
       // Was am Regler eingestellt ist, gelesen über den Bus. Bis zum 23.11.2026 eine Ansicht
       // der Wärmepumpe; als Stelle zum Einstellen gehört er zur Abstimmung.
-      {
-        href: "/waerme/waermepumpe/regler",
-        label: "Regler",
+      { href: "/waerme/waermepumpe/regler", label: "Regler", icon: "sliders", farbe: "waermepumpe",
         gruppe: "Abstimmung",
         beschreibung: "Die Einstellungen am Regler der Wärmepumpe, über den Bus gelesen.",
       },
@@ -209,12 +215,12 @@ export const AREAS: Area[] = [
     ownerOnly: true,
     leiste: false,
     tabs: [
-      { href: "/system/mitteilungen", label: "Mitteilungen", ownerOnly: true, beschreibung: "Welche Geräte Mitteilungen bekommen und was im Morgenbrief steht." },
-      { href: "/system/haustuer", label: "Haustür", ownerOnly: true, beschreibung: "Wer sich wann an der Haustür erkannt hat." },
+      { href: "/system/mitteilungen", label: "Mitteilungen", icon: "bell", farbe: "ruhig", ownerOnly: true, beschreibung: "Welche Geräte Mitteilungen bekommen und was im Morgenbrief steht." },
+      { href: "/system/haustuer", label: "Haustür", icon: "door", farbe: "ruhig", ownerOnly: true, beschreibung: "Wer sich wann an der Haustür erkannt hat." },
       // Der Rechner im Haus selbst: Dienste, Gesundheit, Neustarts, Protokolle, Updates.
-      { href: "/system/geraet", label: "Hausgerät", ownerOnly: true, beschreibung: "Wie es dem Rechner im Haus und seinen Diensten geht." },
-      { href: "/system/zugang", label: "Zugang und Sicherung", ownerOnly: true, beschreibung: "Wer Zugang hat, wie groß die Datenbank ist und wie man sie sichert." },
-      { href: "/system/daten", label: "Daten prüfen", dated: true, ownerOnly: true, beschreibung: "Ob die Messreihen lückenlos angekommen sind und zueinander passen." },
+      { href: "/system/geraet", label: "Hausgerät", icon: "dashboard", farbe: "ruhig", ownerOnly: true, beschreibung: "Wie es dem Rechner im Haus und seinen Diensten geht." },
+      { href: "/system/zugang", label: "Zugang und Sicherung", icon: "shield", farbe: "ruhig", ownerOnly: true, beschreibung: "Wer Zugang hat, wie groß die Datenbank ist und wie man sie sichert." },
+      { href: "/system/daten", label: "Daten prüfen", icon: "table", farbe: "ruhig", dated: true, ownerOnly: true, beschreibung: "Ob die Messreihen lückenlos angekommen sind und zueinander passen." },
     ],
   },
 ];

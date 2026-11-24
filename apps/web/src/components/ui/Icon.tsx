@@ -52,6 +52,15 @@ const PATHS: Record<string, string> = {
   dashboard: '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>',
   alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5"/><path d="M12 18v.5"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  // ---- Seiten in den Übersichten der Bereiche
+  // Die Glocke der Mitteilungen.
+  bell: '<path d="M6.2 16.8h11.6c-1.1-1.2-1.6-2.9-1.6-4.9v-1.1a4.2 4.2 0 0 0-8.4 0v1.1c0 2-.5 3.7-1.6 4.9z"/><path d="M10.3 19.6a1.8 1.8 0 0 0 3.4 0"/><path d="M12 4.1v2.5"/>',
+  // Drei Schieber: was am Regler der Wärmepumpe eingestellt ist.
+  sliders: '<path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/>',
+  // Die Zielscheibe der Wirkung: trifft die Anforderung, was sie soll?
+  target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>',
+  // Der Regelkreis: ein Block mit der Rückführung von seinem Ausgang auf seinen Eingang.
+  loop: '<path d="M3 8h5"/><rect x="8" y="5" width="8" height="6" rx="1.4"/><path d="M16 8h5"/><path d="M18.5 8v9.5h-13v-6.9"/><path d="M3.6 12.4l1.9-1.9 1.9 1.9"/>',
   // Eine Person: Kopf und Schultern. Der Weg zum eigenen Zugang (`/konto`).
   person: '<circle cx="12" cy="8" r="3.9"/><path d="M4.3 20.5c.7-3.9 3.8-6.4 7.7-6.4s7 2.5 7.7 6.4"/>',
 };

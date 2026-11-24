@@ -1,25 +1,29 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Die Übersicht eines Bereichs: jede Karte eine Seite. Hat der Bereich Gruppen, steht je Gruppe
-/// eine Spalte Karten unter ihrem Namen; hat er keine, stehen alle Karten in einem Raster.
+/// Die Übersicht eines Bereichs: jede Kachel eine Seite. Hat der Bereich Gruppen, steht je Gruppe
+/// eine Reihe Kacheln unter ihrem Namen; hat er keine, stehen alle in einem Raster.
 ///
-/// Sie ersetzt die lange Reiterzeile als Einstieg (`Bereichsuebersicht.tsx`). Wer den Bereich
-/// öffnet, sieht zuerst, welche Seiten es gibt und wovon jede handelt, und muss dafür keine
-/// Zeile durchrollen. Den Satz auf der Karte trägt der Seitenbaum (``Reiter/beschreibung``),
-/// damit er im Dashboard und in der App derselbe ist.
+/// **Eine Kachel zeigt, sie erklärt nicht** (`Bereichsuebersicht.tsx`). Bis zum 24.11.2026 stand
+/// auf jeder Karte ein Satz darüber, wovon die Seite handelt, und darunter ihre Ansichten. Am
+/// Telefon waren das sechs Kästen voll Text, und der Hausherr hat es so genannt: grafisch
+/// schwach, viel zu viel Text. Jetzt trägt jede Kachel das Zeichen der Seite in der Farbe ihrer
+/// Sache, den Namen, die Leitzahl groß und ein Wort dazu. Der Satz steht weiter da, für die
+/// Vorlesehilfe, und sichtbar nur dort, wo eine Seite keine Zahl hat.
 ///
-/// **Breit stehen die Gruppen nebeneinander, schmal untereinander** (`globals.css`,
-/// `.uebersicht`). Was nur der Hausherr sieht, fehlt einem Gast hier wie in der Reiterzeile;
+/// **Am Telefon stehen zwei Kacheln nebeneinander** (`handy.css`, `.uebersicht-karten`): sechs
+/// Seiten passen auf einen Schirm, ohne zu rollen. Breit füllt das Raster die Zeile mit Kacheln
+/// ab 190 Punkten. Was nur der Hausherr sieht, fehlt den anderen hier wie in der Reiterzeile;
 /// eine Gruppe, von der danach nichts übrig ist, wird nicht gezeichnet.
 ///
 /// Die Zeile über der Seite kommt wie überall aus dem Gerippe (``Bereiche/kicker(fuer:)``).
 ///
 /// **Leitzahl und Ampel kommen vom Dienst** (`GET /uebersicht/{bereich}`): je Seite ihre
 /// wichtigste Zahl und ein Zustand, fertig formuliert, damit Dashboard und App dasselbe zeigen.
-/// Eine Ampel, die nicht gut ist, bringt ihren Grund als Satz mit; er steht auf der Karte. Eine
-/// Seite ohne Karte des Dienstes (die Annahmen, die Jahreskarte) zeigt nur ihren festen Satz. Antwortet der Dienst
-/// nicht, stehen die Karten ohne Zahl da: alte Zahlen stehen zu lassen wäre schlechter als keine.
+/// Eine Ampel, die nicht gut ist, bringt ihren Grund als Satz mit; er steht auf der Kachel an
+/// der Stelle des Wortes. Zeichen und Farbe trägt der Seitenbaum (``Reiter/zeichen``,
+/// ``Reiter/farbe``). Antwortet der Dienst nicht, stehen die Kacheln ohne Zahl da: alte Zahlen
+/// stehen zu lassen wäre schlechter als keine.
 struct Bereichsuebersicht: View {
     @Environment(Hauszustand.self) private var haus
     @Environment(Wegweiser.self) private var wegweiser
@@ -54,15 +58,17 @@ struct Bereichsuebersicht: View {
     var body: some View {
         Seite {
             if bereich.gruppen.isEmpty {
-                raster
+                raster(alleSeiten, inGruppe: false)
             } else if schmal {
-                VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 20) {
                     ForEach(gruppen) { gruppe in
                         spalte(gruppe)
                     }
                 }
             } else {
-                HStack(alignment: .top, spacing: 24) {
+                // Breit stehen die Gruppen nebeneinander, jede mit zwei Kacheln je Zeile
+                // (`globals.css`, `.uebersicht`).
+                HStack(alignment: .top, spacing: 28) {
                     ForEach(gruppen) { gruppe in
                         spalte(gruppe)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -89,22 +95,9 @@ struct Bereichsuebersicht: View {
         }
     }
 
-    /// Ein Bereich ohne Gruppen: alle Karten in einem Raster über die Breite, am Telefon
-    /// untereinander (`globals.css`, `.uebersicht-flach`: Spalten ab 260 Punkten).
-    private var raster: some View {
-        LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 260), spacing: 24, alignment: .top)],
-            alignment: .leading, spacing: schmal ? 9 : 12
-        ) {
-            ForEach(alleSeiten) { seite in
-                karte(seite)
-            }
-        }
-    }
-
-    /// Eine Gruppe: ihr Name, der Halbsatz dazu und darunter ihre Seiten.
+    /// Eine Gruppe: ihr Name, der Halbsatz dazu und darunter ihre Kacheln.
     private func spalte(_ gruppe: Gruppe) -> some View {
-        VStack(alignment: .leading, spacing: schmal ? 9 : 12) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Kicker(wort: gruppe.name, groesse: 11)
                 Text(gruppe.wort)
@@ -113,72 +106,125 @@ struct Bereichsuebersicht: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
-            ForEach(seiten(gruppe)) { seite in
-                karte(seite)
+            raster(seiten(gruppe), inGruppe: true)
+        }
+    }
+
+    /// Die Kacheln: am Telefon und in einer Gruppe zwei nebeneinander; ein Bereich ohne Gruppen
+    /// füllt breit die Zeile mit Kacheln ab 190 Punkten (`globals.css`, `.uebersicht-karten`).
+    private func raster(_ seiten: [Reiter], inGruppe: Bool) -> some View {
+        let abstand: CGFloat = schmal ? 10 : 12
+        let spalten: [GridItem] = schmal || inGruppe
+            ? [
+                GridItem(.flexible(), spacing: abstand, alignment: .top),
+                GridItem(.flexible(), spacing: abstand, alignment: .top),
+            ]
+            : [GridItem(.adaptive(minimum: 190), spacing: abstand, alignment: .top)]
+        return LazyVGrid(columns: spalten, alignment: .leading, spacing: abstand) {
+            ForEach(seiten) { seite in
+                kachel(seite)
             }
         }
     }
 
-    /// Eine Seite als Karte: ihr Name mit der Ampel, die Leitzahl, der Grund einer Ampel, die
-    /// nicht gut ist, der feste Satz und, wo es welche gibt, ihre Ansichten.
-    private func karte(_ seite: Reiter) -> some View {
+    /// Eine Seite als Kachel: oben ihr Zeichen in der Farbe ihrer Sache und rechts der Zustand,
+    /// darunter der Name, die Leitzahl groß mit kleiner Einheit, und ein Wort dazu.
+    private func kachel(_ seite: Reiter) -> some View {
         let stand = karten[seite.weg]
         let ampel = stand.map { Hausgeraet.Ampel($0.ampel?.rawValue) }
+        let leitzahl = stand?.leitzahlDe.flatMap { $0.isEmpty ? nil : Leitzahl($0) }
+        let farbe = seite.farbe.farbe
+        let rundung: CGFloat = schmal ? 14 : Marken.radius3
         return Button {
             wegweiser.gehe(seite.weg)
             wegweiser.merkeReiter()
         } label: {
-            Karte(hervorhebung: randfarbe(ampel)) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .center, spacing: 12) {
-                        Text(seite.name)
-                            .font(Schrift.sansHalbfett(17, relativeTo: .headline))
-                            .foregroundStyle(Farbe.text1)
-                        Spacer(minLength: 8)
-                        if let ampel {
-                            Zustandszeichen(ampel: ampel)
-                        }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .center) {
+                    Zeichen(seite.zeichen, groesse: 22, farbe: farbe)
+                        .frame(width: 36, height: 36)
+                        .background(farbe.opacity(0.14))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .accessibilityHidden(true)
+                    Spacer(minLength: 8)
+                    if let ampel {
+                        Zustandszeichen(ampel: ampel)
                     }
-                    if let zahl = stand?.leitzahlDe, !zahl.isEmpty {
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Text(zahl)
-                                .font(Schrift.mono(24, relativeTo: .title2))
-                                .foregroundStyle(Farbe.text1)
-                                .monospacedDigit()
-                            Text(stand?.dazuDe ?? "")
-                                .font(Schrift.klein)
+                }
+                .padding(.bottom, 12)
+                Text(seite.name)
+                    .font(Schrift.sansHalbfett(14, relativeTo: .subheadline))
+                    .foregroundStyle(Farbe.text2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                if let leitzahl {
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Text(leitzahl.zahl)
+                            .font(Schrift.mono(schmal ? 26 : 28, relativeTo: .title))
+                            .foregroundStyle(Farbe.text1)
+                            .monospacedDigit()
+                        if !leitzahl.einheit.isEmpty {
+                            Text(leitzahl.einheit)
+                                .font(Schrift.mono(14, relativeTo: .subheadline))
                                 .foregroundStyle(Farbe.text2)
                         }
                     }
-                    if let grund = stand?.grundDe, !grund.isEmpty {
-                        Text(grund)
-                            .font(Schrift.klein)
-                            .foregroundStyle(grundfarbe(ampel))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let satz = seite.beschreibung {
-                        Text(satz)
-                            .font(Schrift.klein)
-                            .foregroundStyle(Farbe.text2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if !seite.unter.isEmpty {
-                        Text(seite.unter.map(\.name).joined(separator: " · "))
-                            .font(Schrift.zahlKlein)
-                            .foregroundStyle(Farbe.text3)
-                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                unterzeile(seite, stand: stand, ampel: ampel, hatZahl: leitzahl != nil)
+                Spacer(minLength: 0)
             }
+            .padding(EdgeInsets(top: 13, leading: 14, bottom: 14, trailing: 14))
+            .frame(maxWidth: .infinity, minHeight: schmal ? 140 : 148, maxHeight: .infinity, alignment: .topLeading)
+            .background {
+                // Ein Hauch der Farbe der Sache aus der Ecke des Zeichens; die Fläche bleibt die
+                // der Karten (`globals.css`, `.uebersicht-karte`).
+                ZStack {
+                    Farbe.flaeche1
+                    RadialGradient(
+                        colors: [farbe.opacity(0.13), .clear],
+                        center: .topLeading, startRadius: 0, endRadius: 190)
+                }
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: rundung, style: .continuous)
+                    .strokeBorder(randfarbe(ampel) ?? Farbe.linie1, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: rundung, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
+        .accessibilityHint(seite.beschreibung ?? "")
     }
 
-    /// Eine Karte, die etwas zu sagen hat, hebt sich mit ihrem Rand ab (`globals.css`,
+    /// Die Zeile unter der Zahl: der Grund einer Ampel, die nicht gut ist, sonst das Wort zur
+    /// Zahl. Eine Kachel ohne Zahl zeigt den Satz der Seite, damit sie nicht leer dasteht.
+    @ViewBuilder private func unterzeile(
+        _ seite: Reiter, stand: UebersichtKarteOut?, ampel: Hausgeraet.Ampel?, hatZahl: Bool
+    ) -> some View {
+        if let grund = stand?.grundDe, !grund.isEmpty {
+            zeile(grund, farbe: grundfarbe(ampel))
+        } else if let dazu = stand?.dazuDe, !dazu.isEmpty {
+            zeile(dazu, farbe: Farbe.text3)
+        } else if !hatZahl, let satz = seite.beschreibung {
+            zeile(satz, farbe: Farbe.text3)
+        }
+    }
+
+    private func zeile(_ wort: String, farbe: Color) -> some View {
+        Text(wort)
+            .font(Schrift.sans(12.5, relativeTo: .caption))
+            .foregroundStyle(farbe)
+            .lineLimit(3)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 2)
+    }
+
+    /// Eine Kachel, die etwas zu sagen hat, hebt sich mit ihrem Rand ab (`globals.css`,
     /// `.uebersicht-karte[data-ampel]`): weicher Bernstein für einen Hinweis, Alarmrot für eine
-    /// Störung. Alle anderen behalten den Rand, den die Karte ohnehin hat.
+    /// Störung. Alle anderen behalten die feine Linie.
     private func randfarbe(_ ampel: Hausgeraet.Ampel?) -> Color? {
         switch ampel {
         case .warn: return Farbe.amberWeich.opacity(0.45)
