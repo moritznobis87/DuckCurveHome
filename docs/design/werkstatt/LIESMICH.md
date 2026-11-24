@@ -45,3 +45,21 @@ Lage im Raster (Ränder, optische Mitte, Schwerpunkt, Deckung). `zeichen/runde1.
 Wärmepumpe als Außengerät mit Lüfter, Zeichen für Abstimmen und Regelkreis, gefüllte Fassungen
 der Bereichszeichen und des Zahnrads, Zustandszeichen (Haken, Warndreieck, Störung) sowie
 Abspielen und Anhalten. Ausgewertet und übernommen ist davon noch nichts.
+
+## Übersichtskarten: woher Leitzahl und Ampel kommen können (24.11.2026)
+
+Am Demo-Dienst gemessen, Antwortzeit und Größe je Endpunkt hinter den sieben Seiten der Anlage:
+
+| Seite | Endpunkt | Zeit | Größe | Was eine Karte daraus nehmen kann |
+|---|---|---|---|---|
+| Anlage | `/api/v1/anlage` | 0,06 s | 0,8 kB | Speicher, Vorlauf (Felder `speicher`, `heizkreis`) |
+| Wärmepumpe | `/api/v1/waermepumpe` | 0,01 s | 2,7 kB | `laeuft`, `zustand_de`, Leistung, `arbeitszahl` |
+| Fahrplan | `/api/v1/plan` | 0,003 s | 84 kB | `windows`, `next_cheap_window`, `planner_warn_de` |
+| Wirkung | `/api/v1/anlage/kontaktwirkung?days=7` | 0,06 s | 16 kB | `urteil`, `urteil_de`, `quote` |
+| Regelkreis | `/api/v1/regelkreis` | 0,20 s | 106 kB | `uebersteuert`, `kreise` (Reserven), `guete` |
+| Regler | `/api/v1/waermepumpe/einstellungen` | 0,002 s | 10 kB | `satz_de`, `gelesen`, `hindernis_de` |
+| Annahmen | noch nicht nachgesehen | | | |
+
+Die Zeiten gelten für den Demo-Betrieb ohne Datenbank; am echten Dienst sind Wirkung und
+Regelkreis nicht gemessen. Vier der sechs Antworten tragen schon ein fertiges Urteil oder einen
+Satz des Dienstes. Die Übersicht kann also zusammentragen und muss wenig neu rechnen.
