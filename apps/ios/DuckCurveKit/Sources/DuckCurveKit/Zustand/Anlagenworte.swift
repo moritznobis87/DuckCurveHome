@@ -99,7 +99,7 @@ public enum Anlagenworte {
     /// Die Farbe zum Wort von ``Anlagenschema/nettoText(_:)`` (`schema.ts:147-150`).
     ///
     /// **Die Vorgabe ist nicht `text3`.** Die Vorlage setzt `rgba(255,255,255,.62)` - das ist
-    /// ``Marken/last`` und nicht ``Marken/text3`` (0,48). Ein haltender Speicher steht damit so
+    /// ``Marken/last`` und nicht ``Marken/text3`` (0,58). Ein haltender Speicher steht damit so
     /// laut da wie eine Last im Diagramm und nicht so leise wie ein Hinweis; die Zeile ist eine
     /// Aussage über den Speicher und keine Fußnote.
     public static func nettoFarbe(_ sp: AnlageSpeicherOut) -> Farbwert {
