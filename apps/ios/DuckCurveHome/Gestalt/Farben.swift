@@ -137,6 +137,7 @@ public enum Farbe {
         // `PeriodStrip.tsx:19`). Siehe ``Kennzahl/Ton/alarm``, wo steht, welche drei Stellen
         // vorher auf `glut` auswichen und warum das die falsche Farbe war.
         case .alarm: return alarm
+        case .netz: return netzBezug
         case .bernstein: return amber
         case .gedaempft: return text3
         case .nebel: return mist
@@ -189,20 +190,6 @@ public enum Farbe {
 /// Was eine Guete *bedeutet* - ob der Wert traegt, wie er heisst, wie alt er ist - steht im Kern
 /// (`Zustand/Guete.swift`), weil es eine Entscheidung ist und keine Formatierung. Hier bleibt nur
 /// die Farbe.
-extension Hausgeraet.Ampel {
-    /// Die Farbe einer Ampel, über alle Seiten gleich (`geraet/Geraet.tsx`, `farbe`): das ruhige
-    /// Nebelgrau für „in Ordnung“, der weiche Bernstein für einen Hinweis, Alarmrot für eine
-    /// Störung, Grau für „keine Angabe“.
-    public var farbe: Color {
-        switch self {
-        case .gut: return Farbe.gut
-        case .warn: return Farbe.amberWeich
-        case .schlecht: return Farbe.alarm
-        case .aus: return Farbe.text3
-        }
-    }
-}
-
 extension Quality {
     public var farbe: Color {
         switch stufe {

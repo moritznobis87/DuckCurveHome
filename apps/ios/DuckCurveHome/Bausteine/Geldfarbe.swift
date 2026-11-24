@@ -16,6 +16,7 @@ enum Geldfarbe {
     static func zu(_ ton: Gelduebersicht.Ton) -> Color {
         switch ton {
         case .alarm: return Farbe.alarm
+        case .netz: return Farbe.netzBezug
         case .nebel: return Farbe.mist
         case .bernstein: return Farbe.amber
         case .einspeisung: return Farbe.netzEinspeisung

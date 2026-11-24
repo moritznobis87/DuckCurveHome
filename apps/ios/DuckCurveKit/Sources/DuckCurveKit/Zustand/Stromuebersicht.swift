@@ -95,7 +95,10 @@ public enum Stromuebersicht {
             ),
             Kennzahl(
                 wort: netzbezugswort, wert: Formate.euro(t?.importCostEur),
-                dazu: t.map { netzzeile($0, hausherr: hausherr) }
+                dazu: t.map { netzzeile($0, hausherr: hausherr) },
+                // Der Ton `netz` der Vorlage (`HouseReport.tsx`). Bis zum 24.11.2026 stand die
+                // Zahl hier in Textfarbe und im Dashboard rot; jetzt in beiden violett.
+                ton: .netz
             ),
         ]
     }
@@ -294,7 +297,7 @@ public enum Stromuebersicht {
             // der Spalte daneben.
             reihe("Verbrauch · kWh") { Formate.kwhNachGroesse($0.houseKwh) },
             reihe("Autarkie", .bernstein) { Formate.prozent($0.autarky) },
-            reihe("Netzkosten", .alarm) { Formate.euro($0.importCostEur) },
+            reihe("Netzkosten", .netz) { Formate.euro($0.importCostEur) },
             // `export_revenue_eur` stand auf dieser Seite nirgends und lag ungelesen im
             // Modell: was eingespeist wurde, gehört zur Einordnung des Zeitraums.
             reihe("Einspeiseerlös") { Formate.euro($0.exportRevenueEur) },

@@ -176,7 +176,7 @@ export function Regelkreis() {
               <Leuchte an={d.uebersteuert.length > 0} farbe="var(--alert)" titel={`${d.uebersteuert.length} übersteuert`} />
               {/* Diese Leuchte brennt immer; ihre Farbe ist die Meldung. Eine Warnleuchte, die bei
                   einer Warnung ausgeht, ist die Umkehrung ihres Zwecks. */}
-              <Leuchte an farbe={kreiseGut ? "var(--mist)" : "var(--alert)"} titel={kreiseGut ? "Reserven in Ordnung" : "Reserve zu klein"} />
+              <Leuchte an farbe={kreiseGut ? "var(--ok)" : "var(--alert)"} titel={kreiseGut ? "Reserven in Ordnung" : "Reserve zu klein"} />
             </div>
           </div>
         </div>

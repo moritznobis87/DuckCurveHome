@@ -38,10 +38,10 @@ public enum Wallbox {
                 dazu: herkunftssatz(t), ton: .bernstein),
             Kennzahl(
                 wort: "Aus dem Netz", wert: Formate.zahl(t.evGridKwh, stellen: 1), einheit: "kWh",
-                dazu: netzsatz(t), ton: .alarm),
+                dazu: netzsatz(t), ton: .netz),
             Kennzahl(
                 wort: "Bezahlt", wert: Formate.euro(t.evCostEur),
-                dazu: "Netzanteil × Strompreis", ton: .alarm),
+                dazu: "Netzanteil × Strompreis", ton: .netz),
             Kennzahl(
                 wort: "Entgangene Vergütung", wert: Formate.euro(t.evOpportunityEur),
                 dazu: "nicht eingespeister PV-Strom", ton: .gedaempft),
@@ -219,7 +219,7 @@ public enum Wallbox {
             reihe("Sonnenanteil", .bernstein) { Formate.prozent(sonnenanteil($0.summary.totals)) },
             // `EvReport.tsx:97` traegt hier dasselbe `ember` wie die Kachel darueber. Zwei
             // Toene fuer dieselbe Zahl auf derselben Seite waeren zwei Aussagen.
-            reihe("Bezahlt", .alarm) { Formate.euro($0.summary.totals.evCostEur) },
+            reihe("Bezahlt", .netz) { Formate.euro($0.summary.totals.evCostEur) },
             reihe("Ladevorgänge", .normal) { String($0.sessions.count) },
         ]
     }

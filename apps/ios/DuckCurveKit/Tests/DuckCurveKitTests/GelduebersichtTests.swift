@@ -391,7 +391,7 @@ final class GelduebersichtTests: XCTestCase {
         ])
         let r = Gelduebersicht.hauptreihen(b)
         XCTAssertEqual(r.map(\.name), ["Netzstrom", "Einspeisung"])
-        XCTAssertEqual(r.map(\.ton), [.alarm, .einspeisung])
+        XCTAssertEqual(r.map(\.ton), [.netz, .einspeisung])
         XCTAssertEqual(r[0].werte.map(\.wert), [4.20, 3.80])
         XCTAssertEqual(r[1].werte.map(\.wert), [-1.10, -0.90])
         XCTAssertEqual(r[0].werte.map(\.wort), ["01.11.", "02.11."])
@@ -470,7 +470,8 @@ final class GelduebersichtTests: XCTestCase {
         // `tone: "ember"`; `PeriodStrip.tsx:19`). Vorher war es `glut`, weil ``Kennzahl/Ton``
         // keinen Alarmton kannte.
         XCTAssertEqual(
-            z.map(\.ton), [.alarm, .nebel, .bernstein, .normal, .normal])
+            // Seit dem 24.11.2026 `netz`: das Violett des Netzbezugs.
+            z.map(\.ton), [.netz, .nebel, .bernstein, .normal, .normal])
     }
 
     /// **Eine** Nachkommastelle am Ø-Preis (`CostReport.tsx:233`) - die App hatte zwei.

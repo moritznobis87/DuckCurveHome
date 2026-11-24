@@ -51,7 +51,7 @@ export function HouseReport() {
         <Stat
           label="Netzbezug"
           value={eur(t?.import_cost_eur)}
-          tone="ember"
+          tone="netz"
           href={role === "owner" ? "/geld/rechnungen" : undefined}
           ariaLabel={role === "owner" ? "Netzbezug, weiter zur Rechnungsprüfung" : undefined}
           hint={t ? `${de1(t.import_kwh)} kWh${role === "owner" ? " · Rechnungen prüfen" : ""}` : undefined}
@@ -75,7 +75,7 @@ export function HouseReport() {
         rows={[
           { label: "Verbrauch · kWh", value: (p) => val(p, (s) => de1(s.totals.house_kwh, s.totals.house_kwh >= 100 ? 0 : 1)) },
           { label: "Autarkie", value: (p) => val(p, (s) => pct(s.totals.autarky)), tone: "amber" },
-          { label: "Netzkosten", value: (p) => val(p, (s) => eur(s.totals.import_cost_eur)), tone: "ember" },
+          { label: "Netzkosten", value: (p) => val(p, (s) => eur(s.totals.import_cost_eur)), tone: "netz" },
           { label: "Einspeiseerlös", value: (p) => val(p, (s) => eur(s.totals.export_revenue_eur)) },
         ]}
       />

@@ -298,7 +298,7 @@ export function invoiceCostStack(items: Array<{ label: string; energy: number; f
   const series: Array<[string, string, (i: (typeof items)[number]) => number]> = [
     ["Arbeitspreis netto", C.pv, (i) => i.energy],
     ["Grundgebühr netto", C.base, (i) => i.fees],
-    ["Mehrwertsteuer", C.export, (i) => i.vat],
+    ["Mehrwertsteuer", C.vat, (i) => i.vat],
   ];
   return {
     animation: false,

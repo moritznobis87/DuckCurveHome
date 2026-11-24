@@ -1,8 +1,10 @@
 import { Card } from "@/components/ui/Card";
 
 /** Kennzahl-Kachel: Kicker, große Zahl, Einheit, optional eine Zeile Kontext. */
-export function Stat({ label, value, unit, hint, tone, href, ariaLabel }: { label: string; value: string; unit?: string; hint?: string; tone?: "amber" | "ember" | "mist" | "muted"; href?: string; ariaLabel?: string }) {
-  const color = tone === "amber" ? "var(--amber)" : tone === "ember" ? "var(--alert)" : tone === "mist" ? "var(--mist)" : tone === "muted" ? "var(--text-3)" : "var(--text-1)";
+export function Stat({ label, value, unit, hint, tone, href, ariaLabel }: { label: string; value: string; unit?: string; hint?: string; tone?: "amber" | "ember" | "netz" | "mist" | "muted"; href?: string; ariaLabel?: string }) {
+  // „netz“ ist der Strom aus dem Netz und was er kostet: das Violett des Netzbezugs. „ember“
+  // bleibt der Störung und dem, was auffällt.
+  const color = tone === "amber" ? "var(--amber)" : tone === "ember" ? "var(--alert)" : tone === "netz" ? "var(--grid-in)" : tone === "mist" ? "var(--mist)" : tone === "muted" ? "var(--text-3)" : "var(--text-1)";
   return (
     <Card href={href} ariaLabel={ariaLabel} style={{ padding: "14px 18px", gap: 6 }}>
       <span className="kicker" style={{ fontSize: 11 }}>{label}</span>

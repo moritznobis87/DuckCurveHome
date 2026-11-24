@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Zustandszeichen } from "@/components/ui/Zustandszeichen";
 import { Software } from "@/components/update/Software";
 import type { Ampel, ApiSelbst, Geraet as GeraetDaten, GeraetDienst, GeraetProtokoll, GeraetRechner } from "@/lib/api/models";
 import { DIENSTNAMEN } from "./namen";
@@ -34,22 +35,6 @@ const HANDGRIFFE: Record<string, string> = {
   geraet_neustart: "Gerät neu starten",
   zustand: "Bericht erneuern",
 };
-
-function farbe(a: Ampel): string {
-  return { gut: "var(--mist)", warn: "var(--amber-soft)", schlecht: "var(--alert)", aus: "var(--text-3)" }[a];
-}
-
-export function Punkt({ ampel, gross = false }: { ampel: Ampel; gross?: boolean }) {
-  const s = gross ? 12 : 9;
-  return (
-    <span
-      aria-label={{ gut: "in Ordnung", warn: "Hinweis", schlecht: "Störung", aus: "keine Angabe" }[ampel]}
-      role="img"
-      className="inline-block shrink-0 rounded-full"
-      style={{ width: s, height: s, background: farbe(ampel), marginTop: gross ? 6 : 6 }}
-    />
-  );
-}
 
 export function dauer(sekunden: number): string {
   const s = Math.max(0, Math.round(sekunden));
@@ -94,7 +79,7 @@ function Karte({ children }: { children: React.ReactNode }) {
 function Zeile({ ampel, titel, text, rechts }: { ampel?: Ampel; titel: string; text?: string; rechts?: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3 text-[14px]">
-      {ampel ? <Punkt ampel={ampel} /> : <span className="w-[9px] shrink-0" />}
+      {ampel ? <Zustandszeichen zustand={ampel} className="mt-[3px]" /> : <span className="w-4 shrink-0" />}
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-text-1">{titel}</span>
         {text ? <span className="text-[13px] leading-[1.45] text-text-3">{text}</span> : null}
@@ -140,7 +125,7 @@ function DienstZeile({
   return (
     <div className="flex flex-col gap-2 border-t border-line-1 py-3 first:border-t-0 first:pt-0 last:pb-0">
       <button type="button" className="flex items-start gap-3 text-left" onClick={() => setOffen((o) => !o)} aria-expanded={offen}>
-        <Punkt ampel={d.ampel} />
+        <Zustandszeichen zustand={d.ampel} className="mt-[3px]" />
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="text-[15px] text-text-1">
             {DIENSTNAMEN[d.name] ?? d.name} <span className="mono text-[12px] text-text-3">{d.name}</span>
@@ -454,7 +439,7 @@ export function Geraet() {
   return (
     <div className="flex max-w-[860px] flex-col gap-6">
       <div className="flex items-start gap-3 rounded-[3px] border border-line-2 px-4 py-3" aria-live="polite">
-        <Punkt ampel={g.ampel} gross />
+        <Zustandszeichen zustand={g.ampel} gross className="mt-[2px]" />
         <span className="flex flex-col gap-0.5">
           <span className="text-[16px] font-semibold">{g.ampel === "gut" ? "Alles in Ordnung." : g.text_de}</span>
           <span className="text-[13px] text-text-3">

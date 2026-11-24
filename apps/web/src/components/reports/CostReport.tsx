@@ -75,9 +75,9 @@ export function CostReport() {
     return moneyBars(
       b.map((x) => x.label),
       [
-        { name: "Netzstrom", color: C.alert, values: b.map((x) => x.totals.import_cost_eur) },
+        { name: "Netzstrom", color: C.grid, values: b.map((x) => x.totals.import_cost_eur) },
         // Die Verguetung steht unter der Nulllinie: bekommen, nicht bezahlt.
-        { name: "Einspeisung", color: "#ffd778", values: b.map((x) => -x.totals.export_revenue_eur) },
+        { name: "Einspeisung", color: C.export, values: b.map((x) => -x.totals.export_revenue_eur) },
       ],
     );
   }, [data]);
@@ -118,7 +118,7 @@ export function CostReport() {
 
       <div className="report-row" style={{ "--cols": "8fr 4fr" } as React.CSSProperties}>
         <Card style={{ padding: 16, height: 300 }}>
-          <CardHead title="Bezahlt und bekommen" right={<ChartLegend items={[{ color: C.alert, name: "Netzstrom" }, { color: "#ffd778", name: "Einspeisung" }]} />} />
+          <CardHead title="Bezahlt und bekommen" right={<ChartLegend items={[{ color: C.grid, name: "Netzstrom" }, { color: C.export, name: "Einspeisung" }]} />} />
           <div className="min-h-0 flex-1">{data?.buckets.length ? <EChart option={barsOpt} /> : <div className="flex h-full items-center justify-center"><Note>Für diesen Zeitraum liegen keine bewerteten Stunden vor.</Note></div>}</div>
         </Card>
         <Card style={{ padding: 16, gap: 12 }}>
@@ -202,10 +202,10 @@ export function CostReport() {
             </tr>
           </thead>
           <tbody>
-            <Posten name="Netzstrom Haushalt" menge={`${de1(haushaltKwh, 0)} kWh`} preis={ct(haushaltCost, haushaltKwh)} betrag={eur(haushaltCost)} tone="var(--alert)" href="/strom" seite="Strom" />
-            <Posten name="Netzstrom Wärmepumpe" menge={`${de1(t?.heat_pump_grid_kwh, 0)} kWh`} preis={t ? ct(t.heat_pump_cost_eur, t.heat_pump_grid_kwh) : "-"} betrag={eur(t?.heat_pump_cost_eur)} tone="var(--alert)" href="/waerme" seite="Wärme" />
-            <Posten name="Netzstrom Wallbox" menge={`${de1(t?.ev_grid_kwh, 0)} kWh`} preis={t ? ct(t.ev_cost_eur, t.ev_grid_kwh) : "-"} betrag={eur(t?.ev_cost_eur)} tone="var(--alert)" href="/strom/wallbox" seite="Wallbox" />
-            <Posten name="Netzstrom Speichergerät" menge={`${de1(t?.battery_device_grid_kwh, 0)} kWh`} preis={t ? ct(t.battery_device_cost_eur, t.battery_device_grid_kwh) : "-"} betrag={eur(t?.battery_device_cost_eur)} tone="var(--alert)" href="/strom/speicher" seite="Speicher" />
+            <Posten name="Netzstrom Haushalt" menge={`${de1(haushaltKwh, 0)} kWh`} preis={ct(haushaltCost, haushaltKwh)} betrag={eur(haushaltCost)} tone="var(--grid-in)" href="/strom" seite="Strom" />
+            <Posten name="Netzstrom Wärmepumpe" menge={`${de1(t?.heat_pump_grid_kwh, 0)} kWh`} preis={t ? ct(t.heat_pump_cost_eur, t.heat_pump_grid_kwh) : "-"} betrag={eur(t?.heat_pump_cost_eur)} tone="var(--grid-in)" href="/waerme" seite="Wärme" />
+            <Posten name="Netzstrom Wallbox" menge={`${de1(t?.ev_grid_kwh, 0)} kWh`} preis={t ? ct(t.ev_cost_eur, t.ev_grid_kwh) : "-"} betrag={eur(t?.ev_cost_eur)} tone="var(--grid-in)" href="/strom/wallbox" seite="Wallbox" />
+            <Posten name="Netzstrom Speichergerät" menge={`${de1(t?.battery_device_grid_kwh, 0)} kWh`} preis={t ? ct(t.battery_device_cost_eur, t.battery_device_grid_kwh) : "-"} betrag={eur(t?.battery_device_cost_eur)} tone="var(--grid-in)" href="/strom/speicher" seite="Speicher" />
             <Posten name="Pellets" menge={heat ? `${de1(heat.stove.pellet_kg, 1)} kg` : "-"} preis="" betrag={eur(pellets)} tone="var(--stove)" href="/waerme" seite="Wärme" />
             <Posten name="Einspeisung" menge={`${de1(t?.export_kwh, 0)} kWh`} preis={data ? `${de1(data.meta.feed_in_ct_kwh, 2)} ct` : "-"} betrag={bekommen != null ? `− ${eur(bekommen)}` : "-"} tone="var(--mist)" href="/geld/pv-abrechnung" seite="PV-Abrechnung" />
             <Posten name="Entgangene Vergütung (Wärmepumpe, Wallbox, Speichergerät)" menge="" preis="" betrag={eur(t ? t.heat_pump_opportunity_eur + t.ev_opportunity_eur + t.battery_device_opportunity_eur : null)} tone="var(--text-3)" href="/strom/pv" seite="Photovoltaik" />
@@ -225,7 +225,7 @@ export function CostReport() {
         title="Kosten im Zeitraum"
         anchor={anchor}
         rows={[
-          { label: "Bezahlt (Netzstrom)", value: (p) => val(p, (s) => eur(s.totals.import_cost_eur)), tone: "ember" },
+          { label: "Bezahlt (Netzstrom)", value: (p) => val(p, (s) => eur(s.totals.import_cost_eur)), tone: "netz" },
           { label: "Bekommen (Einspeisung)", value: (p) => val(p, (s) => eur(s.totals.export_revenue_eur)), tone: "mist" },
           { label: "Gespart (Sonne, Speicher)", value: (p) => val(p, (s) => eur(s.totals.pv_direct_savings_eur + s.totals.battery_net_eur)), tone: "amber" },
           { label: "Netzbezug", value: (p) => val(p, (s) => `${de1(s.totals.import_kwh, 0)} kWh`) },

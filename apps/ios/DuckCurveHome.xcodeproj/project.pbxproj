@@ -105,6 +105,7 @@
 		D579B6BE85CD910AA87C26F3 /* Pvtageskurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = 270699906F2C3E954ADA8108 /* Pvtageskurve.swift */; };
 		D742805330F9AD247E8CAB72 /* ReglerSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */; };
 		D894CFE0B631F5092301D588 /* Waermebilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC570E88C03D9DBC47F2F8A /* Waermebilder.swift */; };
+		DCDB4806D3CD8ACE9C4CB959 /* Zustandszeichen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C54FEB10FC4E28C42A1E39 /* Zustandszeichen.swift */; };
 		DDF398D3D35EB0582927AD6B /* IBMPlexSans-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7ADD7B3C58332C88E4C1E7F8 /* IBMPlexSans-SemiBold.otf */; };
 		E13E305715ECAA8F56FA9AA0 /* Sprachhoerer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6B45FF83ECE21C1CE755D2 /* Sprachhoerer.swift */; };
 		E1BA848EC03EE1BA5C793D0E /* WiedergabeSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DB91AB7C211CA4C9681DE3 /* WiedergabeSeite.swift */; };
@@ -207,6 +208,7 @@
 		8F3D8B5A242C08D8BEF8DE76 /* Energiefluss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Energiefluss.swift; sourceTree = "<group>"; };
 		90D7A2BB3C0E19C96527B863 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		90E127C736AC8ABEDFAB4437 /* Farben.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Farben.swift; sourceTree = "<group>"; };
+		91C54FEB10FC4E28C42A1E39 /* Zustandszeichen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Zustandszeichen.swift; sourceTree = "<group>"; };
 		92265FA3DF3AC4CE97195D9F /* Jahresflaeche.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Jahresflaeche.swift; sourceTree = "<group>"; };
 		926698EEDAB57A85461E370A /* Typografie.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typografie.swift; sourceTree = "<group>"; };
 		945FA48170730FFF4FAAEBF4 /* Heizkurvenbild.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Heizkurvenbild.swift; sourceTree = "<group>"; };
@@ -302,6 +304,7 @@
 				4BD5135D1CBB377BF98F955F /* Vergleichsknopf.swift */,
 				0F7F4ED3ADBC5A918AEFAE97 /* Waermepumpenbild.swift */,
 				BA88BF1FF2F8B10E21AE2C1D /* Wpmenue.swift */,
+				91C54FEB10FC4E28C42A1E39 /* Zustandszeichen.swift */,
 			);
 			path = Bausteine;
 			sourceTree = "<group>";
@@ -732,6 +735,7 @@
 				A866580B4F770F9C1E2A1F23 /* Wpmenue.swift in Sources */,
 				A12C880295C6B5FFA2CC04B9 /* Zeichen.swift in Sources */,
 				A68E6D151458C984ABD7E13F /* ZugangSeite.swift in Sources */,
+				DCDB4806D3CD8ACE9C4CB959 /* Zustandszeichen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

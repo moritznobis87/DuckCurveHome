@@ -41,27 +41,27 @@ final class MarkenTests: XCTestCase {
     /// Die gemessenen Abstaende, auf eine Stelle festgenagelt. Weicht einer ab, hat jemand eine
     /// Marke verschoben - dann ist diese Tabelle nachzurechnen und die Nachbarschaft zu pruefen.
     private static let gemessen: [String: Double] = [
-        "Netzbezug|Wallbox": 7.8,
-        "Batterie|Wallbox": 7.9,
         "PV|Einspeisung": 13.1,
-        "Netzbezug|Batterie": 14.9,
+        "Batterie|Wallbox": 13.3,
+        "Netzbezug|Batterie": 15.2,
         "Wärmepumpe|Ofen": 16.8,
         "PV|Wärmepumpe": 18.4,
         "Einspeisung|Wärmepumpe": 22.6,
         "PV|Ofen": 23.7,
+        "Netzbezug|Wallbox": 27.2,
         "Einspeisung|Ofen": 32.8,
-        "Netzbezug|Wärmepumpe": 34.1,
-        "Wärmepumpe|Wallbox": 37.8,
-        "Batterie|Ofen": 38.0,
-        "Batterie|Wärmepumpe": 39.1,
-        "Netzbezug|Ofen": 39.4,
-        "Netzbezug|Einspeisung": 39.6,
-        "Ofen|Wallbox": 40.3,
-        "PV|Netzbezug": 41.4,
-        "Einspeisung|Wallbox": 45.1,
-        "PV|Wallbox": 45.6,
-        "PV|Batterie": 46.0,
-        "Einspeisung|Batterie": 46.8,
+        "Batterie|Wärmepumpe": 34.0,
+        "Batterie|Ofen": 39.4,
+        "Einspeisung|Batterie": 39.6,
+        "Netzbezug|Wärmepumpe": 40.7,
+        "PV|Batterie": 41.3,
+        "Wärmepumpe|Wallbox": 44.2,
+        "Ofen|Wallbox": 45.8,
+        "Netzbezug|Ofen": 48.9,
+        "Einspeisung|Wallbox": 54.3,
+        "PV|Wallbox": 54.9,
+        "Netzbezug|Einspeisung": 58.5,
+        "PV|Netzbezug": 58.9,
     ]
 
     func testJederAbstandIstNochDerGemessene() {
@@ -83,10 +83,14 @@ final class MarkenTests: XCTestCase {
     /// benannt sein - nicht, damit sie geaendert wird, sondern damit niemand versehentlich ein
     /// weiteres Paar hinzufuegt.
     ///
-    /// Die vier sind erklaerbar: `pv` und `netzEinspeisung` sind beide Amber und meinen beide die
-    /// Sonne; `netzBezug`, `batterie` und `wallbox` sind drei gedeckte Blaugraus. In derselben
-    /// Grafik tragen sie nie allein - der Energiefluss beschriftet jeden Knoten.
-    func testNurDieBekanntenViviPaareLiegenUnterDerSchwelle() {
+    /// Die zwei sind erklaerbar: `pv` und `netzEinspeisung` sind beide Amber und meinen beide die
+    /// Sonne; `batterie` und `wallbox` sind zwei Blaus. In derselben Grafik tragen sie nie
+    /// allein - der Energiefluss beschriftet jeden Knoten.
+    ///
+    /// **Bis zum 24.11.2026 waren es vier.** `netzBezug` war ein drittes Blaugrau und lag eng an
+    /// `batterie` (14,9) und `wallbox` (7,8). Seit der Netzbezug sein Violett hat und der Fluss
+    /// die Farben der Diagramme traegt, sind diese beiden Paare weg: 15,2 und 27,2.
+    func testNurDieBekanntenPaareLiegenUnterDerSchwelle() {
         let s = Self.serien
         var eng: Set<Set<String>> = []
         for i in s.indices {
@@ -97,10 +101,8 @@ final class MarkenTests: XCTestCase {
             }
         }
         let bekannt: Set<Set<String>> = [
-            ["Netzbezug", "Wallbox"],
             ["Batterie", "Wallbox"],
             ["PV", "Einspeisung"],
-            ["Netzbezug", "Batterie"],
         ]
         XCTAssertEqual(eng, bekannt, "Die Menge der eng benachbarten Serienfarben hat sich geaendert.")
     }

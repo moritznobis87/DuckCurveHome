@@ -41,11 +41,20 @@
      Reihen und Marken. */
   --text-kicker: #8ab2c4;
 
-  /* Energie-Semantik (Serienfarben, auf --surface-2 geprüft) */
+  /* Energie-Semantik (Serienfarben, auf --surface-2 geprüft).
+     Seit dem 24.11.2026 hat jede Sache eine Farbe, im Energiefluss wie im Diagramm
+     (charts/palette.ts nennt dieselben Werte). Vorher färbten beide den Netzbezug, den Speicher,
+     die Wallbox und die Einspeisung verschieden. Gemessen ist das in
+     docs/design/werkstatt/LIESMICH.md, „Vorschlag für Zustände und Reihen“. */
   --pv: var(--amber);
-  --grid-in: var(--mist);
+  /* Netzbezug: ein Violett. Er war im Fluss Nebelgrau und im Diagramm das Rot der Störung; wer
+     jeden Abend rote Balken sieht, sieht eine echte Störung später. Im Farbkreis war nur hier
+     noch Platz. 4,98:1 zur Karte, 25,5 von --alert, 14,6 vom Speicher (bei Rot-Grün-Schwäche
+     9,4; die Schwelle dort ist 8). */
+  --grid-in: #b48df4;
   --grid-out: var(--amber-soft);
-  --battery: #4f7b88;
+  /* Speicher: die Farbe des Diagramms. #4f7b88 stand nur 2,79:1 zur Karte. */
+  --battery: var(--mist);
   /* Warmes Terrakotta statt Fastweiß: Weiß ist im Energiefluss dem Haus vorbehalten (Knoten der
      Summe). Deutlich abgesetzt von --amber (PV) und von --alert, damit die Wärmepumpe nicht wie
      eine Störung aussieht. */
@@ -61,12 +70,17 @@
      daneben. Zweitens ist der Abstand zu --alert und --grid-in nur ΔE 9,3: Ofen und Netzbezug
      dürfen nicht ohne Zweitkodierung in dieselbe Grafik. */
   --stove: #b5651d;
-  --ev: #5c8fa3;
+  /* Wallbox: die Farbe des Diagramms. #5c8fa3 lag nur 7,5 vom Nebelgrau des Netzes entfernt. */
+  --ev: #2f89b5;
   --price: var(--mist);
   --load: rgba(255, 255, 255, 0.62);
 
   /* Status */
-  --ok: var(--mist);
+  /* „In Ordnung“ hat ein eigenes Grün (Entscheidung vom 24.11.2026). Vorher war es --mist, also
+     dieselbe Farbe wie Strompreis, Speicher und Stichwortzeile. Abstand zu --mist 17,6, zu --alert
+     33,5. Es steht nur an Zustandszeichen und nie in einem Diagramm, weil es dem Grün des Puffers
+     nahe ist (8,5). Gemessen in docs/design/werkstatt/LIESMICH.md. */
+  --ok: #79dd9f;
   --warn: var(--amber);
   --alert: #e0533d;
   /* Alarm als Schrift. --alert traegt Flaechen, Marken und grosse Zahlen; als kleine Schrift lag

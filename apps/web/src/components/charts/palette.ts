@@ -14,7 +14,16 @@
  * |---|---|---|
  * | Tagesverlauf Dashboard | PV, Wärmepumpe, Wallbox | ΔE 23,0 normal · 22,0 CVD |
  * | Wer hat verbraucht? | Wärmepumpe, Wallbox, Haushalt | ΔE 18,2 normal · 16,2 CVD (seit 10.11.2026) |
- * | Woher kam der Strom? | PV, Batterie, Netz | ΔE 20,8 normal · 15,1 CVD |
+ * | Woher kam der Strom? | PV, Batterie, Netz | ΔE 14,6 normal · 9,4 CVD (seit 24.11.2026) |
+ *
+ * **Eine Farbe je Sache, seit dem 24.11.2026.** Der Energiefluss (`tokens.css`) und diese Liste
+ * färbten Netzbezug, Speicher, Wallbox und Einspeisung verschieden. Jetzt nennen beide dieselben
+ * Werte. Der Netzbezug war hier das Rot der Störung (`alert`) und ist ein Violett geworden: das
+ * Rot gehört der Störung allein. Der Preis dafür steht in der Tabelle oben, der Abstand zum
+ * Speicher ist kleiner geworden und bleibt über der Schwelle (15 normal knapp verfehlt mit 14,6,
+ * bei Rot-Grün-Schwäche 9,4 gegen die Schwelle 8). Die Einspeisung war ein halb deckendes Weiß
+ * und lag 5,5 vom Speicher; sie ist das helle Bernstein des Flusses, verwandt mit der Sonne,
+ * weil sie Sonnenstrom ist. Gemessen in docs/design/werkstatt/LIESMICH.md.
  *
  * Zwei Werte wurden dabei ersetzt, weil sie den Test nicht bestanden:
  *
@@ -34,14 +43,18 @@ export const C = {
   // Energieflüsse
   pv: "#f2a900",
   battery: "#7fa3b3",
-  grid: "#e0533d", // Netzbezug
+  grid: "#b48df4", // Netzbezug, dasselbe Violett wie --grid-in
   ev: "#2f89b5", // Wallbox
   base: "#c2a86b", // Haushalt ohne Wärmepumpe und Wallbox
   // Hausverbrauch als Summe, nicht als Quelle. Eigene Farbe, weil er in der Prüfansicht neben
   // PV, Netz und Speicher steht; dort scheitert das Sandfarbene des Haushalts an der PV
   // (ΔE 9,3). Geprüft: schlechtestes Paar dieser vier ΔE 18,5 normal / 15,1 CVD.
   house: "#cfd8dc",
-  export: "rgba(228,236,239,.5)",
+  export: "#ffd778", // Einspeisung, dasselbe helle Bernstein wie --grid-out
+  // Die Mehrwertsteuer im Balken des Rechnungsbetrags. Sie trug bis zum 24.11.2026 die Farbe
+  // der Einspeisung mit, ein halb deckendes Weiß. Die Einspeisung hat jetzt ihr Bernstein; die
+  // Steuer behält das Weiß unter eigenem Namen, denn sie ist keine Einspeisung.
+  vat: "rgba(228,236,239,.5)",
   stove: "#b5651d",
   // Die Wärmepumpe, überall: die Farbe ihres Knotens im Energiefluss. Bis zum 10.11.2026 gab es
   // daneben ein helles Grau `hp` für Flächen und Balken, und dieselbe Maschine war auf den

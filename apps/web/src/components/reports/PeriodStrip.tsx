@@ -15,8 +15,8 @@ function dayLabel(anchor: string | undefined, todayIso: string): string {
   return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
 }
 
-export type StripRow = { label: string; value: (p: Period) => string; tone?: "amber" | "ember" | "mist" };
-const TONE: Record<NonNullable<StripRow["tone"]>, string> = { amber: "var(--amber)", ember: "var(--alert)", mist: "var(--mist)" };
+export type StripRow = { label: string; value: (p: Period) => string; tone?: "amber" | "ember" | "netz" | "mist" };
+const TONE: Record<NonNullable<StripRow["tone"]>, string> = { amber: "var(--amber)", ember: "var(--alert)", netz: "var(--grid-in)", mist: "var(--mist)" };
 
 /**
  * Kennzahlen als Tabelle: Zeilen = Größen, Spalten = Tag · Woche · Monat · Jahr **des Ankertags**.

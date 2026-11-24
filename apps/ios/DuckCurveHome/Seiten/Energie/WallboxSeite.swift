@@ -128,9 +128,7 @@ struct WallboxSeite: View {
     /// Menge addieren (`EvReport.tsx:14-18`).
     ///
     /// Die drei Farben sind dieselben Hexwerte wie `C.pv`, `C.battery` und `C.grid`
-    /// (`charts/palette.ts:35-37`); `Marken.swift:117-135` nennt dafür denselben Grund wie die
-    /// Vorlage. Insbesondere ist es **nicht** `Farbe.wallbox` (0x5C8FA3) – der Wert wurde dort
-    /// ausdrücklich verworfen, weil er dem Strompreis zu nah liegt.
+    /// (`charts/palette.ts`); seit dem 24.11.2026 sind es zugleich die Farben des Energieflusses.
     private func herkunft(_ s: EnergySummaryOut) -> [Balkenbild.Stueck] {
         [
             Balkenbild.Stueck(
