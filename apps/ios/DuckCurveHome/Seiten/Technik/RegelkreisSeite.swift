@@ -871,7 +871,7 @@ private struct Parameterblock: View {
                 RoundedRectangle(cornerRadius: Marken.radius1, style: .continuous)
                     .strokeBorder(imFeld ? Farbe.amber : Farbe.linie2, lineWidth: 1)
             }
-            .disabled(!haus.darfSchalten || laeuft)
+            .disabled(!haus.hatVollzugriff || laeuft)
     }
 
     private var knopf: some View {
@@ -887,8 +887,8 @@ private struct Parameterblock: View {
                 .clipShape(RoundedRectangle(cornerRadius: Marken.radius1, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(laeuft || !haus.darfSchalten)
-        .opacity(laeuft ? 0.6 : (haus.darfSchalten ? 1 : 0.4))
+        .disabled(laeuft || !haus.hatVollzugriff)
+        .opacity(laeuft ? 0.6 : (haus.hatVollzugriff ? 1 : 0.4))
     }
 
     private var freigabeknopf: some View {
@@ -906,8 +906,8 @@ private struct Parameterblock: View {
                 }
         }
         .buttonStyle(.plain)
-        .disabled(laeuft || !haus.darfSchalten)
-        .opacity(laeuft ? 0.6 : (haus.darfSchalten ? 1 : 0.4))
+        .disabled(laeuft || !haus.hatVollzugriff)
+        .opacity(laeuft ? 0.6 : (haus.hatVollzugriff ? 1 : 0.4))
     }
 
     /// **Das Komma wird zum Punkt, und was dann keine Zahl ist, geht nicht ans Netz.** Die

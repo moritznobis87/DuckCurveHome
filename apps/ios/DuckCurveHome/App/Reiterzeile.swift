@@ -177,7 +177,7 @@ struct Systemknopf: View {
     var groesse: CGFloat = 22
 
     var body: some View {
-        if haus.darfSchalten, let system = Bereiche.alle.first(where: { $0.schluessel == .system }) {
+        if haus.hatVollzugriff, let system = Bereiche.alle.first(where: { $0.schluessel == .system }) {
             let istAktiv = wegweiser.bereich.schluessel == .system
             Button {
                 wegweiser.merkeReiter()

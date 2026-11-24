@@ -38,7 +38,7 @@ struct Bereichsuebersicht: View {
 
     /// Die Seiten einer Gruppe, die dieser Betrachter sehen darf.
     private func seiten(_ gruppe: Gruppe) -> [Reiter] {
-        bereich.reiter(derGruppe: gruppe.name).filter { haus.darfSchalten || !$0.nurHausherr }
+        bereich.reiter(derGruppe: gruppe.name).filter { haus.hatVollzugriff || !$0.nurHausherr }
     }
 
     /// Die Gruppen, von denen für diesen Betrachter etwas übrig ist.
@@ -48,7 +48,7 @@ struct Bereichsuebersicht: View {
 
     /// Die Seiten eines Bereichs ohne Gruppen, die dieser Betrachter sehen darf.
     private var alleSeiten: [Reiter] {
-        bereich.reiter.filter { haus.darfSchalten || !$0.nurHausherr }
+        bereich.reiter.filter { haus.hatVollzugriff || !$0.nurHausherr }
     }
 
     var body: some View {

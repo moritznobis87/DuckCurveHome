@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRole } from "@/lib/live/useRole";
+import { useSitzung } from "@/lib/live/useRole";
 import { laeuft, schonGescheitert, useUpdate } from "./useUpdate";
 
 /**
@@ -16,8 +16,10 @@ import { laeuft, schonGescheitert, useUpdate } from "./useUpdate";
 const MERKER = "dch-update-weg";
 
 export function UpdateHinweis() {
-  const rolle = useRole();
-  const { status, neustart } = useUpdate(rolle === "owner");
+  // Vollzugriff, nicht „darf stellen“: Der Hinweis führt auf die Seite des Hausgeräts, und die
+  // sieht ein Bewohner nicht.
+  const { hausherr } = useSitzung();
+  const { status, neustart } = useUpdate(hausherr);
   const [weg, setWeg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function UpdateHinweis() {
     }
   }, []);
 
-  if (rolle !== "owner" || !status?.unterstuetzt) return null;
+  if (!hausherr || !status?.unterstuetzt) return null;
   const imGang = laeuft(status) || neustart;
   if (!imGang && (!status.update_verfuegbar || weg === status.verfuegbar || schonGescheitert(status))) return null;
 

@@ -38,7 +38,7 @@ struct HandRahmen: View {
                 Reiterzeile(
                     bereich: wegweiser.bereich,
                     aktiv: wegweiser.reiter,
-                    darfAlles: haus.darfSchalten,
+                    darfAlles: haus.hatVollzugriff,
                     zurUebersicht: {
                         wegweiser.gehe(wegweiser.bereich.weg)
                         wegweiser.merkeReiter()

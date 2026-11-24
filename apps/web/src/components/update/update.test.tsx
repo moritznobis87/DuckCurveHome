@@ -6,7 +6,10 @@ import { UpdateHinweis } from "./UpdateHinweis";
 import type { UpdateStatus } from "./useUpdate";
 
 let rolle: "owner" | "guest" = "owner";
-vi.mock("@/lib/live/useRole", () => ({ useRole: () => rolle }));
+vi.mock("@/lib/live/useRole", () => ({
+  useRole: () => rolle,
+  useSitzung: () => ({ role: rolle, hausherr: rolle === "owner", person: true }),
+}));
 
 function stand(felder: Partial<UpdateStatus> = {}): UpdateStatus {
   return {

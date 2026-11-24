@@ -14,7 +14,7 @@ import SwiftUI
 /// In der App hieß er bis zum 20.11.2026 „Verglichen“ und nannte den Wert nicht – damit fehlte
 /// genau die Gegenprobe, um die es geht.
 ///
-/// **Er hängt an `darfSchalten` wie jeder andere Griff an die Anlage.** Er sendet keinen
+/// **Er hängt an `hatVollzugriff` wie jeder andere Griff an den Regler.** Er sendet keinen
 /// Stellbefehl, aber er schaltet den Sperrgrund „nicht verglichen“ ab – und zwar für alle, am
 /// Dienst, dauerhaft. Danach gehen die Schieber, die Kurvengriffe und die Stufenknöpfe des
 /// Hausherrn auf. Ein Gast käme damit an die Anlage, ohne je am Bediengerät gestanden zu haben;
@@ -23,7 +23,7 @@ import SwiftUI
 /// `rolle` blendet hier nur aus (`Netz/Zugang.swift:33-39`). Also muss sie ausblenden.
 struct Vergleichsknopf: View {
     let satz: String
-    /// Darf der Mensch an dieser App überhaupt stellen? (`haus.darfSchalten`)
+    /// Darf der Mensch an dieser App überhaupt stellen? (`haus.hatVollzugriff`)
     let darfStellen: Bool
     let tun: () -> Void
 

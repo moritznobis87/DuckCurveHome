@@ -156,13 +156,31 @@ final class ZugangTests: XCTestCase {
         XCTAssertEqual(z.token, "geheim")
     }
 
-    /// Nur der Hausherr bekommt in der App Schalter und Akten; jede andere Rolle des Dienstes,
-    /// auch eine, die diese Fassung der App nicht kennt, sieht nur zu.
-    func testNurDerHausherrBekommtVollzugriff() {
+    /// Die Rolle aus dem Ausweis des Dienstes kommt eins zu eins in der App an. Eine, die diese
+    /// Fassung nicht kennt, wird zum Gast.
+    func testDieRolleDerPersonKommtAusDemAusweis() {
         XCTAssertEqual(Zugang.rolle(derPerson: .hausherr), .hausherr)
-        for rolle in [AusweisOutRolleWahl.bewohner, .gast, .service, .unbekannt] {
-            XCTAssertEqual(Zugang.rolle(derPerson: rolle), .gast, "\(rolle)")
-        }
+        XCTAssertEqual(Zugang.rolle(derPerson: .bewohner), .bewohner)
+        XCTAssertEqual(Zugang.rolle(derPerson: .service), .service)
+        XCTAssertEqual(Zugang.rolle(derPerson: .gast), .gast)
+        XCTAssertEqual(Zugang.rolle(derPerson: .unbekannt), .gast)
+    }
+
+    /// Stellen dürfen und Vollzugriff haben sind zweierlei (`auth/rechte.py`): Ein Bewohner
+    /// stellt im Haus und sieht keine Akten; Beratung und Gast sehen in der App nur zu.
+    func testStellenUndVollzugriffSindZweierlei() {
+        let stellt = Zugang.Rolle.allCases.filter(\.darfStellen)
+        let voll = Zugang.Rolle.allCases.filter(\.hatVollzugriff)
+        XCTAssertEqual(stellt, [.hausherr, .bewohner])
+        XCTAssertEqual(voll, [.hausherr])
+    }
+
+    /// Eine Rolle, die vor dem 24.11.2026 gespeichert wurde, heißt „hausherr“ oder „gast“ und
+    /// liest sich weiter.
+    func testAlteRollenBleibenLesbar() {
+        XCTAssertEqual(Zugang.Rolle(rawValue: "hausherr"), .hausherr)
+        XCTAssertEqual(Zugang.Rolle(rawValue: "gast"), .gast)
+        XCTAssertNil(Zugang.Rolle(rawValue: "owner"))
     }
 
     /// Eine abgelaufene Anmeldung nennt den Ort, an dem man sich neu anmeldet, und spricht

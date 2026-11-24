@@ -105,11 +105,11 @@ struct ReglerSeite: View {
         kurvenkarte(e)
         Pultkarte(
             gruppen: Reglerpult.pultgruppen(e.werte), entwurf: entwurf,
-            stellenMoeglich: stellbar(e), darfStellen: haus.darfSchalten, stelle: setze,
+            stellenMoeglich: stellbar(e), darfStellen: haus.hatVollzugriff, stelle: setze,
             vergleichen: { vergleiche($0, true) })
         Schalterkarte(
             schalter: Reglerpult.schalter(e.werte), entwurf: entwurf,
-            stellenMoeglich: stellbar(e), darfStellen: haus.darfSchalten, stelle: setze,
+            stellenMoeglich: stellbar(e), darfStellen: haus.hatVollzugriff, stelle: setze,
             vergleichen: { vergleiche($0, true) })
     }
 
@@ -132,16 +132,16 @@ struct ReglerSeite: View {
     }
 
     /// **Stellen heißt hier zweierlei**: der Dienst muss können, und der Mensch muss dürfen.
-    /// `darfSchalten` ist die Gästesperre der App und hat in der Vorlage kein Gegenstück; sie
+    /// `hatVollzugriff` ist die Sperre der App für alle außer dem Hausherrn und hat in der Vorlage kein Gegenstück; sie
     /// kommt hier dazu, nicht an ihre Stelle.
     ///
     /// **Das reicht für die Schieber, nicht für den Vergleichsknopf.** Wer nicht stellen darf,
     /// bekommt hier `false`, und damit greift im Kern der Sperrgrund „nicht verglichen“ vor
     /// „Stellen nicht möglich“ (``Reglerpult/sperre(_:stellenMoeglich:)``) – die Fußzeile zeigt
     /// also den gestrichelten Knopf. Der schaltet diese Sperre für alle ab, und darum geht
-    /// `darfSchalten` zusätzlich und ungemischt an die Karten (siehe ``Vergleichsknopf``).
+    /// `hatVollzugriff` zusätzlich und ungemischt an die Karten (siehe ``Vergleichsknopf``).
     private func stellbar(_ e: ReglerEinstellungenOut) -> Bool {
-        haus.darfSchalten && e.stellenMoeglich == true
+        haus.hatVollzugriff && e.stellenMoeglich == true
     }
 
     // MARK: - Kopf und Absätze
@@ -304,8 +304,8 @@ struct ReglerSeite: View {
                             .buttonStyle(.plain)
                             // Auch das Zurücknehmen ist ein Vermerk am Dienst und gehört dem
                             // Hausherrn - derselbe Grund wie am ``Vergleichsknopf``.
-                            .disabled(!haus.darfSchalten)
-                            .opacity(haus.darfSchalten ? 1 : 0.45)
+                            .disabled(!haus.hatVollzugriff)
+                            .opacity(haus.hatVollzugriff ? 1 : 0.45)
                             .foregroundStyle(Farbe.text2)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
