@@ -218,6 +218,9 @@ export const api = {
   passkeyUmbenennen: (id: string, name: string) => request<{ ok: boolean }>(`/auth/passkeys/${encodeURIComponent(id)}/name`, { method: "POST", body: JSON.stringify({ name }) }),
   passkeyLoeschen: (id: string) => request<{ ok: boolean }>(`/auth/passkeys/${encodeURIComponent(id)}/loeschen`, { method: "POST" }),
   codesNeu: () => request<{ codes: string[] }>("/auth/codes", { method: "POST" }),
+  /** Das eigene Passwort vergeben oder wechseln; `bisher` bleibt leer, solange es keines gibt. */
+  passwortSetzen: (neu: string, bisher = "") => request<{ ok: boolean; beendet: number }>("/auth/passwort", { method: "POST", body: JSON.stringify({ neu, bisher }) }),
+  passwortEntfernen: () => request<{ ok: boolean }>("/auth/passwort/loeschen", { method: "POST" }),
   sitzungBeenden: (id: string) => request<{ ok: boolean }>(`/auth/sitzungen/${encodeURIComponent(id)}/beenden`, { method: "POST" }),
   alleSitzungenBeenden: () => request<{ beendet: number }>("/auth/sitzungen/beenden-alle", { method: "POST" }),
 

@@ -29,20 +29,20 @@ export default async function Page() {
 
       <section className="flex max-w-[760px] flex-col gap-3">
         <h2 className="m-0 text-[18px] font-semibold">Mein Zugang</h2>
-        <MeinZugang />
+        <MeinZugang mindestlaenge={stand.passwort_mindestlaenge} />
       </section>
 
       <section className="flex max-w-[760px] flex-col gap-2">
         <h2 className="m-0 text-[18px] font-semibold">Wie man hereinkommt</h2>
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-          Nur als Person, nur mit Passkey. Es gibt <strong>keinen Link mehr, der Zugang vergibt</strong>:
+          Nur als Person, mit Passkey oder mit E-Mail-Adresse und Passwort. Es gibt <strong>keinen Link mehr, der Zugang vergibt</strong>:
           bis zum 23.11.2026 standen hier zwei Adressen mit einem stehenden Token darin, die jeder
           einlösen konnte, der sie je gesehen hatte, und die sich nur für alle zugleich widerrufen
           ließen. Was es stattdessen gibt, ist der Einladungslink oben. Er gilt einmal, ist befristet und gehört zu genau einer Person.
         </p>
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-          Eine Person darf an beliebig vielen Geräten zugleich angemeldet sein: je Gerät ein
-          Passkey und eine eigene Sitzung, einzeln zu beenden. Auch das Gerät an der Wand bekommt
+          Eine Person darf an beliebig vielen Geräten zugleich angemeldet sein: je Gerät eine
+          eigene Sitzung, einzeln zu beenden. Auch das Gerät an der Wand bekommt
           deshalb eine eigene Person. Gib ihr einen Namen, dem man ansieht, dass kein Mensch
           dahintersteht („Wandanzeige Flur"), und die Rolle, die sie wirklich braucht.
         </p>

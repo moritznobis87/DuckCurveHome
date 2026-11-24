@@ -327,7 +327,7 @@ public enum Bereiche {
                     kicker: "Dienste, Gesundheit, Sicherung und Updates des Rechners im Haus",  // `system/geraet/page.tsx:9`
                     beschreibung: "Wie es dem Rechner im Haus und seinen Diensten geht."),
                 Reiter(weg: "/system/zugang", name: "Zugang und Sicherung", nurHausherr: true,
-                    kicker: "Geräte koppeln · wer zusieht · Daten sichern",  // `system/zugang/page.tsx:58`
+                    kicker: "wer Zugang hat · wer zusieht · Daten sichern",  // `system/zugang/page.tsx`
                     beschreibung: "Wer Zugang hat, wie groß die Datenbank ist und wie man sie sichert."),
                 Reiter(
                     // **Nur Tage.** Die Vorlage schaltet die Spannenwahl auf dieser Seite

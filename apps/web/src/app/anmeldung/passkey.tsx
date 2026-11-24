@@ -13,14 +13,17 @@ import { useActionState, useState } from "react";
 import {
   einrichtenAnlegen,
   einrichtenOptionen,
+  einrichtenPasswort,
   passkeyAnmelden,
   passkeyOptionen,
+  passwortAnmelden,
   wiederherstellen,
   type Ergebnis,
 } from "./aktionen";
 
 /**
- * Die Zeremonie im Browser. Challenge und Prüfung liegen beim Dienst (aktionen.ts).
+ * Die beiden Wege herein im Browser: der Passkey und, seit dem 24.11.2026, das Passwort.
+ * Challenge und Prüfung liegen beim Dienst (aktionen.ts).
  *
  * **Kein automatisches Angebot beim Öffnen der Seite** (Autofill): jede Challenge ist eine Zeile
  * beim Dienst, und eine Seite, die beim blossen Aufruf eine anlegt, ließe sich von jedem Bot
@@ -28,7 +31,10 @@ import {
  */
 
 const NICHT_MOEGLICH =
-  "Dieser Browser kann keine Passkeys. Mit dem Wiederherstellungscode kommst du trotzdem herein.";
+  "Dieser Browser kann keine Passkeys. Mit dem Passwort oder einem Wiederherstellungscode kommst du trotzdem herein.";
+const FELD = "rounded-[3px] border border-line-1 bg-surface-2 px-3 py-2 text-[15px] text-text-1";
+const KNOPF =
+  "rounded-[3px] border border-line-1 bg-surface-2 px-5 py-3 text-[15px] text-text-1 disabled:opacity-50";
 const ABGEBROCHEN = "Abgebrochen oder kein passender Passkey auf diesem Gerät.";
 
 export function PasskeyAnmeldung() {
@@ -82,9 +88,51 @@ export function PasskeyAnmeldung() {
   );
 }
 
+/** Anmeldung mit E-Mail-Adresse und Passwort, für Leute, die keinen Passkey verwenden. */
+export function PasswortAnmeldung() {
+  const router = useRouter();
+  // Die Adresse ist ein gehaltener Wert: React leert nach einer Formularaktion alle freien
+  // Felder, und wer sich beim Passwort vertippt hat, soll die Adresse nicht neu schreiben.
+  const [email, setEmail] = useState("");
+  const [ergebnis, absenden, laeuft] = useActionState<Ergebnis, FormData>(
+    async (vorher, daten) => {
+      const antwort = await passwortAnmelden(vorher, daten);
+      if (!antwort.fehler) router.replace("/");
+      return antwort;
+    },
+    {},
+  );
+  return (
+    <form action={absenden} className="flex flex-col gap-3">
+      {ergebnis.fehler ? <p className="m-0 text-[14px] leading-[1.5] text-amber">{ergebnis.fehler}</p> : null}
+      <label className="flex flex-col gap-1.5 text-[14px] text-text-3">
+        E-Mail-Adresse
+        <input
+          type="email"
+          name="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="username"
+          className={FELD}
+        />
+      </label>
+      <label className="flex flex-col gap-1.5 text-[14px] text-text-3">
+        Passwort
+        <input type="password" name="passwort" required autoComplete="current-password" className={FELD} />
+      </label>
+      <button type="submit" disabled={laeuft} className={KNOPF}>
+        {laeuft ? "Prüfe…" : "Mit Passwort anmelden"}
+      </button>
+    </form>
+  );
+}
+
 export function Wiederherstellung() {
   const router = useRouter();
   const [offen, setOffen] = useState(false);
+  // Gehalten wie in `PasswortAnmeldung`: ein falscher Code soll die Adresse nicht mitnehmen.
+  const [email, setEmail] = useState("");
   const [ergebnis, absenden, laeuft] = useActionState<Ergebnis, FormData>(
     async (vorher, daten) => {
       const antwort = await wiederherstellen(vorher, daten);
@@ -101,7 +149,7 @@ export function Wiederherstellung() {
         onClick={() => setOffen(true)}
         className="self-start text-[14px] text-text-3 underline decoration-dotted"
       >
-        Alle Geräte verloren? Mit Wiederherstellungscode anmelden
+        Passkey verloren oder Passwort vergessen? Mit Wiederherstellungscode anmelden
       </button>
     );
   }
@@ -109,12 +157,15 @@ export function Wiederherstellung() {
     <form action={absenden} className="flex flex-col gap-3">
       <p className="m-0 text-[14px] leading-[1.5] text-text-3">
         Einer der zehn Codes aus der Einrichtung. Jeder gilt einmal. Danach bitte gleich einen
-        neuen Passkey anlegen.
+        neuen Passkey anlegen. Wer sein Passwort vergessen hat, bittet den Hausherrn um einen
+        neuen Link.
       </p>
       {ergebnis.fehler ? <p className="m-0 text-[14px] text-amber">{ergebnis.fehler}</p> : null}
       <input
         type="email"
         name="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
         required
         autoFocus
         autoComplete="email"
@@ -152,11 +203,14 @@ export function Einrichten({
   token,
   email,
   hinweis,
+  mindestlaenge,
   fehler: fehlerVonAussen,
 }: {
   token: string;
   email: string;
   hinweis: string;
+  /** Wie lang ein Passwort mindestens sein muss; die Regel kommt vom Dienst. */
+  mindestlaenge: number;
   /** Warum der Link nicht gilt - leer, wenn er gilt. */
   fehler: string;
 }) {
@@ -165,6 +219,29 @@ export function Einrichten({
   const [laeuft, setLaeuft] = useState(false);
   const [name, setName] = useState("");
   const [codes, setCodes] = useState<string[]>();
+  /** Welchen der beiden Wege die Person einrichtet. Der Passkey ist der empfohlene. */
+  const [weg, setWeg] = useState<"passkey" | "passwort">("passkey");
+  const [passwort, setPasswort] = useState("");
+  const [wiederholung, setWiederholung] = useState("");
+
+  async function vergeben() {
+    setFehler(undefined);
+    if (passwort !== wiederholung) {
+      setFehler("Die beiden Eingaben sind verschieden.");
+      return;
+    }
+    setLaeuft(true);
+    try {
+      const ergebnis = await einrichtenPasswort(token, passwort);
+      if (ergebnis.fehler) {
+        setFehler(ergebnis.fehler);
+        return;
+      }
+      setCodes(ergebnis.codes ?? []);
+    } finally {
+      setLaeuft(false);
+    }
+  }
 
   async function anlegen() {
     setFehler(undefined);
@@ -204,7 +281,8 @@ export function Einrichten({
         <h2 className="m-0 text-[18px] font-semibold">Deine zehn Wiederherstellungscodes</h2>
         <p className="m-0 text-[15px] leading-[1.6] text-text-2">
           Sie stehen <strong>nur jetzt</strong> hier. Jeder gilt einmal und bringt dich herein,
-          wenn alle Geräte mit Passkey verloren sind. Aufschreiben oder in den Passwortmanager.
+          wenn der Passkey verloren oder das Passwort vergessen ist. Aufschreiben oder in den
+          Passwortmanager.
         </p>
         <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
           {codes.map((c) => (
@@ -239,30 +317,93 @@ export function Einrichten({
     <section className="flex flex-col gap-3">
       {hinweis ? <p className="m-0 text-[14px] text-text-3">{hinweis}</p> : null}
       <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-        Für <span className="mono">{email}</span>. Ein Passkey bleibt auf diesem Gerät und wird mit
-        Fingerabdruck, Gesicht oder Geräte-PIN freigegeben. Ein Passwort gibt es nicht.
+        Für <span className="mono">{email}</span>. Du meldest dich künftig mit einem Passkey an
+        oder mit E-Mail-Adresse und Passwort. Den anderen Weg kannst du später ergänzen.
       </p>
+      <div className="flex gap-2" role="tablist" aria-label="Weg der Anmeldung">
+        {(["passkey", "passwort"] as const).map((w) => (
+          <button
+            key={w}
+            type="button"
+            role="tab"
+            aria-selected={weg === w}
+            onClick={() => {
+              setWeg(w);
+              setFehler(undefined);
+            }}
+            className={`rounded-[3px] border px-4 py-2 text-[14px] ${
+              weg === w ? "border-amber text-text-1" : "border-line-1 text-text-3"
+            }`}
+          >
+            {w === "passkey" ? "Passkey (empfohlen)" : "Passwort"}
+          </button>
+        ))}
+      </div>
       {fehler ? <p className="m-0 text-[14px] text-amber">{fehler}</p> : null}
-      <label className="flex flex-col gap-1.5 text-[14px] text-text-3">
-        Name dieses Geräts (nur für deine Liste)
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="iPhone"
-          maxLength={80}
-          autoComplete="off"
-          className="rounded-[3px] border border-line-1 bg-surface-2 px-3 py-2 text-[15px] text-text-1"
-        />
-      </label>
-      <button
-        type="button"
-        onClick={anlegen}
-        disabled={laeuft}
-        className="self-start rounded-[3px] border border-line-1 bg-surface-2 px-5 py-3 text-[15px] text-text-1 disabled:opacity-50"
-      >
-        {laeuft ? "Warte auf das Gerät…" : "Passkey anlegen"}
-      </button>
+      {weg === "passkey" ? (
+        <>
+          <p className="m-0 text-[14px] leading-[1.6] text-text-3">
+            Ein Passkey bleibt auf diesem Gerät und wird mit Fingerabdruck, Gesicht oder
+            Geräte-PIN freigegeben. Es gibt nichts abzutippen und nichts zu vergessen.
+          </p>
+          <label className="flex flex-col gap-1.5 text-[14px] text-text-3">
+            Name dieses Geräts (nur für deine Liste)
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="iPhone"
+              maxLength={80}
+              autoComplete="off"
+              className={FELD}
+            />
+          </label>
+          <button type="button" onClick={anlegen} disabled={laeuft} className={`self-start ${KNOPF}`}>
+            {laeuft ? "Warte auf das Gerät…" : "Passkey anlegen"}
+          </button>
+        </>
+      ) : (
+        <form
+          className="flex flex-col gap-3"
+          action={() => {
+            void vergeben();
+          }}
+        >
+          <p className="m-0 text-[14px] leading-[1.6] text-text-3">
+            Das Passwort braucht mindestens {mindestlaenge} Zeichen. Ein ganzer Satz ist besser
+            als ein kurzes Wort mit Sonderzeichen.
+          </p>
+          {/* Die Adresse steht als verstecktes Feld da, damit der Passwortmanager das neue
+              Passwort zum richtigen Konto ablegt. */}
+          <input type="hidden" name="username" autoComplete="username" value={email} readOnly />
+          <label className="flex flex-col gap-1.5 text-[14px] text-text-3">
+            Passwort
+            <input
+              type="password"
+              value={passwort}
+              onChange={(e) => setPasswort(e.target.value)}
+              required
+              minLength={mindestlaenge}
+              autoComplete="new-password"
+              className={FELD}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-[14px] text-text-3">
+            Passwort wiederholen
+            <input
+              type="password"
+              value={wiederholung}
+              onChange={(e) => setWiederholung(e.target.value)}
+              required
+              autoComplete="new-password"
+              className={FELD}
+            />
+          </label>
+          <button type="submit" disabled={laeuft} className={`self-start ${KNOPF}`}>
+            {laeuft ? "Prüfe…" : "Passwort vergeben"}
+          </button>
+        </form>
+      )}
     </section>
   );
 }

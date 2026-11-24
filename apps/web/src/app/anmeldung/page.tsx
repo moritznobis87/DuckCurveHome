@@ -1,25 +1,25 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { ausweis, zustand } from "@/lib/zugang";
 
-import { PasskeyAnmeldung, Wiederherstellung } from "./passkey";
+import { PasskeyAnmeldung, PasswortAnmeldung, Wiederherstellung } from "./passkey";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Anmelden · Duck Curve Home" };
 
 /**
- * Die Anmeldeseite.
+ * Die Anmeldeseite: zwei Wege herein, der Passkey und das Passwort.
  *
- * **Weitergeleitet wird nur eine angemeldete Person.** Ein gepaartes Gerät bleibt hier stehen und
- * bekommt die Anmeldung angeboten: sonst käme auf dem Wand-iPad oder einem Rechner, der einmal
- * den Pairing-Link gesehen hat, nie jemand als Person herein - die Seite leitete ihn immer weg
- * (gefunden in der Rauchprobe am 23.11.2026). Beides nebeneinander ist genau der Fall, den es
- * geben soll: das Gerät sieht zu, der Mensch stellt etwas und steht danach im Protokoll.
+ * Der Hausherr hat am 24.11.2026 entschieden, dass es neben dem Passkey ein Passwort gibt, für
+ * Leute, die keinen Passkey verwenden möchten. Der Passkey steht oben, weil er der empfohlene
+ * Weg ist; das Passwort steht gleichwertig darunter und nicht hinter einem Verweis.
+ *
+ * **Weitergeleitet wird nur eine angemeldete Person.** Was sonst hereinkommt (ein Dienst mit dem
+ * API-Token) bleibt hier stehen und bekommt die Anmeldung angeboten.
  *
  * Solange es **noch keine Person** gibt, sagt die Seite, wie der erste Hausherr hereinkommt:
- * über den Pairing-Link des Geräts, und von dort in die Verwaltung. Ein offener Weg „ersten
- * Hausherrn hier anlegen" gäbe es nicht - wer die Adresse zuerst findet, hätte das Haus
+ * über `DCH_ERSTE_PERSON` in der Umgebung des Dienstes. Einen offenen Weg „ersten Hausherrn
+ * hier anlegen" gibt es mit Absicht nicht - wer die Adresse zuerst fände, hätte das Haus
  * (docs/ZUGANG.md).
  */
 export default async function Page() {
@@ -38,36 +38,31 @@ export default async function Page() {
           <section className="flex flex-col gap-3 rounded-[3px] border border-line-1 bg-surface-2 p-4">
             <h2 className="m-0 text-[16px] font-semibold">Noch hat niemand einen Zugang</h2>
             <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-              Öffne einmal den Pairing-Link dieses Hauses
-              (<code className="mono text-[13px]">/pair?token=…</code>) und lege unter
-              <strong> System › Zugang und Sicherung</strong> die erste Person an. Den Link, der dabei entsteht,
-              öffnest du auf dem Gerät, das künftig anmeldet.
+              Die erste Person legt an, wer den Dienst betreibt: Auf dem Dienst wird
+              <code className="mono text-[13px]"> DCH_ERSTE_PERSON</code> auf eine E-Mail-Adresse
+              gesetzt und der Dienst neu gestartet. Der Einladungslink steht danach einmal in
+              seinem Protokoll. Diesen Link öffnest du auf dem Gerät, das künftig anmeldet.
             </p>
           </section>
         ) : (
           <>
             <PasskeyAnmeldung />
+            <div className="flex items-center gap-3 text-[13px] text-text-3" role="separator">
+              <span className="h-px flex-1 bg-line-1" />
+              oder mit Passwort
+              <span className="h-px flex-1 bg-line-1" />
+            </div>
+            <PasswortAnmeldung />
             <Wiederherstellung />
           </>
         )}
 
-        {wer !== null ? (
+        {stand.rp_id ? (
           <p className="m-0 text-[13px] leading-[1.6] text-text-3">
-            Dieses Gerät ist als <strong>{wer.name}</strong> gekoppelt und sieht das Haus schon.
-            Eine Anmeldung als Person kommt dazu: dann steht im Protokoll, wer etwas verstellt hat,
-            und nicht nur, an welchem Gerät. <Link href="/" className="text-amber">Ohne Anmeldung weiter</Link>
+            Passkeys dieses Hauses gehören zu <span className="mono">{stand.rp_id}</span>. Auch
+            eine Wandanzeige meldet sich an; sie bekommt dafür eine eigene Person.
           </p>
         ) : null}
-
-        <p className="m-0 text-[13px] leading-[1.6] text-text-3">
-          Eine Wandanzeige meldet sich nicht an. Sie wird einmal gepaart und bleibt gepaart.
-          {stand.rp_id ? (
-            <>
-              {" "}
-              Passkeys dieses Hauses gehören zu <span className="mono">{stand.rp_id}</span>.
-            </>
-          ) : null}
-        </p>
       </div>
     </main>
   );

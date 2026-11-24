@@ -70,8 +70,9 @@ export function Personen({ versand }: { versand: { aktiv: boolean; fehlt: string
     <section className="flex max-w-[760px] flex-col gap-3">
       <h2 className="m-0 text-[18px] font-semibold">Personen</h2>
       <p className="m-0 text-[15px] leading-[1.6] text-text-2">
-        Eine Person meldet sich mit einem Passkey an. Es gibt kein Passwort und nichts zum Abtippen. Über den
-        Einladungslink legt sie ihn selbst an und ist damit angemeldet.
+        Eine Person meldet sich mit einem Passkey an oder mit E-Mail-Adresse und Passwort. Über den
+        Einladungslink richtet sie einen der beiden Wege selbst ein und ist damit angemeldet. Wer
+        sein Passwort vergessen hat, bekommt hier einen neuen Link.
         {versand.aktiv
           ? " Die Einladung geht auf Wunsch gleich per E-Mail hinaus."
           : ` E-Mail-Versand ist nicht eingerichtet (${versand.fehlt.join(", ") || "keine Angaben"}). Der Link bleibt hier zum Kopieren.`}
@@ -99,7 +100,7 @@ export function Personen({ versand }: { versand: { aktiv: boolean; fehlt: string
                   ) : null}
                 </span>
                 <span className="mono text-[12px] text-text-3">
-                  {p.passkeys} Passkey{p.passkeys === 1 ? "" : "s"} · {p.codes_offen} Codes · zuletzt{" "}
+                  {p.passkeys} Passkey{p.passkeys === 1 ? "" : "s"} · {p.passwort ? "mit Passwort" : "ohne Passwort"} · {p.codes_offen} Codes · zuletzt{" "}
                   {datum(p.zuletzt_angemeldet_am)}
                 </span>
               </div>
@@ -128,7 +129,7 @@ export function Personen({ versand }: { versand: { aktiv: boolean; fehlt: string
                   }
                   className="rounded-[3px] border border-line-1 px-2 py-1 text-[13px] text-text-2"
                 >
-                  {p.passkeys > 0 ? "Neuer Link" : p.einladung_offen ? "Link erneuern" : "Einladen"}
+                  {p.passkeys > 0 || p.passwort ? "Neuer Link" : p.einladung_offen ? "Link erneuern" : "Einladen"}
                 </button>
                 <button
                   type="button"

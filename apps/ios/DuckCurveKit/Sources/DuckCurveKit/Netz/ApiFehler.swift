@@ -45,7 +45,7 @@ public struct ApiFehler: Error, Sendable, Hashable {
     /// Der Satz, den die Oberflaeche zeigt - mit dem Hinweis, was zu tun ist, wo es einen gibt.
     public var rat: String {
         if istAnmeldung {
-            return "Das Token stimmt nicht mehr. Unter „Zugang“ neu einrichten."
+            return "Die Anmeldung gilt nicht mehr. Unter „Zugang und Sicherung“ neu anmelden."
         }
         if istVerboten {
             return "Dieser Zugang darf das nicht. Als Hausherr anmelden."

@@ -1,4 +1,5 @@
 import { dienstAnfrage } from "@/lib/dienst";
+import { zustand } from "@/lib/zugang";
 
 import { Einrichten } from "../passkey";
 
@@ -10,6 +11,7 @@ interface EinladungAntwort {
   anzeigename: string;
   rolle: string;
   passkeys: number;
+  passwort?: boolean;
 }
 
 const ROLLEN: Record<string, string> = {
@@ -20,9 +22,11 @@ const ROLLEN: Record<string, string> = {
 };
 
 /**
- * Der Weg hinter dem Einladungslink: einen Passkey anlegen und damit angemeldet sein.
+ * Der Weg hinter dem Einladungslink: einen Passkey anlegen oder ein Passwort vergeben und damit
+ * angemeldet sein.
  *
- * Der Link wird hier nur **geprüft**, nicht eingelöst - das tut erst der fertige Passkey. Wer
+ * Der Link wird hier nur **geprüft**, nicht eingelöst - das tut erst der fertige Passkey oder
+ * das vergebene Passwort. Wer
  * die Seite öffnet und abbricht, hat seinen Link also noch.
  *
  * **Warum diese Seite immer dieselbe Komponente rendert.** Die Server Action, die den Passkey
@@ -47,12 +51,13 @@ export default async function Page({
   } catch (e) {
     fehler = e instanceof Error ? e.message : "Dieser Link gilt nicht.";
   }
+  const stand = await zustand();
   const hinweis = einladung
     ? `${ROLLEN[einladung.rolle] ?? einladung.rolle}${
         einladung.passkeys > 0
           ? ` · ${einladung.passkeys} Passkey${einladung.passkeys === 1 ? "" : "s"} vorhanden`
           : ""
-      }`
+      }${einladung.passwort ? " · Passwort vorhanden" : ""}`
     : "";
   return (
     <main className="dashboard-bg flex min-h-[100dvh] flex-col items-center justify-center p-8 text-text-1">
@@ -65,6 +70,7 @@ export default async function Page({
           token={token}
           email={einladung?.email ?? ""}
           hinweis={hinweis}
+          mindestlaenge={stand.passwort_mindestlaenge}
           fehler={fehler}
         />
       </div>

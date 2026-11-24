@@ -21,6 +21,8 @@ enum Schluesselbund {
         static let praefix = "dch.praefix"
         static let geraetename = "dch.geraetename"
         static let rolle = "dch.rolle"
+        /// Die E-Mail-Adresse der angemeldeten Person; fehlt bei einem Gerät mit API-Token.
+        static let email = "dch.email"
     }
 
     /// Den gespeicherten Zugang holen. Ohne Adresse kommt einer zurueck, der nicht eingerichtet ist.
@@ -33,7 +35,8 @@ enum Schluesselbund {
             praefix: einst.string(forKey: Einstellung.praefix) ?? "/api/v1",
             token: token() ?? "",
             geraetename: einst.string(forKey: Einstellung.geraetename) ?? Geraet.ersatz,
-            rolle: einst.string(forKey: Einstellung.rolle) == "gast" ? .gast : .hausherr
+            rolle: einst.string(forKey: Einstellung.rolle) == "gast" ? .gast : .hausherr,
+            email: einst.string(forKey: Einstellung.email) ?? ""
         )
     }
 
@@ -43,6 +46,7 @@ enum Schluesselbund {
         einst.set(z.praefix, forKey: Einstellung.praefix)
         einst.set(z.geraetename, forKey: Einstellung.geraetename)
         einst.set(z.rolle == .gast ? "gast" : "hausherr", forKey: Einstellung.rolle)
+        einst.set(z.email, forKey: Einstellung.email)
         setzeToken(z.token)
     }
 
@@ -83,6 +87,7 @@ enum Schluesselbund {
         let einst = UserDefaults.standard
         for k in [
             Einstellung.adresse, Einstellung.praefix, Einstellung.geraetename, Einstellung.rolle,
+            Einstellung.email,
         ] {
             einst.removeObject(forKey: k)
         }

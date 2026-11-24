@@ -11,7 +11,8 @@ Seite beschreibt, was es heute gibt und wie man es bedient.
   Passkey ist der empfohlene Weg: nichts zum Abtippen, kein zweiter Faktor daneben, denn ein
   Passkey mit verlangter Nutzerprüfung ist Besitz und Merkmal zugleich. Das Passwort gibt es
   seit dem 24.11.2026 für Leute, die keinen Passkey verwenden möchten (ADR-0002, Nachtrag).
-  Gebaut ist dafür bisher der Dienst; die Seiten in Dashboard und App folgen.
+  Beide Wege gibt es im Dashboard; die App meldet sich mit E-Mail-Adresse und Passwort an, der
+  Passkey folgt dort noch (`docs/GLEICHSTAND.md`).
 - **Es gibt keinen Link mehr, der Zugang vergibt.** Bis zum 23.11.2026 stellten zwei stehende
   URL-Tokens Gerätesitzungen aus - einer für Vollzugriff, einer für Gäste. Sie standen im Klartext
   auf dieser Seite, galten unbefristet, waren beliebig oft einlösbar und ließen sich nur für alle

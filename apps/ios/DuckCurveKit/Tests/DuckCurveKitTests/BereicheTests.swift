@@ -274,7 +274,7 @@ final class KickerTests: XCTestCase {
         "/system/mitteilungen": "Was aufs Handy kommt: Störungen und das Morning Briefing",
         "/system/haustuer": "Wer sich am Reader erkennen ließ, und was geschah",
         "/system/geraet": "Dienste, Gesundheit, Sicherung und Updates des Rechners im Haus",
-        "/system/zugang": "Geräte koppeln · wer zusieht · Daten sichern",
+        "/system/zugang": "wer Zugang hat · wer zusieht · Daten sichern",
     ]
 
     /// Die drei Routen, die keinen bekommen - jede mit einem Grund in der Vorlage.

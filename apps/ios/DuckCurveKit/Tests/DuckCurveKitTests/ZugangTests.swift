@@ -126,6 +126,86 @@ final class ZugangTests: XCTestCase {
         let zurueck = try JSONDecoder().decode(Zugang.self, from: roh)
         XCTAssertEqual(zurueck, zugang)
     }
+
+    // MARK: - Als Person angemeldet (seit dem 24.11.2026)
+
+    /// Ein Zugang mit E-Mail-Adresse ist eine Person, einer ohne ist ein Gerät mit API-Token.
+    func testPersonOderGeraet() {
+        XCTAssertFalse(zugang.istPerson)
+        var z = zugang
+        z.email = "anna@example.org"
+        XCTAssertTrue(z.istPerson)
+    }
+
+    /// Die Adresse der Person überlebt das Speichern wie der Rest.
+    func testPersonUeberlebtSpeichern() throws {
+        var z = zugang
+        z.email = "anna@example.org"
+        let zurueck = try JSONDecoder().decode(Zugang.self, from: JSONEncoder().encode(z))
+        XCTAssertEqual(zurueck, z)
+    }
+
+    /// Ein Zugang, der vor dem 24.11.2026 gespeichert wurde, hat kein Feld `email`. Er muss
+    /// sich weiter lesen lassen und ist dann ein Gerät.
+    func testAlterZugangOhneAdresseBleibtLesbar() throws {
+        let alt = #"{"grund":"https://dch.example.net","praefix":"/api/v1","token":"geheim","geraetename":"iPad Flur","rolle":"gast"}"#
+        let z = try JSONDecoder().decode(Zugang.self, from: Data(alt.utf8))
+        XCTAssertEqual(z.email, "")
+        XCTAssertFalse(z.istPerson)
+        XCTAssertEqual(z.rolle, .gast)
+        XCTAssertEqual(z.token, "geheim")
+    }
+
+    /// Nur der Hausherr bekommt in der App Schalter und Akten; jede andere Rolle des Dienstes,
+    /// auch eine, die diese Fassung der App nicht kennt, sieht nur zu.
+    func testNurDerHausherrBekommtVollzugriff() {
+        XCTAssertEqual(Zugang.rolle(derPerson: .hausherr), .hausherr)
+        for rolle in [AusweisOutRolleWahl.bewohner, .gast, .service, .unbekannt] {
+            XCTAssertEqual(Zugang.rolle(derPerson: rolle), .gast, "\(rolle)")
+        }
+    }
+
+    /// Eine abgelaufene Anmeldung nennt den Ort, an dem man sich neu anmeldet, und spricht
+    /// nicht mehr von einem Token: seit dem 24.11.2026 kann es auch eine Sitzung sein.
+    func testAbgelaufeneAnmeldungNenntDenWeg() {
+        let f = ApiFehler(code: "unauthorized", meldung: "Die Anmeldung ist nicht möglich.", status: 401)
+        XCTAssertEqual(f.rat, "Die Anmeldung gilt nicht mehr. Unter „Zugang und Sicherung“ neu anmelden.")
+    }
+}
+
+/// Die Worte der Anmeldung mit Passwort: dieselben Sätze wie im Dashboard.
+final class AnmeldeworteTests: XCTestCase {
+    /// Zwei verschiedene Eingaben fallen in der App auf, bevor etwas hinausgeht. Die Länge
+    /// prüft der Dienst; hier wird sie nicht nachgebaut.
+    func testNurVerschiedeneEingabenSindEinEinwand() {
+        XCTAssertNil(Anmeldeworte.einwand(neu: "ein langes Passwort", wiederholung: "ein langes Passwort"))
+        XCTAssertNil(Anmeldeworte.einwand(neu: "kurz", wiederholung: "kurz"))
+        XCTAssertEqual(
+            Anmeldeworte.einwand(neu: "ein langes Passwort", wiederholung: "ein langes Passwor"),
+            "Die beiden Eingaben sind verschieden.")
+    }
+
+    /// Der Wortlaut des Dashboards (`MeinPasswort.tsx`), Satz für Satz.
+    func testDieSaetzeSindDieDesDashboards() {
+        XCTAssertEqual(Anmeldeworte.ueberschrift, "Mein Passwort")
+        XCTAssertEqual(
+            Anmeldeworte.stand(vorhanden: true),
+            "Du hast ein Passwort und kannst dich damit an jedem Gerät anmelden.")
+        XCTAssertEqual(
+            Anmeldeworte.stand(vorhanden: false),
+            "Du hast kein Passwort. Mit einem Passwort kommst du auch an Geräten herein, die keinen Passkey können.")
+        XCTAssertEqual(Anmeldeworte.knopf(vorhanden: true), "Passwort wechseln")
+        XCTAssertEqual(Anmeldeworte.knopf(vorhanden: false), "Passwort vergeben")
+        XCTAssertEqual(Anmeldeworte.neufeld(mindestlaenge: 12), "Neues Passwort, mindestens 12 Zeichen")
+        XCTAssertEqual(
+            Anmeldeworte.gespeichert(vorher: true),
+            "Das Passwort ist gewechselt. Deine anderen Geräte sind abgemeldet.")
+        XCTAssertEqual(
+            Anmeldeworte.gespeichert(vorher: false),
+            "Das Passwort ist vergeben. Du kannst dich jetzt auch mit E-Mail-Adresse und Passwort anmelden.")
+        XCTAssertEqual(Anmeldeworte.entfernenGesperrt, "Entfernen geht erst mit einem Passkey")
+        XCTAssertEqual(Anmeldeworte.anmeldeknopf, "Mit Passwort anmelden")
+    }
 }
 
 /// Backoff und Aufsicht.

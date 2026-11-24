@@ -27,7 +27,12 @@ const METRICS = [
 type MetricKey = (typeof METRICS)[number]["key"];
 
 function describe(e: unknown): string {
-  if (e instanceof ApiError) return e.status === 401 || e.status === 403 ? "Nicht angemeldet. Bitte das Gerät koppeln." : e.message;
+  // Dieselben zwei Sätze wie in der App (`ApiFehler.rat`); nur den Ort nennt die App dazu.
+  if (e instanceof ApiError) {
+    if (e.status === 401) return "Die Anmeldung gilt nicht mehr. Bitte neu anmelden.";
+    if (e.status === 403) return "Dieser Zugang darf das nicht. Als Hausherr anmelden.";
+    return e.message;
+  }
   return "Daten konnten nicht geladen werden.";
 }
 

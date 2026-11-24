@@ -261,8 +261,9 @@ erlaubte bisher keine Anmeldung. Ein Passworthash lässt sich dagegen offline du
 Argon2id und die Mindestlänge machen das teuer, nicht unmöglich. Und ein Passwort lässt sich
 abfischen, ein Passkey nicht.
 
-**Stand:** Gebaut ist der Dienst. Die Oberflächen in Dashboard und App folgen in einer eigenen
-Änderung; bis dahin ist der Weg nur über die Schnittstelle erreichbar.
+**Stand:** Gebaut sind der Dienst und beide Oberflächen. Die App meldet sich seitdem als
+Person an und nicht mehr mit dem API-Token, das alles darf; das Token bleibt für den, der den
+Dienst betreibt. In der App fehlt noch die Anmeldung mit Passkey (`docs/GLEICHSTAND.md`).
 
 ## Offene Punkte
 

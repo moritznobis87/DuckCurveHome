@@ -11,16 +11,19 @@ import { abmelden } from "@/app/anmeldung/aktionen";
 import { api, ApiError } from "@/lib/api/client";
 import type { Ich } from "@/lib/api/models";
 import { BestaetigKnopf } from "./BestaetigKnopf";
+import { MeinPasswort } from "./MeinPasswort";
 
 /**
- * Die eigenen Geräte: Passkeys anlegen, umbenennen, löschen, Sitzungen beenden, neue Codes holen.
+ * Der eigene Zugang: Passkeys anlegen, umbenennen und löschen, das Passwort vergeben oder
+ * wechseln, Sitzungen beenden, neue Codes holen.
  *
- * **Der letzte Passkey lässt sich nicht löschen.** Sonst käme diese Person nur noch über einen
- * Wiederherstellungscode oder einen Link des Hausherrn herein - der Dienst lehnt das ab, und
- * diese Seite sagt es vorher.
+ * **Ein Weg herein muss bleiben.** Der letzte Passkey lässt sich nur löschen, wenn die Person ein
+ * Passwort hat, und das Passwort nur entfernen, solange ein Passkey da ist. Sonst käme sie nur
+ * noch über einen Wiederherstellungscode oder einen Link des Hausherrn herein - der Dienst lehnt
+ * das ab, und diese Seite sagt es vorher.
  *
- * Für ein gepaartes Gerät erscheint der Abschnitt gar nicht: eine Wandanzeige ist keine Person
- * und hat keine eigenen Passkeys.
+ * Für einen Dienst mit dem API-Token erscheint der Abschnitt gar nicht: er ist keine Person und
+ * hat weder Passkeys noch ein Passwort.
  */
 
 function datum(wert: string | null | undefined): string {
@@ -46,7 +49,7 @@ function geraet(ua: string): string {
   return "unbekanntes Gerät";
 }
 
-export function MeinZugang() {
+export function MeinZugang({ mindestlaenge }: { mindestlaenge: number }) {
   const [ich, setIch] = useState<Ich | null>();
   const [fehler, setFehler] = useState<string>();
   const [codes, setCodes] = useState<string[]>();
@@ -59,19 +62,22 @@ export function MeinZugang() {
     void api
       .ich()
       .then(setIch)
-      .catch(() => setIch(null)); // gepaartes Gerät: keine eigene Seite
+      .catch(() => setIch(null)); // keine Person angemeldet: keine eigene Seite
   }, []);
 
   useEffect(laden, [laden]);
 
-  async function fuehre(was: () => Promise<unknown>) {
+  /** Führt eine Änderung aus und lädt neu. Sagt zurück, ob sie gelungen ist. */
+  async function fuehre(was: () => Promise<unknown>): Promise<boolean> {
     setFehler(undefined);
     setLaeuft(true);
     try {
       await was();
       laden();
+      return true;
     } catch (e) {
       setFehler(e instanceof ApiError ? e.message : "Das hat nicht geklappt.");
+      return false;
     } finally {
       setLaeuft(false);
     }
@@ -97,8 +103,8 @@ export function MeinZugang() {
   if (ich === null) {
     return (
       <p className="m-0 text-[15px] leading-[1.6] text-text-3">
-        Dieses Gerät ist gepaart und nicht als Person angemeldet. Es hat darum keine eigenen
-        Passkeys. Wer einen eigenen Zugang möchte, lässt sich oben einladen.
+        Hier ist keine Person angemeldet. Darum gibt es an dieser Stelle weder eigene Passkeys
+        noch ein eigenes Passwort. Wer einen eigenen Zugang möchte, lässt sich oben einladen.
       </p>
     );
   }
@@ -106,6 +112,9 @@ export function MeinZugang() {
   // Die erzeugten Typen machen Listen mit Vorgabewert optional; hier sind sie immer da.
   const meine = ich.passkeys ?? [];
   const sitzungen = ich.sitzungen ?? [];
+  const hatPasswort = ich.passwort ?? false;
+  // Ohne Passwort bleibt der letzte Passkey, denn sonst gäbe es keinen Weg herein.
+  const letzterBleibt = meine.length <= 1 && !hatPasswort;
 
   return (
     <div className="flex flex-col gap-3">
@@ -144,11 +153,11 @@ export function MeinZugang() {
               </button>
               <BestaetigKnopf
                 frage="wirklich?"
-                disabled={laeuft || meine.length <= 1}
+                disabled={laeuft || letzterBleibt}
                 onBestaetigt={() => void fuehre(() => api.passkeyLoeschen(p.id))}
                 className="text-[13px] text-text-3 underline decoration-dotted disabled:opacity-40"
               >
-                {meine.length <= 1 ? "der letzte bleibt" : "löschen"}
+                {letzterBleibt ? "der letzte bleibt" : "löschen"}
               </BestaetigKnopf>
             </span>
             {umbenennen?.id === p.id ? (
@@ -199,7 +208,7 @@ export function MeinZugang() {
           onClick={() => void passkeyAnlegen()}
           className="rounded-[3px] border border-line-1 px-4 py-2 text-[14px] text-text-1 disabled:opacity-50"
         >
-          Weiteren Passkey anlegen
+          {meine.length === 0 ? "Passkey anlegen" : "Weiteren Passkey anlegen"}
         </button>
         <button
           type="button"
@@ -214,6 +223,15 @@ export function MeinZugang() {
         Zwei Passkeys auf zwei Geräten sind der beste Rückweg. Ein in der Wolke gesicherter Passkey
         (iCloud-Schlüsselbund, Google-Passwortmanager) liegt ohnehin auf mehreren.
       </p>
+
+      <MeinPasswort
+        email={ich.ausweis.email ?? ""}
+        vorhanden={hatPasswort}
+        passkeys={meine.length}
+        mindestlaenge={mindestlaenge}
+        laeuft={laeuft}
+        fuehre={fuehre}
+      />
 
       {codes ? (
         <div className="flex flex-col gap-2 rounded-[3px] border border-amber/40 bg-surface-2 p-4">
