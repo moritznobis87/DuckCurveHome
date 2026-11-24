@@ -1,0 +1,962 @@
+[
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Grund flach (#082431, Telefon; handy.css:109)",
+  "wcag": 13.689485925232889,
+  "apca": 93.51422658865944,
+  "tHex": "#ebedef",
+  "fHex": "#082431"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Verlauf Anfang (#082431)",
+  "wcag": 13.689485925232889,
+  "apca": 93.51422658865944,
+  "tHex": "#ebedef",
+  "fHex": "#082431"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Verlauf 62 % (#0f2e3d)",
+  "wcag": 12.20348975186111,
+  "apca": 92.41085726870463,
+  "tHex": "#eceeef",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Verlauf Ende (#153c4c)",
+  "wcag": 10.200522777438676,
+  "apca": 89.69509393458677,
+  "tHex": "#eceff1",
+  "fHex": "#153c4c"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Flaeche 1 (#0f2e3d; uebersicht-karte, Blaetter)",
+  "wcag": 12.20348975186111,
+  "apca": 92.41085726870463,
+  "tHex": "#eceeef",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Flaeche 2 (#123544; .card)",
+  "wcag": 11.22779923160008,
+  "apca": 91.48303692707148,
+  "tHex": "#eceff0",
+  "fHex": "#123544"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Flaeche 3 (#173f50; Hover, Regler)",
+  "wcag": 9.821853853488705,
+  "apca": 89.2797163400477,
+  "tHex": "#ecf0f1",
+  "fHex": "#173f50"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Kachel Jetzt rgba(15,46,61,.55) auf Verlauf 62 % (globals.css:236)",
+  "wcag": 12.20348975186111,
+  "apca": 92.41085726870463,
+  "tHex": "#eceeef",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Segment-Grund Weiss .07 auf Grund (handy.css:155)",
+  "wcag": 11.474400568808194,
+  "apca": 92.01000935955975,
+  "tHex": "#edeff0",
+  "fHex": "#19333f"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Segment-Grund Weiss .07 auf Flaeche 2 (handy.css:309)",
+  "wcag": 9.199096080872309,
+  "apca": 88.12436407152994,
+  "tHex": "#edf0f1",
+  "fHex": "#234351"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Blatt #0b2a39 (globals.css:265)",
+  "wcag": 12.822134772926972,
+  "apca": 93.00358121960738,
+  "tHex": "#ebeeef",
+  "fHex": "#0b2a39"
+ },
+ {
+  "text": "text-1 (Weiss .92)",
+  "flaeche": "Buehne unten rgba(5,22,31,.9) auf Verlauf",
+  "wcag": 15.384466400076862,
+  "apca": 94.84760249588354,
+  "tHex": "#ebeded",
+  "fHex": "#061822"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Grund flach (#082431, Telefon; handy.css:109)",
+  "wcag": 8.883360542556108,
+  "apca": 66.51688866011423,
+  "tHex": "#bac2c5",
+  "fHex": "#082431"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Verlauf Anfang (#082431)",
+  "wcag": 8.883360542556108,
+  "apca": 66.51688866011423,
+  "tHex": "#bac2c5",
+  "fHex": "#082431"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Verlauf 62 % (#0f2e3d)",
+  "wcag": 8.033616194840976,
+  "apca": 66.068390359438,
+  "tHex": "#bcc4c9",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Verlauf Ende (#153c4c)",
+  "wcag": 6.9040162135255745,
+  "apca": 64.78654926094981,
+  "tHex": "#bdc8cd",
+  "fHex": "#153c4c"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Flaeche 1 (#0f2e3d; uebersicht-karte, Blaetter)",
+  "wcag": 8.033616194840976,
+  "apca": 66.068390359438,
+  "tHex": "#bcc4c9",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Flaeche 2 (#123544; .card)",
+  "wcag": 7.478693562665375,
+  "apca": 65.68310003135934,
+  "tHex": "#bdc6cb",
+  "fHex": "#123544"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Flaeche 3 (#173f50; Hover, Regler)",
+  "wcag": 6.673923690982768,
+  "apca": 64.4972569913436,
+  "tHex": "#bec9ce",
+  "fHex": "#173f50"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Kachel Jetzt rgba(15,46,61,.55) auf Verlauf 62 % (globals.css:236)",
+  "wcag": 8.033616194840976,
+  "apca": 66.068390359438,
+  "tHex": "#bcc4c9",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Segment-Grund Weiss .07 auf Grund (handy.css:155)",
+  "wcag": 7.649059952014481,
+  "apca": 66.22448528834424,
+  "tHex": "#bfc6c9",
+  "fHex": "#19333f"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Segment-Grund Weiss .07 auf Flaeche 2 (handy.css:309)",
+  "wcag": 6.325160179239548,
+  "apca": 63.98957114640736,
+  "tHex": "#c1cace",
+  "fHex": "#234351"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Blatt #0b2a39 (globals.css:265)",
+  "wcag": 8.368141704478553,
+  "apca": 66.21384103100114,
+  "tHex": "#bbc3c8",
+  "fHex": "#0b2a39"
+ },
+ {
+  "text": "text-2 (Weiss .72)",
+  "flaeche": "Buehne unten rgba(5,22,31,.9) auf Verlauf",
+  "wcag": 9.641266823673655,
+  "apca": 65.9879325614223,
+  "tHex": "#b9bec1",
+  "fHex": "#061822"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Grund flach (#082431, Telefon; handy.css:109)",
+  "wcag": 4.697673762011446,
+  "apca": 37.535856628192406,
+  "tHex": "#7f8d94",
+  "fHex": "#082431"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Verlauf Anfang (#082431)",
+  "wcag": 4.697673762011446,
+  "apca": 37.535856628192406,
+  "tHex": "#7f8d94",
+  "fHex": "#082431"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Verlauf 62 % (#0f2e3d)",
+  "wcag": 4.414855725821956,
+  "apca": 38.17844379084062,
+  "tHex": "#82929a",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Verlauf Ende (#153c4c)",
+  "wcag": 4.0061241858371615,
+  "apca": 38.502994386886215,
+  "tHex": "#859aa2",
+  "fHex": "#153c4c"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Flaeche 1 (#0f2e3d; uebersicht-karte, Blaetter)",
+  "wcag": 4.414855725821956,
+  "apca": 38.17844379084062,
+  "tHex": "#82929a",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Flaeche 2 (#123544; .card)",
+  "wcag": 4.22468792817539,
+  "apca": 38.57443127503132,
+  "tHex": "#84969e",
+  "fHex": "#123544"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Flaeche 3 (#173f50; Hover, Regler)",
+  "wcag": 3.8847105227854275,
+  "apca": 38.18036503533687,
+  "tHex": "#869ba4",
+  "fHex": "#173f50"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Kachel Jetzt rgba(15,46,61,.55) auf Verlauf 62 % (globals.css:236)",
+  "wcag": 4.414855725821956,
+  "apca": 38.17844379084062,
+  "tHex": "#82929a",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Segment-Grund Weiss .07 auf Grund (handy.css:155)",
+  "wcag": 4.287338654908959,
+  "apca": 38.75689246249237,
+  "tHex": "#87959b",
+  "fHex": "#19333f"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Segment-Grund Weiss .07 auf Flaeche 2 (handy.css:309)",
+  "wcag": 3.7622260237969165,
+  "apca": 38.35824646643656,
+  "tHex": "#8d9da5",
+  "fHex": "#234351"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Blatt #0b2a39 (globals.css:265)",
+  "wcag": 4.528698289265137,
+  "apca": 37.90665078371941,
+  "tHex": "#809098",
+  "fHex": "#0b2a39"
+ },
+ {
+  "text": "text-3 (Weiss .48)",
+  "flaeche": "Buehne unten rgba(5,22,31,.9) auf Verlauf",
+  "wcag": 4.934501768165577,
+  "apca": 36.42079846927705,
+  "tHex": "#7e878c",
+  "fHex": "#061822"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Grund flach (#082431, Telefon; handy.css:109)",
+  "wcag": 3.012031964954981,
+  "apca": 22.762470062666125,
+  "tHex": "#5b6e76",
+  "fHex": "#082431"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Verlauf Anfang (#082431)",
+  "wcag": 3.012031964954981,
+  "apca": 22.762470062666125,
+  "tHex": "#5b6e76",
+  "fHex": "#082431"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Verlauf 62 % (#0f2e3d)",
+  "wcag": 2.9061919151480433,
+  "apca": 23.699211691906022,
+  "tHex": "#60747e",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Verlauf Ende (#153c4c)",
+  "wcag": 2.738555576988314,
+  "apca": 24.510182299364306,
+  "tHex": "#647e88",
+  "fHex": "#153c4c"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Flaeche 1 (#0f2e3d; uebersicht-karte, Blaetter)",
+  "wcag": 2.9061919151480433,
+  "apca": 23.699211691906022,
+  "tHex": "#60747e",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Flaeche 2 (#123544; .card)",
+  "wcag": 2.8311488960916744,
+  "apca": 24.28331183856706,
+  "tHex": "#627983",
+  "fHex": "#123544"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Flaeche 3 (#173f50; Hover, Regler)",
+  "wcag": 2.6908714573385137,
+  "apca": 24.5229605405502,
+  "tHex": "#65808b",
+  "fHex": "#173f50"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Kachel Jetzt rgba(15,46,61,.55) auf Verlauf 62 % (globals.css:236)",
+  "wcag": 2.9061919151480433,
+  "apca": 23.699211691906022,
+  "tHex": "#60747e",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Segment-Grund Weiss .07 auf Grund (handy.css:155)",
+  "wcag": 2.8760416607326333,
+  "apca": 24.533370447404703,
+  "tHex": "#667880",
+  "fHex": "#19333f"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Segment-Grund Weiss .07 auf Flaeche 2 (handy.css:309)",
+  "wcag": 2.6170277019957213,
+  "apca": 24.558774075401693,
+  "tHex": "#6d828b",
+  "fHex": "#234351"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Blatt #0b2a39 (globals.css:265)",
+  "wcag": 2.9643385667419886,
+  "apca": 23.466280080021154,
+  "tHex": "#5d727c",
+  "fHex": "#0b2a39"
+ },
+ {
+  "text": "text-3 x opacity-70 (Weiss .336; RoomsReport.tsx:234)",
+  "flaeche": "Buehne unten rgba(5,22,31,.9) auf Verlauf",
+  "wcag": 3.057972526260036,
+  "apca": 21.230564029130353,
+  "tHex": "#5a666c",
+  "fHex": "#061822"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Grund flach (#082431, Telefon; handy.css:109)",
+  "wcag": 5.96179413238619,
+  "apca": 47.16922906536081,
+  "tHex": "#7fa3b3",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Verlauf Anfang (#082431)",
+  "wcag": 5.96179413238619,
+  "apca": 47.16922906536081,
+  "tHex": "#7fa3b3",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Verlauf 62 % (#0f2e3d)",
+  "wcag": 5.270374345303091,
+  "apca": 45.470585286181546,
+  "tHex": "#7fa3b3",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Verlauf Ende (#153c4c)",
+  "wcag": 4.371289751040877,
+  "apca": 42.19971458380931,
+  "tHex": "#7fa3b3",
+  "fHex": "#153c4c"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Flaeche 1 (#0f2e3d; uebersicht-karte, Blaetter)",
+  "wcag": 5.270374345303091,
+  "apca": 45.470585286181546,
+  "tHex": "#7fa3b3",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Flaeche 2 (#123544; .card)",
+  "wcag": 4.814670941734523,
+  "apca": 44.03467894217436,
+  "tHex": "#7fa3b3",
+  "fHex": "#123544"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Flaeche 3 (#173f50; Hover, Regler)",
+  "wcag": 4.182007656897683,
+  "apca": 41.3218311445626,
+  "tHex": "#7fa3b3",
+  "fHex": "#173f50"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Kachel Jetzt rgba(15,46,61,.55) auf Verlauf 62 % (globals.css:236)",
+  "wcag": 5.270374345303091,
+  "apca": 45.470585286181546,
+  "tHex": "#7fa3b3",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Segment-Grund Weiss .07 auf Grund (handy.css:155)",
+  "wcag": 4.91113908509399,
+  "apca": 44.42634780400544,
+  "tHex": "#7fa3b3",
+  "fHex": "#19333f"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Segment-Grund Weiss .07 auf Flaeche 2 (handy.css:309)",
+  "wcag": 3.909512031349862,
+  "apca": 40.03158285026667,
+  "tHex": "#7fa3b3",
+  "fHex": "#234351"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Blatt #0b2a39 (globals.css:265)",
+  "wcag": 5.548049078456569,
+  "apca": 46.198328828108004,
+  "tHex": "#7fa3b3",
+  "fHex": "#0b2a39"
+ },
+ {
+  "text": "Kicker/Mist #7fa3b3",
+  "flaeche": "Buehne unten rgba(5,22,31,.9) auf Verlauf",
+  "wcag": 6.708777555254055,
+  "apca": 48.59593407849652,
+  "tHex": "#7fa3b3",
+  "fHex": "#061822"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Grund flach (#082431, Telefon; handy.css:109)",
+  "wcag": 7.9957398601262515,
+  "apca": 61.329077178774924,
+  "tHex": "#f2a900",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Verlauf Anfang (#082431)",
+  "wcag": 7.9957398601262515,
+  "apca": 61.329077178774924,
+  "tHex": "#f2a900",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Verlauf 62 % (#0f2e3d)",
+  "wcag": 7.068432974162443,
+  "apca": 59.63043339959566,
+  "tHex": "#f2a900",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Verlauf Ende (#153c4c)",
+  "wcag": 5.8626136573034575,
+  "apca": 56.35956269722342,
+  "tHex": "#f2a900",
+  "fHex": "#153c4c"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Flaeche 1 (#0f2e3d; uebersicht-karte, Blaetter)",
+  "wcag": 7.068432974162443,
+  "apca": 59.63043339959566,
+  "tHex": "#f2a900",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Flaeche 2 (#123544; .card)",
+  "wcag": 6.45726026551173,
+  "apca": 58.19452705558849,
+  "tHex": "#f2a900",
+  "fHex": "#123544"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Flaeche 3 (#173f50; Hover, Regler)",
+  "wcag": 5.608755447619999,
+  "apca": 55.481679257976715,
+  "tHex": "#f2a900",
+  "fHex": "#173f50"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Kachel Jetzt rgba(15,46,61,.55) auf Verlauf 62 % (globals.css:236)",
+  "wcag": 7.068432974162443,
+  "apca": 59.63043339959566,
+  "tHex": "#f2a900",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Segment-Grund Weiss .07 auf Grund (handy.css:155)",
+  "wcag": 6.586639804952978,
+  "apca": 58.586195917419545,
+  "tHex": "#f2a900",
+  "fHex": "#19333f"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Segment-Grund Weiss .07 auf Flaeche 2 (handy.css:309)",
+  "wcag": 5.2432942984221675,
+  "apca": 54.19143096368079,
+  "tHex": "#f2a900",
+  "fHex": "#234351"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Blatt #0b2a39 (globals.css:265)",
+  "wcag": 7.440840152727085,
+  "apca": 60.35817694152211,
+  "tHex": "#f2a900",
+  "fHex": "#0b2a39"
+ },
+ {
+  "text": "Amber #f2a900",
+  "flaeche": "Buehne unten rgba(5,22,31,.9) auf Verlauf",
+  "wcag": 8.997566658645303,
+  "apca": 62.755782191910626,
+  "tHex": "#f2a900",
+  "fHex": "#061822"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Grund flach (#082431, Telefon; handy.css:109)",
+  "wcag": 11.66265588434234,
+  "apca": 82.78766238495628,
+  "tHex": "#ffd778",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Verlauf Anfang (#082431)",
+  "wcag": 11.66265588434234,
+  "apca": 82.78766238495628,
+  "tHex": "#ffd778",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Verlauf 62 % (#0f2e3d)",
+  "wcag": 10.310077974184292,
+  "apca": 81.08901860577701,
+  "tHex": "#ffd778",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Verlauf Ende (#153c4c)",
+  "wcag": 8.55125940364152,
+  "apca": 77.81814790340478,
+  "tHex": "#ffd778",
+  "fHex": "#153c4c"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Flaeche 1 (#0f2e3d; uebersicht-karte, Blaetter)",
+  "wcag": 10.310077974184292,
+  "apca": 81.08901860577701,
+  "tHex": "#ffd778",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Flaeche 2 (#123544; .card)",
+  "wcag": 9.418616131804875,
+  "apca": 79.65311226176983,
+  "tHex": "#ffd778",
+  "fHex": "#123544"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Flaeche 3 (#173f50; Hover, Regler)",
+  "wcag": 8.18097960530568,
+  "apca": 76.94026446415808,
+  "tHex": "#ffd778",
+  "fHex": "#173f50"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Kachel Jetzt rgba(15,46,61,.55) auf Verlauf 62 % (globals.css:236)",
+  "wcag": 10.310077974184292,
+  "apca": 81.08901860577701,
+  "tHex": "#ffd778",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Segment-Grund Weiss .07 auf Grund (handy.css:155)",
+  "wcag": 9.607330256247907,
+  "apca": 80.0447811236009,
+  "tHex": "#ffd778",
+  "fHex": "#19333f"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Segment-Grund Weiss .07 auf Flaeche 2 (handy.css:309)",
+  "wcag": 7.647914786195455,
+  "apca": 75.65001616986213,
+  "tHex": "#ffd778",
+  "fHex": "#234351"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Blatt #0b2a39 (globals.css:265)",
+  "wcag": 10.853274332299634,
+  "apca": 81.81676214770347,
+  "tHex": "#ffd778",
+  "fHex": "#0b2a39"
+ },
+ {
+  "text": "Amber weich #ffd778",
+  "flaeche": "Buehne unten rgba(5,22,31,.9) auf Verlauf",
+  "wcag": 13.123929188781185,
+  "apca": 84.21436739809197,
+  "tHex": "#ffd778",
+  "fHex": "#061822"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Grund flach (#082431, Telefon; handy.css:109)",
+  "wcag": 4.18824703682209,
+  "apca": 34.328789850033345,
+  "tHex": "#e0533d",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Verlauf Anfang (#082431)",
+  "wcag": 4.18824703682209,
+  "apca": 34.328789850033345,
+  "tHex": "#e0533d",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Verlauf 62 % (#0f2e3d)",
+  "wcag": 3.7025145861291135,
+  "apca": 32.630146070854096,
+  "tHex": "#e0533d",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Verlauf Ende (#153c4c)",
+  "wcag": 3.070894589840522,
+  "apca": 29.359275368481853,
+  "tHex": "#e0533d",
+  "fHex": "#153c4c"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Flaeche 1 (#0f2e3d; uebersicht-karte, Blaetter)",
+  "wcag": 3.7025145861291135,
+  "apca": 32.630146070854096,
+  "tHex": "#e0533d",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Flaeche 2 (#123544; .card)",
+  "wcag": 3.382376321156538,
+  "apca": 31.194239726846902,
+  "tHex": "#e0533d",
+  "fHex": "#123544"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Flaeche 3 (#173f50; Hover, Regler)",
+  "wcag": 2.937921167358151,
+  "apca": 28.481391929235134,
+  "tHex": "#e0533d",
+  "fHex": "#173f50"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Kachel Jetzt rgba(15,46,61,.55) auf Verlauf 62 % (globals.css:236)",
+  "wcag": 3.7025145861291135,
+  "apca": 32.630146070854096,
+  "tHex": "#e0533d",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Segment-Grund Weiss .07 auf Grund (handy.css:155)",
+  "wcag": 3.450146594098067,
+  "apca": 31.585908588677974,
+  "tHex": "#e0533d",
+  "fHex": "#19333f"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Segment-Grund Weiss .07 auf Flaeche 2 (handy.css:309)",
+  "wcag": 2.746489029497522,
+  "apca": 27.191143634939202,
+  "tHex": "#e0533d",
+  "fHex": "#234351"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Blatt #0b2a39 (globals.css:265)",
+  "wcag": 3.8975851223646445,
+  "apca": 33.35788961278055,
+  "tHex": "#e0533d",
+  "fHex": "#0b2a39"
+ },
+ {
+  "text": "Alarm #e0533d",
+  "flaeche": "Buehne unten rgba(5,22,31,.9) auf Verlauf",
+  "wcag": 4.713013749309923,
+  "apca": 35.755494863169055,
+  "tHex": "#e0533d",
+  "fHex": "#061822"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Grund flach (#082431, Telefon; handy.css:109)",
+  "wcag": 6.6902325838278704,
+  "apca": 52.477949335725015,
+  "tHex": "#e0966b",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Verlauf Anfang (#082431)",
+  "wcag": 6.6902325838278704,
+  "apca": 52.477949335725015,
+  "tHex": "#e0966b",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Verlauf 62 % (#0f2e3d)",
+  "wcag": 5.914332060272685,
+  "apca": 50.77930555654575,
+  "tHex": "#e0966b",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Verlauf Ende (#153c4c)",
+  "wcag": 4.905393322271813,
+  "apca": 47.50843485417352,
+  "tHex": "#e0966b",
+  "fHex": "#153c4c"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Flaeche 1 (#0f2e3d; uebersicht-karte, Blaetter)",
+  "wcag": 5.914332060272685,
+  "apca": 50.77930555654575,
+  "tHex": "#e0966b",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Flaeche 2 (#123544; .card)",
+  "wcag": 5.402948793521836,
+  "apca": 49.343399212538564,
+  "tHex": "#e0966b",
+  "fHex": "#123544"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Flaeche 3 (#173f50; Hover, Regler)",
+  "wcag": 4.692983902279795,
+  "apca": 46.6305514149268,
+  "tHex": "#e0966b",
+  "fHex": "#173f50"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Kachel Jetzt rgba(15,46,61,.55) auf Verlauf 62 % (globals.css:236)",
+  "wcag": 5.914332060272685,
+  "apca": 50.77930555654575,
+  "tHex": "#e0966b",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Segment-Grund Weiss .07 auf Grund (handy.css:155)",
+  "wcag": 5.511203842534501,
+  "apca": 49.73506807436965,
+  "tHex": "#e0966b",
+  "fHex": "#19333f"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Segment-Grund Weiss .07 auf Flaeche 2 (handy.css:309)",
+  "wcag": 4.387193552511223,
+  "apca": 45.34030312063088,
+  "tHex": "#e0966b",
+  "fHex": "#234351"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Blatt #0b2a39 (globals.css:265)",
+  "wcag": 6.225934323986807,
+  "apca": 51.507049098472216,
+  "tHex": "#e0966b",
+  "fHex": "#0b2a39"
+ },
+ {
+  "text": "Waermepumpe #e0966b (als Text)",
+  "flaeche": "Buehne unten rgba(5,22,31,.9) auf Verlauf",
+  "wcag": 7.528485754648049,
+  "apca": 53.90465434886072,
+  "tHex": "#e0966b",
+  "fHex": "#061822"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Grund flach (#082431, Telefon; handy.css:109)",
+  "wcag": 7.522849367170266,
+  "apca": 57.98172964401896,
+  "tHex": "#8fbf6b",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Verlauf Anfang (#082431)",
+  "wcag": 7.522849367170266,
+  "apca": 57.98172964401896,
+  "tHex": "#8fbf6b",
+  "fHex": "#082431"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Verlauf 62 % (#0f2e3d)",
+  "wcag": 6.650386012648959,
+  "apca": 56.2830858648397,
+  "tHex": "#8fbf6b",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Verlauf Ende (#153c4c)",
+  "wcag": 5.5158822339566065,
+  "apca": 53.012215162467456,
+  "tHex": "#8fbf6b",
+  "fHex": "#153c4c"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Flaeche 1 (#0f2e3d; uebersicht-karte, Blaetter)",
+  "wcag": 6.650386012648959,
+  "apca": 56.2830858648397,
+  "tHex": "#8fbf6b",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Flaeche 2 (#123544; .card)",
+  "wcag": 6.075359773059399,
+  "apca": 54.847179520832526,
+  "tHex": "#8fbf6b",
+  "fHex": "#123544"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Flaeche 3 (#173f50; Hover, Regler)",
+  "wcag": 5.277037911170194,
+  "apca": 52.134331723220754,
+  "tHex": "#8fbf6b",
+  "fHex": "#173f50"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Kachel Jetzt rgba(15,46,61,.55) auf Verlauf 62 % (globals.css:236)",
+  "wcag": 6.650386012648959,
+  "apca": 56.2830858648397,
+  "tHex": "#8fbf6b",
+  "fHex": "#0f2e3d"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Segment-Grund Weiss .07 auf Grund (handy.css:155)",
+  "wcag": 6.197087443473506,
+  "apca": 55.23884838266358,
+  "tHex": "#8fbf6b",
+  "fHex": "#19333f"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Segment-Grund Weiss .07 auf Flaeche 2 (handy.css:309)",
+  "wcag": 4.933191159892218,
+  "apca": 50.844083428924826,
+  "tHex": "#8fbf6b",
+  "fHex": "#234351"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Blatt #0b2a39 (globals.css:265)",
+  "wcag": 7.0007679856250595,
+  "apca": 57.01082940676616,
+  "tHex": "#8fbf6b",
+  "fHex": "#0b2a39"
+ },
+ {
+  "text": "Puffer #8fbf6b (als Text)",
+  "flaeche": "Buehne unten rgba(5,22,31,.9) auf Verlauf",
+  "wcag": 8.465425317500678,
+  "apca": 59.408434657154665,
+  "tHex": "#8fbf6b",
+  "fHex": "#061822"
+ }
+]
