@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { AREAS, LEISTE, ansichtOf, areaOf, tabOf, tabsDerGruppe, type Tab } from "@/lib/areas";
+import { AREAS, LEISTE, ansichtOf, areaOf, hatUebersicht, tabOf, tabsDerGruppe, type Tab } from "@/lib/areas";
 import { Icon } from "@/components/ui/Icon";
 import { useRole } from "@/lib/live/useRole";
 
@@ -116,23 +116,27 @@ export function AreaTabs({ period, anchor, right }: { period?: string; anchor?: 
       </Link>
     );
   };
-  // Ein Bereich mit Gruppen: am Rechner stehen alle Gruppen in der Zeile, je mit ihrem Namen
-  // davor. Am Handy bleibt nur die Gruppe der Seite, auf der man steht, und davor der Weg
-  // zurück zur Übersicht; die anderen Gruppen erreicht man dort. So rollt die Zeile nicht mehr.
-  const aufUebersicht = area.gruppen !== undefined && current === undefined;
+  // Ein Bereich mit Übersicht: vor den Reitern steht der Weg zu ihr zurück. Hat er dazu Gruppen,
+  // stehen am Rechner alle Gruppen in der Zeile, je mit ihrem Namen davor. Am Handy bleibt nur
+  // die Gruppe der Seite, auf der man steht; die anderen Gruppen erreicht man in der Übersicht.
+  // So rollt die Zeile nicht mehr.
+  const mitUebersicht = hatUebersicht(area);
+  const aufUebersicht = mitUebersicht && current === undefined;
   return (
     <div className={`area-tabs flex items-baseline justify-between gap-6 border-b border-line-1${aufUebersicht ? " area-tabs-uebersicht" : ""}`}>
       <div ref={reihe} className="area-tabs-row flex gap-6">
+        {mitUebersicht ? (
+          <Link
+            href={area.href}
+            aria-current={aufUebersicht ? "page" : undefined}
+            aria-label={`Übersicht ${area.label}`}
+            className={`area-tab area-zurueck whitespace-nowrap pb-2.5 pt-2 text-[13px]${aufUebersicht ? " area-tab-an" : ""}`}
+          >
+            <span className="area-zurueck-wort">Übersicht</span>
+          </Link>
+        ) : null}
         {area.gruppen ? (
           <>
-            <Link
-              href={area.href}
-              aria-current={aufUebersicht ? "page" : undefined}
-              aria-label={`Übersicht ${area.label}`}
-              className={`area-tab area-zurueck whitespace-nowrap pb-2.5 pt-2 text-[13px]${aufUebersicht ? " area-tab-an" : ""}`}
-            >
-              <span className="area-zurueck-wort">Übersicht</span>
-            </Link>
             {area.gruppen.map((g) => {
               const inGruppe = tabsDerGruppe(area, g.name).filter((t) => tabs.includes(t));
               if (inGruppe.length === 0) return null;

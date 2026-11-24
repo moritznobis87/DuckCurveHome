@@ -108,14 +108,32 @@ final class BereicheTests: XCTestCase {
         XCTAssertNil(Bereiche.ansichtVon(Bereiche.reiterVon(anlage, "/waerme/wirkung"), "/waerme/wirkung"))
     }
 
+    func testEnergieUndAnlageOeffnenAufIhrerUebersicht() {
+        XCTAssertEqual(Bereiche.alle.filter(\.hatUebersicht).map(\.weg), ["/energie", "/anlage"])
+        // Die Startseite hat keine Reiter und damit auch keine Uebersicht.
+        XCTAssertFalse(Bereiche.alle.first { $0.schluessel == .jetzt }!.hatUebersicht)
+        // Die Karte auf der Uebersicht braucht je Seite einen Satz.
+        for b in Bereiche.alle where b.hatUebersicht {
+            for r in b.reiter { XCTAssertTrue(r.beschreibung?.hasSuffix(".") ?? false, "\(r.name) hat keinen Satz") }
+        }
+        // Die Uebersicht gehoert zu ihrem Bereich, und auf ihr ist kein Reiter aktiv.
+        let energie = Bereiche.bereichVon("/energie")
+        XCTAssertEqual(energie.schluessel, .energie)
+        XCTAssertNil(Bereiche.reiterVon(energie, "/energie"))
+        XCTAssertTrue(Bereiche.istUebersicht("/energie"))
+        XCTAssertFalse(Bereiche.istUebersicht("/strom"))
+        XCTAssertEqual(Bereiche.bereichVon("/strom/pv").schluessel, .energie)
+    }
+
     func testJedeErsteAnsichtHatDieAdresseIhresReiters() {
         for b in Bereiche.alle {
-            // Ein Bereich mit Gruppen hat eine Uebersicht unter eigener Adresse.
-            if let ersterReiter = b.reiter.first, b.gruppen.isEmpty {
+            // Ein Bereich geht entweder auf seinem ersten Reiter auf oder auf einer Uebersicht
+            // unter eigener Adresse. Gruppen gibt es nur mit Uebersicht.
+            if let ersterReiter = b.reiter.first, !b.hatUebersicht {
                 XCTAssertEqual(ersterReiter.weg, b.weg, "Bereich \(b.name) zeigt nicht auf seinen ersten Reiter")
             }
             if !b.gruppen.isEmpty {
-                XCTAssertFalse(b.reiter.map(\.weg).contains(b.weg), "Die Uebersicht von \(b.name) ist auch ein Reiter")
+                XCTAssertTrue(b.hatUebersicht, "\(b.name) hat Gruppen, aber keine Uebersicht")
             }
             for r in b.reiter where !r.unter.isEmpty {
                 XCTAssertEqual(r.unter.first?.weg, r.weg, "Reiter \(r.name) zeigt nicht auf seine erste Ansicht")
@@ -217,6 +235,7 @@ final class KickerTests: XCTestCase {
         "/geld/rechnungen": "Tibber · nachgerechnet und gegen die eigene Messung gehalten",
         // Die Uebersicht des Bereichs: kein Reiter, aber eine Zeile (`Bereichsuebersicht.tsx`).
         "/anlage": "Alle Seiten im Bereich Anlage",
+        "/energie": "Alle Seiten im Bereich Energie",
         "/waerme/anlage": "Strom · Speicher · vier Kreise",
         "/waerme/wiedergabe": "Ein Tag am Anlagenschema · zum Durchfahren",
         "/waerme/waermepumpe": "Außengerät · Innengerät · Speicher",

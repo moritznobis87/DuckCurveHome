@@ -39,7 +39,7 @@
     },
     {
       "schluessel": "energie",
-      "weg": "/strom",
+      "weg": "/energie",
       "name": "Energie",
       "nurHausherr": false,
       "inLeiste": true,
@@ -51,7 +51,7 @@
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
-          "beschreibung": null,
+          "beschreibung": "Woher der Strom kam und wer ihn verbraucht hat.",
           "unter": []
         },
         {
@@ -60,7 +60,7 @@
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
-          "beschreibung": null,
+          "beschreibung": "Was die Wärmepumpe gebraucht hat und woher die Wärme kam.",
           "unter": []
         },
         {
@@ -69,7 +69,7 @@
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
-          "beschreibung": null,
+          "beschreibung": "Was die Anlage erzeugt hat und wohin der Sonnenstrom ging.",
           "unter": []
         },
         {
@@ -78,7 +78,7 @@
           "zeitraum": false,
           "nurHausherr": true,
           "gruppe": null,
-          "beschreibung": null,
+          "beschreibung": "Wie gut die Vorhersage des Sonnenertrags getroffen hat.",
           "unter": []
         },
         {
@@ -87,7 +87,7 @@
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
-          "beschreibung": null,
+          "beschreibung": "Wann der Speicher geladen und entladen hat.",
           "unter": []
         },
         {
@@ -96,7 +96,7 @@
           "zeitraum": true,
           "nurHausherr": false,
           "gruppe": null,
-          "beschreibung": null,
+          "beschreibung": "Wann das Auto geladen hat und mit welchem Strom.",
           "unter": []
         },
         {
@@ -105,7 +105,7 @@
           "zeitraum": false,
           "nurHausherr": false,
           "gruppe": null,
-          "beschreibung": null,
+          "beschreibung": "Jede Stunde eines Jahres als Bild.",
           "unter": []
         }
       ]

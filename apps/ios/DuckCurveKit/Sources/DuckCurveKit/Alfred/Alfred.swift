@@ -29,6 +29,7 @@ public enum Alfred {
     public static let seiten: [String: String] = [
         "/": "Jetzt ist die Wandanzeige: der Energiefluss im Augenblick (Photovoltaik, Netz, Speicher, Haus, Wärmepumpe, Wallbox), der Pufferspeicher, der Strompreis und der Ausblick auf die nächsten 24 Stunden.",
         "/haus": "Haus zeigt die Räume, als Liste zum Stellen der Solltemperatur oder als Modell mit Temperaturen und Kontakten.",
+        "/energie": "Energie ist die Übersicht über Strom und Wärme des Hauses. Jede Karte ist eine Seite und zeigt ihre Zahl von heute.",
         "/strom": "Strom zeigt die Strombilanz des gewählten Zeitraums: Erzeugung, Netzbezug, Einspeisung, Speicher und Verbrauch.",
         "/waerme": "Wärme zeigt, was die Wärmepumpe an Strom gebraucht und gekostet hat, und die Wärmebilanz der Erzeuger.",
         "/strom/pv": "Photovoltaik zeigt Erzeugung, Eigenverbrauch und Einspeisung der Anlage im gewählten Zeitraum.",

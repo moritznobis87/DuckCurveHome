@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AREAS, LEISTE, ansichtOf, areaOf, tabOf, tabsDerGruppe } from "./areas";
+import { AREAS, LEISTE, ansichtOf, areaOf, hatUebersicht, tabOf, tabsDerGruppe } from "./areas";
 
 describe("Bereiche", () => {
   it("hat fuenf Bereiche in der Leiste und das System dahinter", () => {
@@ -95,12 +95,29 @@ describe("Bereiche", () => {
     expect(tabOf(anlage, "/anlage")).toBeUndefined();
   });
 
-  it("gibt jeder ersten Ansicht die Adresse ihres Reiters, und dem Bereich die seines ersten Reiters", () => {
+  it("gibt jeder ersten Ansicht die Adresse ihres Reiters, und dem Bereich die seines ersten Reiters oder seiner Uebersicht", () => {
     for (const a of AREAS) {
-      // Ein Bereich mit Gruppen hat eine Uebersicht unter eigener Adresse.
-      if (a.tabs[0] && !a.gruppen) expect(a.tabs[0].href).toBe(a.href);
-      if (a.gruppen) expect(a.tabs.map((t) => t.href)).not.toContain(a.href);
+      // Ein Bereich geht entweder auf seinem ersten Reiter auf oder auf einer Uebersicht unter
+      // eigener Adresse. Gruppen gibt es nur mit Uebersicht.
+      if (a.tabs[0] && !hatUebersicht(a)) expect(a.tabs[0].href).toBe(a.href);
+      if (a.gruppen) expect(hatUebersicht(a)).toBe(true);
       for (const t of a.tabs) if (t.unter) expect(t.unter[0]?.href).toBe(t.href);
     }
+  });
+
+  it("oeffnet Energie und Anlage auf ihrer Uebersicht, die anderen auf ihrer ersten Seite", () => {
+    expect(AREAS.filter(hatUebersicht).map((a) => [a.key, a.href])).toEqual([
+      ["energie", "/energie"],
+      ["anlage", "/anlage"],
+    ]);
+    // Die Startseite hat keine Reiter und damit auch keine Uebersicht.
+    expect(hatUebersicht(AREAS.find((a) => a.key === "jetzt")!)).toBe(false);
+    // Die Karte auf der Uebersicht braucht je Seite einen Satz.
+    for (const a of AREAS.filter(hatUebersicht)) for (const t of a.tabs) expect(t.beschreibung?.endsWith(".")).toBe(true);
+    // Die Uebersicht gehoert zu ihrem Bereich, und auf ihr ist kein Reiter aktiv.
+    const energie = areaOf("/energie");
+    expect(energie.key).toBe("energie");
+    expect(tabOf(energie, "/energie")).toBeUndefined();
+    expect(areaOf("/strom/pv").key).toBe("energie");
   });
 });

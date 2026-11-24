@@ -92,19 +92,21 @@ export const AREAS: Area[] = [
   },
   {
     key: "energie",
-    href: "/strom",
+    // Der Bereich geht auf seiner Übersicht auf (Vorgabe des Hausherrn vom 24.11.2026). Die
+    // Seiten behalten ihre Adressen; neu ist nur `/energie`.
+    href: "/energie",
     icon: "bolt",
     label: "Energie",
     tabs: [
-      { href: "/strom", label: "Strom", dated: true },
-      { href: "/waerme", label: "Wärme", dated: true },
-      { href: "/strom/pv", label: "Photovoltaik", dated: true },
+      { href: "/strom", label: "Strom", dated: true, beschreibung: "Woher der Strom kam und wer ihn verbraucht hat." },
+      { href: "/waerme", label: "Wärme", dated: true, beschreibung: "Was die Wärmepumpe gebraucht hat und woher die Wärme kam." },
+      { href: "/strom/pv", label: "Photovoltaik", dated: true, beschreibung: "Was die Anlage erzeugt hat und wohin der Sonnenstrom ging." },
       // Die Prognose der Photovoltaik gegen das, was wirklich kam. Sie steht neben ihr und nicht
       // als Ansicht darunter, weil sie keinen Zeitraum kennt und die Photovoltaik einen hat.
-      { href: "/system", label: "Prognose", ownerOnly: true },
-      { href: "/strom/speicher", label: "Speicher", dated: true },
-      { href: "/strom/wallbox", label: "Wallbox", dated: true },
-      { href: "/strom/jahr", label: "Jahreskarte" },
+      { href: "/system", label: "Prognose", ownerOnly: true, beschreibung: "Wie gut die Vorhersage des Sonnenertrags getroffen hat." },
+      { href: "/strom/speicher", label: "Speicher", dated: true, beschreibung: "Wann der Speicher geladen und entladen hat." },
+      { href: "/strom/wallbox", label: "Wallbox", dated: true, beschreibung: "Wann das Auto geladen hat und mit welchem Strom." },
+      { href: "/strom/jahr", label: "Jahreskarte", beschreibung: "Jede Stunde eines Jahres als Bild." },
     ],
   },
   {
@@ -217,6 +219,15 @@ export const AREAS: Area[] = [
 
 /** Die Bereiche der Leiste, in ihrer Reihenfolge. Das System gehoert nicht dazu. */
 export const LEISTE: Area[] = AREAS.filter((a) => a.leiste !== false);
+
+/**
+ * Ob ein Bereich eine Übersicht hat. Er hat eine, wenn seine eigene Adresse keine seiner Seiten
+ * ist: dann steht dort die Übersicht, und die Reiterzeile führt zu ihr zurück. Ein eigenes Feld
+ * braucht es dafür nicht, und der Seitenbaum sagt es so für Dashboard und App zugleich.
+ */
+export function hatUebersicht(area: Area): boolean {
+  return area.tabs.length > 0 && !area.tabs.some((t) => t.href === area.href);
+}
 
 /** Die Reiter einer Gruppe, in der Reihenfolge des Bereichs. */
 export function tabsDerGruppe(area: Area, gruppe: string): Tab[] {
