@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Kennlinie, KennlinienFit, KennlinienPunkt } from "@/lib/api/models";
-import { belegung, copAchse, copNach, gesamt, mitte, optionAussen, optionFeld, optionVorlauf, raster, vergleich, vergleichsVorlauf, vorlaufStufen } from "./kennlinie";
+import { belegung, copAchse, copNach, copNachHub, gesamt, hubVon, mitte, optionAussen, optionFeld, optionHub, optionVorlauf, raster, vergleich, vergleichsVorlauf, vorlaufStufen } from "./kennlinie";
 
 const punkt = (aussen: number, vorlauf: number, cop: number, strom = 2): KennlinienPunkt => ({ at: "2026-11-14T09:10:00Z", minuten: 10, aussen_c: aussen, vorlauf_c: vorlauf, cop, waerme_kw: cop * strom, strom_kw: strom });
 
@@ -82,5 +82,28 @@ describe("die gemessene Kennlinie", () => {
     // Die Achse der Arbeitszahl fasst Punkte und Annahme, auf ganze gerundet.
     expect(copAchse(d)).toEqual([2, 5]);
     expect(copAchse(antwort({ punkte: [], annahme: [] }))).toEqual([1, 6]);
+  });
+});
+
+describe("die Arbeitszahl über dem Hub", () => {
+  const hub = { art: "gerade" as const, a: 7, b_hub: -0.1, n: 12, rmse: 0.1, r2: 0.9, hub_von_k: 20, hub_bis_k: 40, guetegrad: 0.45, formel_de: "", geltung_de: "", guete_de: "" };
+
+  it("rechnet den Hub als Vorlauf minus draußen und die Arbeitszahl nach der Geraden", () => {
+    expect(hubVon(punkt(-5, 35, 3.5))).toBe(40);
+    expect(copNachHub(hub, 30)).toBeCloseTo(4, 5);
+  });
+
+  it("zeichnet jeden Punkt über seinem Hub und die Gerade nur, wo gemessen wurde", () => {
+    const o = optionHub(antwort({ hub })) as { series: Array<{ name: string; data: unknown[] }> };
+    const punkte = o.series.find((x) => x.name === "Messpunkt")!.data as Array<{ value: [number, number] }>;
+    expect(punkte.map((p) => p.value[0])).toEqual([37, 40, 38]);
+    const gerade = o.series.find((x) => x.name === "Ausgleich")!.data as Array<[number, number]>;
+    expect(gerade.map((p) => p[0])).toEqual([20, 40]);
+    expect(gerade[0]![1]).toBeCloseTo(5, 5);
+  });
+
+  it("zeigt ohne Ausgleich nur die Punkte", () => {
+    const o = optionHub(antwort({ hub: null })) as { series: Array<{ name: string }> };
+    expect(o.series.map((x) => x.name)).toEqual(["Messpunkt"]);
   });
 });

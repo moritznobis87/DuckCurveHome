@@ -13533,6 +13533,16 @@
               }
             ]
           },
+          "hub": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KennlinienHubOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "fehlt_de": {
             "anyOf": [
               {
@@ -13799,6 +13809,91 @@
         ],
         "title": "KennlinienFitOut",
         "description": "COP = a + b_aussen * Außentemperatur + c_vorlauf * Vorlauftemperatur, kleinste Quadrate.\n\n`art` sagt, welche Terme sich aus den Punkten bestimmen ließen: `ebene` beide, `aussen`\noder `vorlauf` nur einer, `mittel` keiner."
+      },
+      "KennlinienHubOut": {
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "gerade",
+              "mittel"
+            ],
+            "title": "Art"
+          },
+          "a": {
+            "type": "number",
+            "title": "A"
+          },
+          "b_hub": {
+            "type": "number",
+            "title": "B Hub"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "rmse": {
+            "type": "number",
+            "title": "Rmse"
+          },
+          "r2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R2"
+          },
+          "hub_von_k": {
+            "type": "number",
+            "title": "Hub Von K"
+          },
+          "hub_bis_k": {
+            "type": "number",
+            "title": "Hub Bis K"
+          },
+          "guetegrad": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guetegrad"
+          },
+          "formel_de": {
+            "type": "string",
+            "title": "Formel De"
+          },
+          "geltung_de": {
+            "type": "string",
+            "title": "Geltung De"
+          },
+          "guete_de": {
+            "type": "string",
+            "title": "Guete De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "art",
+          "a",
+          "b_hub",
+          "n",
+          "rmse",
+          "hub_von_k",
+          "hub_bis_k",
+          "formel_de",
+          "geltung_de"
+        ],
+        "title": "KennlinienHubOut",
+        "description": "COP = a + b_hub * Hub, mit Hub = Vorlauf minus Außentemperatur (`hems_core.thermal.kennlinie`).\n\n`art` ist `gerade`, wenn der Hub genug streut, sonst `mittel`. Der Gütegrad ist der Anteil\nan der Arbeitszahl eines idealen Kreisprozesses bei denselben Temperaturen."
       },
       "KennlinienPunktOut": {
         "properties": {

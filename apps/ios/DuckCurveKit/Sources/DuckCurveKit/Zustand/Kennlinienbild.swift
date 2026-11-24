@@ -40,6 +40,7 @@ public enum Kennlinienbild {
     public static let bilanztitel = "Wo die Minuten geblieben sind"
     public static let aussentitel = "Arbeitszahl über der Außentemperatur"
     public static let vorlauftitel = "Arbeitszahl über der Vorlauftemperatur"
+    public static let hubtitel = "Arbeitszahl über dem Hub"
     public static let kennfeldtitel = "Kennfeld: beide Temperaturen zugleich"
     public static let vergleichstitel = "Messung gegen die Annahme des Fahrplans"
 
@@ -54,6 +55,7 @@ public enum Kennlinienbild {
     /// Die Namen der Achsen (`kennlinie.ts:152-153`, `:205-206`).
     public static let aussenachse = "Außentemperatur °C"
     public static let vorlaufachse = "Vorlauftemperatur °C"
+    public static let hubachse = "Hub: Vorlauf minus draußen, K"
     public static let copachse = "COP"
     /// Die senkrechte Achse des Kennfelds (`kennlinie.ts:272`).
     public static let kennfeldVorlaufachse = "Vorlauf °C"
@@ -327,6 +329,41 @@ public enum Kennlinienbild {
         }
     }
 
+    // MARK: - Das Streubild über dem Hub
+
+    /// Was der Hub ist, als Satz über dem Bild (`Kennlinie.tsx`, Karte „Arbeitszahl über dem
+    /// Hub“).
+    public static let hubsatz =
+        "Der Hub ist der Unterschied zwischen Vorlauf und Außenluft, über den die Wärmepumpe "
+        + "die Wärme pumpt. Je kleiner er ist, desto weniger Strom kostet eine Kilowattstunde "
+        + "Wärme."
+
+    /// Der Hub eines Punkts: Vorlauf minus draußen, in Kelvin (`kennlinie.ts`, `hubVon`).
+    public static func hub(_ p: KennlinienPunktOut) -> Double {
+        p.vorlaufC - p.aussenC
+    }
+
+    /// Die Arbeitszahl nach der Geraden über dem Hub (`kennlinie.ts`, `copNachHub`).
+    public static func copNachHub(_ h: KennlinienHubOut, hub: Double) -> Double {
+        h.a + h.bHub * hub
+    }
+
+    /// Die zwei Enden der Geraden über dem Hub, nur wo gemessen wurde (`kennlinie.ts`,
+    /// `optionHub`).
+    public static func hubgerade(_ k: KennlinieOut) -> [(hub: Double, cop: Double)] {
+        guard let h = k.hub else { return [] }
+        return [h.hubVonK, h.hubBisK].map { (hub: $0, cop: copNachHub(h, hub: $0)) }
+    }
+
+    /// Die Satzzeile unter der Formel des Hubs, wie ``formelzeile(_:)``.
+    public static func hubzeile(_ h: KennlinienHubOut) -> String {
+        var text = "\(h.n) Punkte · mittlere Abweichung ±\(Formate.zahl(h.rmse, stellen: 2))"
+        if let r2 = h.r2, r2.isFinite {
+            text += " · erklärt \(Formate.prozent(r2)) der Streuung"
+        }
+        return text + ". " + h.geltungDe
+    }
+
     /// Der Hinweis an der Annahmelinie: bei welchem Vorlauf sie gilt (`kennlinie.ts:164`).
     public static func annahmehinweis(_ k: KennlinieOut) -> String {
         guard let tv = k.annahmeVorlaufC, tv.isFinite else { return annahmewort }
@@ -377,7 +414,7 @@ public enum Kennlinienbild {
         }
     }
 
-    /// Die fünf Zeilen zu einem Messpunkt (`kennlinie.ts:108-112`).
+    /// Die sechs Zeilen zu einem Messpunkt (`kennlinie.ts`, `punktZeile`).
     ///
     /// **Dieselben Zahlen und Stellen wie in der Tabelle.** Der Punkt im Bild und die Zeile in
     /// der aufklappbaren Tabelle sind derselbe Messwert; stünde die Arbeitszahl einmal mit zwei
@@ -387,6 +424,9 @@ public enum Kennlinienbild {
             Punktzeile(wort: "Arbeitszahl", wert: Formate.zahl(p.cop, stellen: 2)),
             Punktzeile(wort: "draußen", wert: Formate.celsius(p.aussenC, stellen: 1)),
             Punktzeile(wort: "Vorlauf", wert: Formate.celsius(p.vorlaufC, stellen: 1)),
+            Punktzeile(
+                wort: "Hub",
+                wert: Formate.zahl(hub(p), stellen: 1) + Formate.schmalesLeerzeichen + "K"),
             Punktzeile(wort: "Wärme", wert: kilowatt(p.waermeKw, stellen: 1)),
             Punktzeile(wort: "Strom", wert: kilowatt(p.stromKw, stellen: 2)),
         ]
@@ -409,6 +449,7 @@ public enum Kennlinienbild {
     public enum Achsenwahl: Sendable, Hashable {
         case aussen
         case vorlauf
+        case hub
     }
 
     /// Die Punkte der Spalte, die einer gehaltenen Stelle der Querachse am nächsten liegt.
@@ -427,7 +468,11 @@ public enum Kennlinienbild {
     ) -> [KennlinienPunktOut] {
         guard let stelle, stelle.isFinite, !punkte.isEmpty else { return [] }
         func wert(_ p: KennlinienPunktOut) -> Double {
-            achse == .aussen ? p.aussenC : p.vorlaufC
+            switch achse {
+            case .aussen: return p.aussenC
+            case .vorlauf: return p.vorlaufC
+            case .hub: return hub(p)
+            }
         }
         let brauchbar = punkte.filter { wert($0).isFinite }
         guard

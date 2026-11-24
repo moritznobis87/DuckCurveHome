@@ -259,3 +259,67 @@ def test_heizstab_mitten_im_lauf_unterbricht_ihn_nicht() -> None:
         T0 + timedelta(minutes=10),
         T0 + timedelta(minutes=30),
     ]
+
+
+# ------------------------------------------------------------------ Hub
+
+
+def _punkt(aussen: float, vorlauf: float, cop: float) -> k.Messpunkt:
+    return k.Messpunkt(
+        at=T0,
+        minuten=10,
+        aussen_c=aussen,
+        vorlauf_c=vorlauf,
+        cop=cop,
+        waerme_kw=cop * 2,
+        strom_kw=2.0,
+    )
+
+
+def test_der_hub_findet_eine_gerade_wieder_auch_wenn_die_ebene_versagt() -> None:
+    """Der Vorlauf folgt der Heizkurve: je Grad kälter draußen ein halbes Grad mehr Vorlauf.
+
+    Die Ebene kann Außen- und Vorlauftemperatur dann nicht trennen, der Hub schon: Er fasst
+    beide in einer Zahl, und die Gerade über ihm kommt genau heraus.
+    """
+    punkte = []
+    for i in range(16):
+        aussen = 10 - i
+        vorlauf = 30 + 0.5 * i
+        punkte.append(_punkt(aussen, vorlauf, 7.0 - 0.1 * (vorlauf - aussen)))
+    ebene = k.ausgleich(punkte)
+    assert ebene is not None and ebene.art != "ebene"
+    hub = k.hubausgleich(punkte)
+    assert hub is not None and hub.art == "gerade"
+    assert hub.a == pytest.approx(7.0, abs=1e-3)
+    assert hub.b_hub == pytest.approx(-0.1, abs=1e-4)
+    assert hub.rmse == pytest.approx(0.0, abs=1e-3) and hub.r2 == pytest.approx(1.0)
+    assert (hub.hub_von_k, hub.hub_bis_k) == (20.0, 42.5)
+    assert hub.cop(30) == pytest.approx(4.0, abs=1e-3)
+
+
+def test_der_guetegrad_ist_der_anteil_an_der_idealen_arbeitszahl() -> None:
+    """Jeder Punkt erreicht genau 45 % der Arbeitszahl nach Carnot; das kommt heraus."""
+    punkte = [
+        _punkt(a, v, 0.45 * k.carnot(v, v - a))
+        for a, v in [(-5, 45), (0, 40), (5, 38), (10, 35)] * 4
+    ]
+    hub = k.hubausgleich(punkte)
+    assert hub is not None and hub.guetegrad == pytest.approx(0.45, abs=1e-3)
+    # 35 °C Vorlauf bei 30 K Hub: 308,15 K durch 30 K.
+    assert k.carnot(35, 30) == pytest.approx(10.27, abs=0.01)
+
+
+def test_ohne_streuung_im_hub_gibt_es_nur_den_mittelwert() -> None:
+    punkte = [_punkt(5, 35 + 0.1 * i, 4.0 + 0.01 * i) for i in range(12)]
+    hub = k.hubausgleich(punkte)
+    assert hub is not None and hub.art == "mittel" and hub.b_hub == 0 and hub.r2 is None
+    assert hub.a == pytest.approx(4.055, abs=1e-3)
+    assert k.hubausgleich(punkte[:11]) is None
+
+
+def test_ein_winziger_hub_zaehlt_nicht_zum_guetegrad() -> None:
+    """Bei 2 K Hub wäre die ideale Arbeitszahl 150; ein Fühlerfehler bestimmte den Gütegrad."""
+    punkte = [_punkt(33, 35, 6.0)] * 12
+    hub = k.hubausgleich(punkte)
+    assert hub is not None and hub.guetegrad is None

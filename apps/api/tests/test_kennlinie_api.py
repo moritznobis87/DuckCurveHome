@@ -138,6 +138,35 @@ def test_die_antwort_sagt_was_dem_ausgleich_fehlt() -> None:
     assert ebene.fit.formel_de == "COP = 6,00 + 0,100 × Außentemperatur - 0,060 × Vorlauf"  # type: ignore[attr-defined]
 
 
+def test_die_antwort_nennt_die_gerade_ueber_dem_hub_mit_saetzen() -> None:
+    """Die Heizkurve hebt den Vorlauf, wenn es draußen kälter wird. Die Ebene trennt das nicht,
+    die Gerade über dem Hub schon; Formel, Geltung und Gütegrad stehen als Sätze dabei."""
+    punkte = [
+        kern.Messpunkt(
+            at=JETZT - timedelta(hours=i),
+            minuten=10,
+            aussen_c=10.0 - i,
+            vorlauf_c=30.0 + 0.5 * i,
+            cop=7.0 - 0.1 * (20.0 + 1.5 * i),
+            waerme_kw=8.0,
+            strom_kw=2.0,
+        )
+        for i in range(16)
+    ]
+    d = logik.zusammensetzen(
+        now=JETZT, tage=30, punkte=punkte, heat=HeatDemandConfig(), buffer=BufferConfig()
+    )
+    assert d.hub is not None and d.hub.art == "gerade"
+    assert d.hub.formel_de == "COP = 7,00 - 0,100 × Hub"
+    assert "zwischen 20,0 und 42,5 Kelvin" in d.hub.geltung_de
+    assert d.hub.guete_de.startswith("Die Wärmepumpe erreicht ") and "Carnot" in d.hub.guete_de
+    # Zu wenige Punkte: kein Hub, wie beim Ausgleich der Ebene.
+    wenige = logik.zusammensetzen(
+        now=JETZT, tage=30, punkte=punkte[:5], heat=HeatDemandConfig(), buffer=BufferConfig()
+    )
+    assert wenige.hub is None
+
+
 def test_die_vorfuehrung_zeigt_eine_kennlinie_mit_ausgleich(client: TestClient) -> None:
     r = client.get("/api/v1/waermepumpe/kennlinie", params={"tage": 30})
     assert r.status_code == 200
@@ -147,6 +176,8 @@ def test_die_vorfuehrung_zeigt_eine_kennlinie_mit_ausgleich(client: TestClient) 
     # Die erzeugten Punkte folgen 6,4 + 0,09 * außen - 0,065 * Vorlauf; der Ausgleich findet das.
     assert abs(d["fit"]["b_aussen"] - 0.09) < 0.02 and abs(d["fit"]["c_vorlauf"] + 0.065) < 0.01
     assert d["hinweise_de"][0].startswith("Vorführung")
+    # Die Gerade über dem Hub kommt aus denselben Punkten, ohne eigene Messung.
+    assert d["hub"]["art"] == "gerade" and d["hub"]["n"] == 120 and d["hub"]["b_hub"] < 0
     # Auch die Vorführung zeigt eine Bilanz, und ihre Teile ergeben die Minuten im Heizbetrieb.
     b = d["bilanz"]
     assert b["punkte"] == 120 and b["heizen"] == (

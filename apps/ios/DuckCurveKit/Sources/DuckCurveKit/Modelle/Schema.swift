@@ -779,6 +779,19 @@ public enum KennlinienFitOutArtWahl: String, Codable, Sendable, Hashable, CaseIt
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum KennlinienHubOutArtWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gerade = "gerade"
+    case mittel = "mittel"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = KennlinienHubOutArtWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum KreisAnsichtArtWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case stetig = "stetig"
     case zweipunkt = "zweipunkt"
@@ -6927,6 +6940,7 @@ public struct KennlinieOut: Codable, Sendable, Hashable {
     public var tage: Int
     public var punkte: [KennlinienPunktOut]
     public var fit: KennlinienFitOut?
+    public var hub: KennlinienHubOut?
     public var fehltDe: String?
     public var annahme: [KennlinienAnnahmeOut]
     public var annahmeVorlaufC: Double?
@@ -6940,6 +6954,7 @@ public struct KennlinieOut: Codable, Sendable, Hashable {
         case tage
         case punkte
         case fit
+        case hub
         case fehltDe = "fehlt_de"
         case annahme
         case annahmeVorlaufC = "annahme_vorlauf_c"
@@ -6947,13 +6962,14 @@ public struct KennlinieOut: Codable, Sendable, Hashable {
         case hinweiseDe = "hinweise_de"
     }
 
-    public init(now: String, von: String, bis: String, tage: Int, punkte: [KennlinienPunktOut] = [], fit: KennlinienFitOut? = nil, fehltDe: String? = nil, annahme: [KennlinienAnnahmeOut] = [], annahmeVorlaufC: Double? = nil, bilanz: KennlinienBilanzOut? = nil, hinweiseDe: [String] = []) {
+    public init(now: String, von: String, bis: String, tage: Int, punkte: [KennlinienPunktOut] = [], fit: KennlinienFitOut? = nil, hub: KennlinienHubOut? = nil, fehltDe: String? = nil, annahme: [KennlinienAnnahmeOut] = [], annahmeVorlaufC: Double? = nil, bilanz: KennlinienBilanzOut? = nil, hinweiseDe: [String] = []) {
         self.now = now
         self.von = von
         self.bis = bis
         self.tage = tage
         self.punkte = punkte
         self.fit = fit
+        self.hub = hub
         self.fehltDe = fehltDe
         self.annahme = annahme
         self.annahmeVorlaufC = annahmeVorlaufC
@@ -6969,6 +6985,7 @@ public struct KennlinieOut: Codable, Sendable, Hashable {
         self.tage = try c.decode(Int.self, forKey: .tage)
         self.punkte = try c.decodeIfPresent([KennlinienPunktOut].self, forKey: .punkte) ?? []
         self.fit = try c.decodeIfPresent(KennlinienFitOut.self, forKey: .fit)
+        self.hub = try c.decodeIfPresent(KennlinienHubOut.self, forKey: .hub)
         self.fehltDe = try c.decodeIfPresent(String.self, forKey: .fehltDe)
         self.annahme = try c.decodeIfPresent([KennlinienAnnahmeOut].self, forKey: .annahme) ?? []
         self.annahmeVorlaufC = try c.decodeIfPresent(Double.self, forKey: .annahmeVorlaufC)
@@ -7154,6 +7171,71 @@ public struct KennlinienFitOut: Codable, Sendable, Hashable {
         self.vorlaufBisC = try c.decode(Double.self, forKey: .vorlaufBisC)
         self.formelDe = try c.decode(String.self, forKey: .formelDe)
         self.geltungDe = try c.decode(String.self, forKey: .geltungDe)
+    }
+}
+
+/// COP = a + b_hub * Hub, mit Hub = Vorlauf minus Außentemperatur (`hems_core.thermal.kennlinie`).
+///
+/// `art` ist `gerade`, wenn der Hub genug streut, sonst `mittel`. Der Gütegrad ist der Anteil
+/// an der Arbeitszahl eines idealen Kreisprozesses bei denselben Temperaturen.
+public struct KennlinienHubOut: Codable, Sendable, Hashable {
+    public var art: KennlinienHubOutArtWahl
+    public var a: Double
+    public var bHub: Double
+    public var n: Int
+    public var rmse: Double
+    public var r2: Double?
+    public var hubVonK: Double
+    public var hubBisK: Double
+    public var guetegrad: Double?
+    public var formelDe: String
+    public var geltungDe: String
+    public var gueteDe: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case art
+        case a
+        case bHub = "b_hub"
+        case n
+        case rmse
+        case r2
+        case hubVonK = "hub_von_k"
+        case hubBisK = "hub_bis_k"
+        case guetegrad
+        case formelDe = "formel_de"
+        case geltungDe = "geltung_de"
+        case gueteDe = "guete_de"
+    }
+
+    public init(art: KennlinienHubOutArtWahl, a: Double, bHub: Double, n: Int, rmse: Double, r2: Double? = nil, hubVonK: Double, hubBisK: Double, guetegrad: Double? = nil, formelDe: String, geltungDe: String, gueteDe: String? = nil) {
+        self.art = art
+        self.a = a
+        self.bHub = bHub
+        self.n = n
+        self.rmse = rmse
+        self.r2 = r2
+        self.hubVonK = hubVonK
+        self.hubBisK = hubBisK
+        self.guetegrad = guetegrad
+        self.formelDe = formelDe
+        self.geltungDe = geltungDe
+        self.gueteDe = gueteDe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.art = try c.decode(KennlinienHubOutArtWahl.self, forKey: .art)
+        self.a = try c.decode(Double.self, forKey: .a)
+        self.bHub = try c.decode(Double.self, forKey: .bHub)
+        self.n = try c.decode(Int.self, forKey: .n)
+        self.rmse = try c.decode(Double.self, forKey: .rmse)
+        self.r2 = try c.decodeIfPresent(Double.self, forKey: .r2)
+        self.hubVonK = try c.decode(Double.self, forKey: .hubVonK)
+        self.hubBisK = try c.decode(Double.self, forKey: .hubBisK)
+        self.guetegrad = try c.decodeIfPresent(Double.self, forKey: .guetegrad)
+        self.formelDe = try c.decode(String.self, forKey: .formelDe)
+        self.geltungDe = try c.decode(String.self, forKey: .geltungDe)
+        self.gueteDe = try c.decodeIfPresent(String.self, forKey: .gueteDe)
     }
 }
 

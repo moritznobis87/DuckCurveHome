@@ -109,6 +109,7 @@ export type Betrieb = Omit<BetriebRoh, "tage" | "laeufe" | "stunden" | "klassen"
   hinweise_de: string[];
 };
 export type KennlinienFit = S["KennlinienFitOut"];
+export type KennlinienHub = S["KennlinienHubOut"];
 export type KennlinienBilanz = Omit<S["KennlinienBilanzOut"], "fehlt" | "satz_de"> & { fehlt: Record<string, number>; satz_de: string };
 export type KennlinienPunkt = S["KennlinienPunktOut"];
 export type PushKey = S["PushKeyOut"];

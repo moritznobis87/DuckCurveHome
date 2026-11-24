@@ -1,5 +1,5 @@
 import type { EChartsCoreOption } from "echarts/core";
-import type { Kennlinie, KennlinienFit, KennlinienPunkt } from "@/lib/api/models";
+import type { Kennlinie, KennlinienFit, KennlinienHub, KennlinienPunkt } from "@/lib/api/models";
 import { farbe } from "@/components/anlage/schema";
 import { C, MONO } from "@/components/charts/palette";
 
@@ -16,7 +16,10 @@ import { C, MONO } from "@/components/charts/palette";
  * 2. Arbeitszahl über der Vorlauftemperatur. Solange das Wetter sich nicht ändert, ist das die
  *    Ansicht, in der überhaupt etwas zu sehen ist: eine Pufferladung durchläuft zwanzig Grad
  *    Vorlauf an einem Vormittag.
- * 3. Das Kennfeld: beide Temperaturen als Achsen, die Arbeitszahl als Farbe. Die Fläche von
+ * 3. Arbeitszahl über dem Hub, Vorlauf minus draußen (Nutzerwunsch 24.11.2026). Der Hub fasst
+ *    beide Temperaturen in einer Zahl; die Ansicht trägt auch dann, wenn der Vorlauf der
+ *    Heizkurve folgt und die Ebene die zwei Einflüsse nicht trennen kann.
+ * 4. Das Kennfeld: beide Temperaturen als Achsen, die Arbeitszahl als Farbe. Die Fläche von
  *    oben gesehen, mit einem Punkt, wo gemessen wurde.
  *
  * Die Farbe des Vorlaufs ist die des Wassers aus dem Anlagenschema: ein Punkt bei 35 Grad hat
@@ -108,7 +111,7 @@ const FLAECHE = "#123544";
 function punktZeile(p: KennlinienPunkt): string {
   const wann = new Date(p.at).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
   const zeile = (k: string, v: string) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="color:rgba(255,255,255,.6)">${k}</span><span>${v}</span></div>`;
-  return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${wann}</div>${zeile("Arbeitszahl", de(p.cop, 2))}${zeile("draußen", `${de(p.aussen_c)} °C`)}${zeile("Vorlauf", `${de(p.vorlauf_c)} °C`)}${zeile("Wärme", `${de(p.waerme_kw)} kW`)}${zeile("Strom", `${de(p.strom_kw, 2)} kW`)}`;
+  return `<div style="letter-spacing:.06em;color:rgba(255,255,255,.6);margin-bottom:4px">${wann}</div>${zeile("Arbeitszahl", de(p.cop, 2))}${zeile("draußen", `${de(p.aussen_c)} °C`)}${zeile("Vorlauf", `${de(p.vorlauf_c)} °C`)}${zeile("Hub", `${de(p.vorlauf_c - p.aussen_c)} K`)}${zeile("Wärme", `${de(p.waerme_kw)} kW`)}${zeile("Strom", `${de(p.strom_kw, 2)} kW`)}`;
 }
 
 /** Der Bereich der Arbeitszahl-Achse: was die Punkte und die Annahme brauchen, auf ganze gerundet. */
@@ -214,6 +217,54 @@ export function optionVorlauf(d: Kennlinie): EChartsCoreOption {
         data: d.punkte.map((p) => ({ value: [p.vorlauf_c, p.cop], p })),
         symbolSize: 9,
         itemStyle: { color: C.heatPump, borderColor: FLAECHE, borderWidth: 1.5 },
+        tooltip: { formatter: (x: { data: { p: KennlinienPunkt } }) => punktZeile(x.data.p) },
+        z: 4,
+      },
+    ],
+  };
+}
+
+/** Der Hub eines Punkts: Vorlauf minus draußen, in Kelvin. */
+export const hubVon = (p: KennlinienPunkt): number => p.vorlauf_c - p.aussen_c;
+
+/** Die Arbeitszahl nach der Geraden über dem Hub. */
+export const copNachHub = (h: KennlinienHub, hub: number): number => h.a + h.b_hub * hub;
+
+/** Arbeitszahl über dem Hub, die Punkte in der Farbe ihres Vorlaufs, mit der Ausgleichsgeraden. */
+export function optionHub(d: Kennlinie): EChartsCoreOption {
+  const h = d.hub;
+  const [ymin, ymax] = copAchse({ ...d, annahme: [] });
+  const gerade = h ? "Ausgleich" : null;
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    textStyle: { fontFamily: MONO },
+    tooltip: { ...tooltip, trigger: "item" },
+    legend: { show: true, bottom: 0, left: 0, itemWidth: 16, itemHeight: 8, textStyle: { color: C.text, fontFamily: MONO, fontSize: 10 }, data: ["Messpunkt", ...(gerade ? [gerade] : [])] },
+    grid: { left: 40, right: 18, top: 14, bottom: 58 },
+    xAxis: { type: "value", scale: true, name: "Hub: Vorlauf minus draußen, K", nameLocation: "middle", nameGap: 26, ...achse },
+    yAxis: { type: "value", min: ymin, max: ymax, name: "COP", ...achse },
+    series: [
+      ...(h && gerade
+        ? [
+            {
+              name: gerade,
+              type: "line",
+              showSymbol: false,
+              data: [h.hub_von_k, h.hub_bis_k].map((x) => [x, copNachHub(h, x)]),
+              lineStyle: { color: "rgba(255,255,255,.85)", width: 2 },
+              itemStyle: { color: "rgba(255,255,255,.85)" },
+              tooltip: { show: false },
+              z: 3,
+            },
+          ]
+        : []),
+      {
+        name: "Messpunkt",
+        type: "scatter",
+        data: d.punkte.map((p) => ({ value: [hubVon(p), p.cop], itemStyle: { color: farbe(p.vorlauf_c) }, p })),
+        symbolSize: 9,
+        itemStyle: { color: farbe(40), borderColor: FLAECHE, borderWidth: 1.5 },
         tooltip: { formatter: (x: { data: { p: KennlinienPunkt } }) => punktZeile(x.data.p) },
         z: 4,
       },

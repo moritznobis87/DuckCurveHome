@@ -6156,6 +6156,7 @@ export interface components {
             /** Punkte */
             punkte?: components["schemas"]["KennlinienPunktOut"][];
             fit?: components["schemas"]["KennlinienFitOut"] | null;
+            hub?: components["schemas"]["KennlinienHubOut"] | null;
             /** Fehlt De */
             fehlt_de?: string | null;
             /** Annahme */
@@ -6263,6 +6264,45 @@ export interface components {
             formel_de: string;
             /** Geltung De */
             geltung_de: string;
+        };
+        /**
+         * KennlinienHubOut
+         * @description COP = a + b_hub * Hub, mit Hub = Vorlauf minus Außentemperatur (`hems_core.thermal.kennlinie`).
+         *
+         *     `art` ist `gerade`, wenn der Hub genug streut, sonst `mittel`. Der Gütegrad ist der Anteil
+         *     an der Arbeitszahl eines idealen Kreisprozesses bei denselben Temperaturen.
+         */
+        KennlinienHubOut: {
+            /**
+             * Art
+             * @enum {string}
+             */
+            art: "gerade" | "mittel";
+            /** A */
+            a: number;
+            /** B Hub */
+            b_hub: number;
+            /** N */
+            n: number;
+            /** Rmse */
+            rmse: number;
+            /** R2 */
+            r2?: number | null;
+            /** Hub Von K */
+            hub_von_k: number;
+            /** Hub Bis K */
+            hub_bis_k: number;
+            /** Guetegrad */
+            guetegrad?: number | null;
+            /** Formel De */
+            formel_de: string;
+            /** Geltung De */
+            geltung_de: string;
+            /**
+             * Guete De
+             * @default
+             */
+            guete_de: string;
         };
         /**
          * KennlinienPunktOut

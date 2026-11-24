@@ -17,6 +17,7 @@ from dch_api.schemas import (
     KennlinienAnnahmeOut,
     KennlinienBilanzOut,
     KennlinienFitOut,
+    KennlinienHubOut,
     KennlinienPunktOut,
     KennlinieOut,
 )
@@ -79,6 +80,37 @@ def geltung(f: kern.Ausgleich) -> str:
         f"Gemessen zwischen {de(f.aussen_von_c, 1)} und {de(f.aussen_bis_c, 1)} °C draußen und "
         f"zwischen {de(f.vorlauf_von_c, 1)} und {de(f.vorlauf_bis_c, 1)} °C Vorlauf. Außerhalb "
         "davon ist die Formel eine Verlängerung, keine Messung."
+    )
+
+
+def hub_formel(h: kern.Hubausgleich) -> str:
+    """Die Gerade über dem Hub als Formel, mit deutschen Zahlen."""
+    if h.art == "mittel":
+        return f"COP = {de(h.a)} im Mittel"
+    return f"COP = {de(h.a)} {'+' if h.b_hub >= 0 else '-'} {de(abs(h.b_hub), 3)} × Hub"
+
+
+def hub_geltung(h: kern.Hubausgleich) -> str:
+    if h.art == "mittel":
+        return (
+            f"Der Hub lag nur zwischen {de(h.hub_von_k, 1)} und {de(h.hub_bis_k, 1)} Kelvin "
+            f"(nötig sind {de(kern.MIN_SPANNE_HUB_K, 0)} Kelvin Spanne). Für eine Steigung "
+            "braucht es anderes Wetter oder andere Vorläufe."
+        )
+    return (
+        f"Gemessen bei einem Hub zwischen {de(h.hub_von_k, 1)} und {de(h.hub_bis_k, 1)} Kelvin. "
+        "Außerhalb davon ist die Gerade eine Verlängerung, keine Messung."
+    )
+
+
+def hub_guete(h: kern.Hubausgleich) -> str:
+    """Der Gütegrad als Satz: welcher Anteil der idealen Arbeitszahl erreicht wird."""
+    if h.guetegrad is None:
+        return ""
+    return (
+        f"Die Wärmepumpe erreicht {round(h.guetegrad * 100)} % der Arbeitszahl, die ein idealer "
+        "Kreisprozess (Carnot) zwischen derselben Außenluft und demselben Vorlauf erreichen "
+        "könnte."
     )
 
 
@@ -184,6 +216,7 @@ def zusammensetzen(
     bilanz: kern.Bilanz | None = None,
 ) -> KennlinieOut:
     f = kern.ausgleich(punkte)
+    h = kern.hubausgleich(punkte)
     hinweise = [
         "Jeder Punkt ist ein Fenster von zehn Minuten im Heizbetrieb, frühestens zehn Minuten "
         "nach dem Start. Abtauen zählt nicht mit: das ist die Arbeitszahl im Heizbetrieb, nicht "
@@ -222,6 +255,14 @@ def zusammensetzen(
         fit=None
         if f is None
         else KennlinienFitOut(**f.__dict__, formel_de=formel(f), geltung_de=geltung(f)),
+        hub=None
+        if h is None
+        else KennlinienHubOut(
+            **h.__dict__,
+            formel_de=hub_formel(h),
+            geltung_de=hub_geltung(h),
+            guete_de=hub_guete(h),
+        ),
         fehlt_de=fehlt(punkte, f),
         annahme=[
             KennlinienAnnahmeOut(aussen_c=t, cop=c)

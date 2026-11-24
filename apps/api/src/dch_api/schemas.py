@@ -1458,6 +1458,28 @@ class KennlinienFitOut(BaseModel):
     geltung_de: str
 
 
+class KennlinienHubOut(BaseModel):
+    """COP = a + b_hub * Hub, mit Hub = Vorlauf minus Außentemperatur (`hems_core.thermal.kennlinie`).
+
+    `art` ist `gerade`, wenn der Hub genug streut, sonst `mittel`. Der Gütegrad ist der Anteil
+    an der Arbeitszahl eines idealen Kreisprozesses bei denselben Temperaturen.
+    """
+
+    art: Literal["gerade", "mittel"]
+    a: float
+    b_hub: float
+    n: int
+    rmse: float
+    r2: float | None = None
+    hub_von_k: float
+    hub_bis_k: float
+    guetegrad: float | None = None
+    formel_de: str
+    geltung_de: str
+    #: Der Gütegrad als Satz; leer, wenn es keinen gibt.
+    guete_de: str = ""
+
+
 class KennlinienAnnahmeOut(BaseModel):
     """Ein Punkt der Kennlinie, mit der der Fahrplan bisher rechnet."""
 
@@ -1504,6 +1526,8 @@ class KennlinieOut(BaseModel):
     tage: int
     punkte: list[KennlinienPunktOut] = Field(default_factory=list)
     fit: KennlinienFitOut | None = None
+    #: Die Arbeitszahl über dem Hub; fehlt bei zu wenigen Punkten.
+    hub: KennlinienHubOut | None = None
     #: Was dem Ausgleich noch fehlt, wenn es keinen gibt oder ein Term fehlt.
     fehlt_de: str | None = None
     #: Die Kennlinie des Fahrplans, gültig bei `annahme_vorlauf_c`.

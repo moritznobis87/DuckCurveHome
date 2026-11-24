@@ -36,6 +36,15 @@ kostet. Sie gilt nur dort, wo gemessen wurde. Decken die Punkte eine der beiden 
 nicht ab, lässt sich deren Einfluss nicht bestimmen; dann fällt der Term weg, statt eine Zahl
 zu erfinden (`Ausgleich.art`).
 
+**Der Hub.** Zusätzlich die Arbeitszahl über dem Temperaturhub, Vorlauf minus draußen
+(`hubausgleich`). Der Kältekreis pumpt Wärme über genau diesen Unterschied, und je kleiner er
+ist, desto weniger Arbeit kostet das. Ein Hub fasst beide Temperaturen in einer Zahl und ist
+damit auch dort ablesbar, wo die Ebene versagt: Folgt der Vorlauf der Heizkurve, steigen
+Vorlauf und Kälte draußen im Gleichschritt, und ihre Einflüsse lassen sich nicht trennen. Der
+Ausgleich ist eine Gerade, `COP = a + b * Hub`; daneben steht der Gütegrad, der Anteil der
+Arbeitszahl eines idealen Kreisprozesses (Carnot) bei denselben Temperaturen, den die Maschine
+erreicht.
+
 Reine Funktionen, kein I/O.
 """
 
@@ -106,6 +115,18 @@ MIN_SPANNE_AUSSEN_K = 4.0
 MIN_SPANNE_VORLAUF_K = 5.0
 
 Art = Literal["ebene", "aussen", "vorlauf", "mittel"]
+
+#: So weit muss der Hub der Punkte gestreut sein, damit eine Steigung bestimmbar ist. Gesetzt
+#: wie die Spannen oben.
+MIN_SPANNE_HUB_K = 5.0
+#: Unter diesem Hub zählt ein Punkt nicht zum Gütegrad: die ideale Arbeitszahl wächst gegen
+#: unendlich, und ein kleiner Fehler im Fühler würde den Gütegrad bestimmen. Im Heizbetrieb
+#: kommt so ein Hub ohnehin kaum vor.
+MIN_HUB_K = 5.0
+#: Der absolute Nullpunkt in Grad Celsius, für die ideale Arbeitszahl.
+NULLPUNKT_C = -273.15
+
+HubArt = Literal["gerade", "mittel"]
 
 
 @dataclass(frozen=True)
@@ -219,6 +240,29 @@ class Ausgleich:
 
     def cop(self, aussen_c: float, vorlauf_c: float) -> float:
         return self.a + self.b_aussen * aussen_c + self.c_vorlauf * vorlauf_c
+
+
+@dataclass(frozen=True)
+class Hubausgleich:
+    """COP = a + b_hub * Hub, mit Hub = Vorlauf minus Außentemperatur in Kelvin.
+
+    `art` ist `gerade`, wenn der Hub genug streut, sonst `mittel` (dann ist `b_hub` null).
+    """
+
+    art: HubArt
+    a: float
+    b_hub: float
+    n: int
+    rmse: float
+    r2: float | None
+    hub_von_k: float
+    hub_bis_k: float
+    #: Gemessene durch ideale Arbeitszahl, über alle Punkte ausgeglichen; `None` ohne Punkte
+    #: mit genug Hub.
+    guetegrad: float | None
+
+    def cop(self, hub_k: float) -> float:
+        return self.a + self.b_hub * hub_k
 
 
 #: Die Größen, ohne die sich keine Wärme rechnen lässt, mit ihrem Namen für die Bilanz.
@@ -492,4 +536,53 @@ def ausgleich(punkte: Sequence[Messpunkt]) -> Ausgleich | None:
         aussen_bis_c=max(ta),
         vorlauf_von_c=min(tv),
         vorlauf_bis_c=max(tv),
+    )
+
+
+def hub_k(p: Messpunkt) -> float:
+    """Der Temperaturhub eines Punkts: Vorlauf minus draußen, in Kelvin."""
+    return p.vorlauf_c - p.aussen_c
+
+
+def carnot(vorlauf_c: float, hub: float) -> float:
+    """Die Arbeitszahl eines idealen Kreisprozesses, der Wärme über `hub` Kelvin auf
+    `vorlauf_c` hebt: warme Seite in Kelvin durch den Unterschied."""
+    return (vorlauf_c - NULLPUNKT_C) / hub
+
+
+def hubausgleich(punkte: Sequence[Messpunkt]) -> Hubausgleich | None:
+    """Die Ausgleichsgerade der Arbeitszahl über dem Hub, oder `None` bei zu wenigen Punkten.
+
+    Der Gütegrad ist der Faktor, der die ideale Arbeitszahl der Punkte am besten auf die
+    gemessene abbildet (kleinste Quadrate durch den Ursprung).
+    """
+    n = len(punkte)
+    if n < MIN_PUNKTE:
+        return None
+    x = [hub_k(p) for p in punkte]
+    y = [p.cop for p in punkte]
+    mx, my = sum(x) / n, sum(y) / n
+    dx = [v - mx for v in x]
+    dy = [v - my for v in y]
+    sxx = sum(v * v for v in dx)
+    gerade = max(x) - min(x) >= MIN_SPANNE_HUB_K and sxx > 0
+    b = sum(p * q for p, q in zip(dx, dy, strict=True)) / sxx if gerade else 0.0
+    a = my - b * mx
+    quadrate = sum((yi - (a + b * xi)) ** 2 for xi, yi in zip(x, y, strict=True))
+    streuung = sum(v * v for v in dy)
+    ideal = [
+        (carnot(p.vorlauf_c, h), p.cop) for p, h in zip(punkte, x, strict=True) if h >= MIN_HUB_K
+    ]
+    nenner = sum(c * c for c, _ in ideal)
+    guetegrad = sum(c * g for c, g in ideal) / nenner if nenner > 0 else None
+    return Hubausgleich(
+        art="gerade" if gerade else "mittel",
+        a=round(a, 4),
+        b_hub=round(b, 4),
+        n=n,
+        rmse=round((quadrate / n) ** 0.5, 3),
+        r2=round(1 - quadrate / streuung, 3) if gerade and streuung > 1e-9 else None,
+        hub_von_k=round(min(x), 2),
+        hub_bis_k=round(max(x), 2),
+        guetegrad=None if guetegrad is None else round(guetegrad, 3),
     )

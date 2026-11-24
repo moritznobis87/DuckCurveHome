@@ -8,7 +8,7 @@ import { farbe } from "@/components/anlage/schema";
 import { EChart } from "@/components/charts/EChart";
 import { Stat } from "@/components/ui/Stat";
 import { dauer, fehlend, halbeFenster, teile } from "./bilanz";
-import { copNach, gesamt, mitte, optionAussen, optionFeld, optionVorlauf, vergleich, vergleichsVorlauf, zahl } from "./kennlinie";
+import { copNach, gesamt, mitte, optionAussen, optionFeld, optionHub, optionVorlauf, vergleich, vergleichsVorlauf, zahl } from "./kennlinie";
 
 /**
  * Die gemessene Kennlinie der Wärmepumpe (Nutzerwunsch 14.11.2026): Arbeitszahl in Abhängigkeit
@@ -16,10 +16,21 @@ import { copNach, gesamt, mitte, optionAussen, optionFeld, optionVorlauf, vergle
  * der kleinsten Quadrate.
  *
  * Oben steht, was die Messung bisher sagt, in einem Satz. Darunter die Zahlen des Ausgleichs,
- * dann drei Ansichten derselben Punkte (warum drei, steht in `kennlinie.ts`), dann der Vergleich
+ * dann vier Ansichten derselben Punkte (warum drei, steht in `kennlinie.ts`), dann der Vergleich
  * mit der Kennlinie, mit der der Fahrplan heute rechnet. Übernommen wird nichts von selbst.
  */
 const TAGE = [7, 30, 90, 180] as const;
+
+/** Die Farbe der Punkte erklärt: die des Wassers bei seinem Vorlauf, vom kältesten zum wärmsten. */
+function Vorlaufskala({ von, bis }: { von: number; bis: number }) {
+  return (
+    <div className="kl-skala" aria-label={`Farbe der Punkte: Vorlauf von ${zahl(von, 0)} bis ${zahl(bis, 0)} Grad`}>
+      <span>Vorlauf {zahl(von, 0)} °C</span>
+      <span className="kl-skala-band" style={{ background: `linear-gradient(90deg, ${[0, 0.25, 0.5, 0.75, 1].map((x) => farbe(von + (bis - von) * x)).join(", ")})` }} />
+      <span>{zahl(bis, 0)} °C</span>
+    </div>
+  );
+}
 
 /**
  * Wo die Minuten geblieben sind. Ein Balken über die Minuten im Heizbetrieb, geteilt in das,
@@ -91,6 +102,7 @@ export function Kennlinie() {
   const aussen = useMemo(() => (daten ? optionAussen(daten) : null), [daten]);
   const vorlauf = useMemo(() => (daten ? optionVorlauf(daten) : null), [daten]);
   const feld = useMemo(() => (daten ? optionFeld(daten) : null), [daten]);
+  const hub = useMemo(() => (daten ? optionHub(daten) : null), [daten]);
 
   if (!daten) {
     return <p className="m-0 text-[15px] text-text-3">{fehler ?? "Die Kennlinie wird geladen …"}</p>;
@@ -169,18 +181,29 @@ export function Kennlinie() {
         <div className="card kl-karte">
           <h2 className="kl-titel">Arbeitszahl über der Außentemperatur</h2>
           {aussen ? <div className="kl-chart"><EChart option={aussen} /></div> : null}
-          {tvVon != null && tvBis != null ? (
-            <div className="kl-skala" aria-label={`Farbe der Punkte: Vorlauf von ${zahl(tvVon, 0)} bis ${zahl(tvBis, 0)} Grad`}>
-              <span>Vorlauf {zahl(tvVon, 0)} °C</span>
-              <span className="kl-skala-band" style={{ background: `linear-gradient(90deg, ${[0, 0.25, 0.5, 0.75, 1].map((x) => farbe(tvVon + (tvBis - tvVon) * x)).join(", ")})` }} />
-              <span>{zahl(tvBis, 0)} °C</span>
-            </div>
-          ) : null}
+          {tvVon != null && tvBis != null ? <Vorlaufskala von={tvVon} bis={tvBis} /> : null}
         </div>
         <div className="card kl-karte">
           <h2 className="kl-titel">Arbeitszahl über der Vorlauftemperatur</h2>
           {vorlauf ? <div className="kl-chart"><EChart option={vorlauf} /></div> : null}
         </div>
+      </div>
+
+      <div className="card kl-karte">
+        <h2 className="kl-titel">Arbeitszahl über dem Hub</h2>
+        <p className="m-0 kl-klein">Der Hub ist der Unterschied zwischen Vorlauf und Außenluft, über den die Wärmepumpe die Wärme pumpt. Je kleiner er ist, desto weniger Strom kostet eine Kilowattstunde Wärme.</p>
+        {hub ? <div className="kl-chart"><EChart option={hub} /></div> : null}
+        {tvVon != null && tvBis != null ? <Vorlaufskala von={tvVon} bis={tvBis} /> : null}
+        {daten.hub ? (
+          <>
+            <p className="kl-formel-zeile mono">{daten.hub.formel_de}</p>
+            <p className="m-0 kl-klein">
+              {daten.hub.n} Punkte · mittlere Abweichung ±{zahl(daten.hub.rmse, 2)}
+              {daten.hub.r2 != null ? ` · erklärt ${Math.round(daten.hub.r2 * 100)} % der Streuung` : ""}. {daten.hub.geltung_de}
+            </p>
+            {daten.hub.guete_de ? <p className="m-0 kl-klein">{daten.hub.guete_de}</p> : null}
+          </>
+        ) : null}
       </div>
 
       <div className="card kl-karte">
