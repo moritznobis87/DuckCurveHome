@@ -294,7 +294,7 @@ struct AnnahmenSeite: View {
             if let abgabefehler {
                 Text(abgabefehler)
                     .font(Schrift.sans(13))
-                    .foregroundStyle(Farbe.alarm)
+                    .foregroundStyle(Farbe.alarmText)
                     .fixedSize(horizontal: false, vertical: true)
             } else if uebernommen {
                 Text(Annahmenfelder.uebernommenSatz)

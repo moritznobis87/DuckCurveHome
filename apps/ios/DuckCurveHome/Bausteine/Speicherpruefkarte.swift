@@ -36,7 +36,7 @@ struct Speicherpruefkarte: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let fehler {
-                    Text(fehler).font(Schrift.klein).foregroundStyle(Farbe.alarm)
+                    Text(fehler).font(Schrift.klein).foregroundStyle(Farbe.alarmText)
                 }
                 if let bericht, !bericht.isEmpty {
                     berichtsfeld(bericht)

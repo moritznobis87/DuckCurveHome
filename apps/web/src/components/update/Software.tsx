@@ -140,7 +140,7 @@ export function Software() {
       )}
 
       {ergebnis && !imGang ? <p className="m-0 text-[14px] leading-[1.5] text-text-2">{ergebnis}</p> : null}
-      {fehler ? <p className="m-0 text-[14px] text-alert">{fehler}</p> : null}
+      {fehler ? <p className="m-0 text-[14px] text-alert-text">{fehler}</p> : null}
 
       {imGang ? null : (
         <span>

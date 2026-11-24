@@ -231,7 +231,7 @@ function RaumKachel({ raum, serie, ts, proStunde, bisMs, stepMin, onStellen, onP
           {/* **Die Zeile steht immer da, auch leer.** Sonst hat eine Kachel mit Offset drei
               Zeilen und die daneben zwei - und die großen Zahlen des ganzen Gitters stünden auf
               zwei verschiedenen Linien. Gesehen an der Wand am 23.10.2026. */}
-          <span className="mono text-[10px] text-text-3 opacity-70" aria-hidden={!hatOffset} style={{ visibility: hatOffset ? "visible" : "hidden" }}>
+          <span className="mono text-[10px] text-text-3" aria-hidden={!hatOffset} style={{ visibility: hatOffset ? "visible" : "hidden" }}>
             {celsius(raum.setpoint_c, 1)} {kelvin(raum.offset_k ?? 0)}
           </span>
           <span

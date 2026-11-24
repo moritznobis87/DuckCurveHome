@@ -674,7 +674,7 @@ struct Stoerung: View {
             Text(satz.uppercased())
                 .font(Self.bandschrift)
                 .tracking(Self.laufweite)
-                .foregroundStyle(Farbe.alarm)
+                .foregroundStyle(Farbe.alarmText)
                 .fixedSize(horizontal: false, vertical: true)
             if let code {
                 // Derselbe Ton wie der Satz, nur eine Zeile tiefer: auf einer roten Flaeche
@@ -682,7 +682,7 @@ struct Stoerung: View {
                 Text(code.uppercased())
                     .font(Self.bandschrift)
                     .tracking(Self.laufweite)
-                    .foregroundStyle(Farbe.alarm)
+                    .foregroundStyle(Farbe.alarmText)
             }
         }
     }

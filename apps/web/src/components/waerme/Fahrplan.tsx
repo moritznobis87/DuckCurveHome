@@ -640,7 +640,7 @@ export function Fahrplan() {
         </div>
 
         {plan?.planner_note_de ? <p className="mt-3 text-[12px] leading-[1.5] text-text-3">{plan.planner_note_de}</p> : null}
-        {plan?.planner_warn_de ? <p className="mt-2 text-[12px] leading-[1.5] text-alert">{plan.planner_warn_de}</p> : null}
+        {plan?.planner_warn_de ? <p className="mt-2 text-[12px] leading-[1.5] text-alert-text">{plan.planner_warn_de}</p> : null}
       </Card>
 
       <Card>

@@ -248,7 +248,7 @@ struct Verbindungspunkt: View {
             if !schmal || haus.gestoert || vorfuehrung {
                 Text(wort)
                     .font(Schrift.winzig)
-                    .foregroundStyle(haus.gestoert ? Farbe.alarm : Farbe.text3)
+                    .foregroundStyle(haus.gestoert ? Farbe.alarmText : Farbe.text3)
             }
         }
         .accessibilityElement(children: .combine)

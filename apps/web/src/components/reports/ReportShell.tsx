@@ -146,7 +146,7 @@ export function Note({ children }: { children: React.ReactNode }) {
 
 export function ErrorBanner({ message }: { message: string }) {
   return (
-    <div className="mono rounded-[3px] border px-4 py-3 text-[12px] uppercase tracking-[.1em]" style={{ borderColor: "rgba(224,83,61,.4)", background: "rgba(224,83,61,.12)", color: "var(--alert)" }}>
+    <div className="mono rounded-[3px] border px-4 py-3 text-[12px] uppercase tracking-[.1em]" style={{ borderColor: "rgba(224,83,61,.4)", background: "rgba(224,83,61,.12)", color: "var(--alert-text)" }}>
       {message}
     </div>
   );

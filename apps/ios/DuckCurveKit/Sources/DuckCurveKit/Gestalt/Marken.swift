@@ -104,8 +104,14 @@ public enum Marken {
 
     public static let text1 = Farbwert(0xFFFFFF, deckung: 0.92)
     public static let text2 = Farbwert(0xFFFFFF, deckung: 0.72)
-    public static let text3 = Farbwert(0xFFFFFF, deckung: 0.48)
-    public static let textKicker = mist
+    /// Die blasse Stufe traegt Beschriftungen in 10 bis 13 Punkten. Mit 48 % Deckung lag sie auf
+    /// den Karten unter 4,5:1 (4,41 auf Flaeche 1, 4,22 auf Flaeche 2, 3,88 auf Flaeche 3). Mit
+    /// 58 % sind es 5,76, 5,42 und 4,92 (`tokens.css`, `--text-3`, gemessen am 24.11.2026).
+    public static let text3 = Farbwert(0xFFFFFF, deckung: 0.58)
+    /// Die Stichwortzeile. Eine Stufe heller als ``mist``: das Nebelgrau selbst lag als Schrift
+    /// auf Flaeche 3 bei 4,18:1, dieses bei 4,96 (`tokens.css`, `--text-kicker`). ``mist`` bleibt
+    /// die Farbe der Reihen und Marken.
+    public static let textKicker = Farbwert(0x8AB2C4)
 
     // MARK: - Energie-Semantik (Serienfarben, auf flaeche2 geprueft)
 
@@ -169,6 +175,11 @@ public enum Marken {
     public static let gut = mist
     public static let achtung = amber
     public static let alarm = Farbwert(0xE0533D)
+    /// Alarm als Schrift (`tokens.css`, `--alert-text`). ``alarm`` traegt Flaechen, Marken und
+    /// grosse Zahlen; als kleine Schrift lag es ueberall unter 4,5:1 (3,70 auf Flaeche 1, 3,38
+    /// auf Flaeche 2). Dieses hellere Rot liegt bei 5,31 und 4,85. Es steht naeher am Terrakotta
+    /// der Waermepumpe und ist deshalb nur fuer Text gedacht, nie fuer eine Reihe oder Flaeche.
+    public static let alarmText = Farbwert(0xFF7266)
 
     // MARK: - Thermische Skala
 

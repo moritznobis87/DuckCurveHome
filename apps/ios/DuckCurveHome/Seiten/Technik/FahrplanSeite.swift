@@ -120,7 +120,7 @@ struct FahrplanSeite: View {
             if let warnung = p?.plannerWarnDe, !warnung.isEmpty {
                 Text(warnung)
                     .font(planerschrift)
-                    .foregroundStyle(Farbe.alarm)
+                    .foregroundStyle(Farbe.alarmText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

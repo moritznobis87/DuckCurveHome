@@ -39,7 +39,7 @@ function FindingRow({ f }: { f: InvoiceFinding }) {
         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
           <span className="text-[13px] text-text-1">{f.title_de}</span>
           {hasNumbers ? (
-            <span className="mono whitespace-nowrap text-[12px]" style={{ color: f.severity === "ok" ? "var(--text-3)" : "var(--alert)" }}>
+            <span className="mono whitespace-nowrap text-[12px]" style={{ color: f.severity === "ok" ? "var(--text-3)" : "var(--alert-text)" }}>
               {de1(f.expected, 2)} erwartet · {de1(f.actual, 2)} {f.unit}
               {f.delta != null && Math.abs(f.delta) >= 0.005 ? ` · ${f.delta > 0 ? "+" : ""}${de1(f.delta, 2)}` : ""}
             </span>

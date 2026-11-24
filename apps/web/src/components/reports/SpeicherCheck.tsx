@@ -47,7 +47,7 @@ export function SpeicherCheck({ period, anchor }: { period: Period; anchor: stri
         Hausverbrauch von den Wandlern des Hubs. Damit lässt sich trennen, ob der Strom im Speicher
         angekommen ist, ob er nur im Gerät geblieben ist oder ob er gar nicht geflossen ist.
       </p>
-      {fehler ? <p className="m-0 text-[13px] text-alert">{fehler}</p> : null}
+      {fehler ? <p className="m-0 text-[13px] text-alert-text">{fehler}</p> : null}
       {text ? <pre className="pruefbericht">{text}</pre> : null}
     </Card>
   );

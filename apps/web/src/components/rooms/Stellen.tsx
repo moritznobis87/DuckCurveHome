@@ -150,7 +150,7 @@ export function Stellen({ raum, readOnly, onClose, onDone }: { raum: RoomLive; r
           )}
         </div>
 
-        {fehler ? <p className="m-0 text-[13px]" style={{ color: "var(--alert)" }}>{fehler}</p> : null}
+        {fehler ? <p className="m-0 text-[13px]" style={{ color: "var(--alert-text)" }}>{fehler}</p> : null}
         {fertig ? <p className="m-0 text-[13px]" style={{ color: "var(--pv)" }}>{fertig}</p> : null}
         {readOnly ? <p className="m-0 text-[12px] text-text-3">Nur Ansicht: dieses Gerät sieht zu, stellt aber nichts.</p> : null}
 

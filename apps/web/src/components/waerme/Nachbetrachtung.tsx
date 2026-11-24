@@ -114,7 +114,7 @@ export function Nachbetrachtung() {
           </Link>
         </div>
 
-        {fehler ? <p className="m-0 text-[13px] text-alert">{fehler}</p> : null}
+        {fehler ? <p className="m-0 text-[13px] text-alert-text">{fehler}</p> : null}
         {laden && !daten ? <p className="m-0 text-[13px] text-text-3">Der Tag wird bewertet. Der Vergleichslauf mit perfekter Voraussicht braucht einige Sekunden.</p> : null}
 
         {daten ? (

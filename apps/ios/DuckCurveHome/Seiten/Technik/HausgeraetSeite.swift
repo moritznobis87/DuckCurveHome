@@ -69,10 +69,10 @@ struct HausgeraetSeite: View {
             if let g = geraet {
                 urteil(g)
                 if let hinweis {
-                    Text(hinweis).font(Schrift.klein).foregroundStyle(Farbe.alarm)
+                    Text(hinweis).font(Schrift.klein).foregroundStyle(Farbe.alarmText)
                 } else if let satz = Hausgeraet.aktionssatz(g) {
                     Text(satz.text).font(Schrift.klein)
-                        .foregroundStyle(satz.fehler ? Farbe.alarm : Farbe.text2)
+                        .foregroundStyle(satz.fehler ? Farbe.alarmText : Farbe.text2)
                 }
                 if g.unterstuetzt { dienstkarte(g) }
                 apikarte(g.api)
