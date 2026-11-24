@@ -119,8 +119,14 @@
      Das gilt nur, wo eine Bereichsleiste steht: Anmeldung, Einladung und Wandanzeige rollen
      weiter wie bisher. */
   html:has(.fussleiste), body:has(.fussleiste) { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  /* **Der Kasten beginnt unter der Statusleiste.** Die Web-App vom Home-Bildschirm legt die
+     Statusleiste durchsichtig über die Seite (`statusBarStyle: "black-translucent"` in
+     `app/layout.tsx`). Rollte der Kasten bis an den oberen Rand, liefe der Text unter der Uhr
+     hindurch (gesehen am 24.11.2026). Der Streifen darüber bleibt im Grund der Seite stehen; im
+     Browser mit Adressleiste ist er null hoch. */
+  body:has(.fussleiste) { box-sizing: border-box; padding-top: env(safe-area-inset-top); background: var(--deep); }
   .report-main:has(> .fussleiste), .home:has(> .fussleiste) {
-    height: 100dvh;
+    height: calc(100dvh - env(safe-area-inset-top));
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior-y: contain;
