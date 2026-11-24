@@ -162,7 +162,7 @@ struct KontoSeite: View {
                 .monospacedDigit()
             Text(wort).font(Schrift.sans(11.5)).foregroundStyle(Farbe.text3).lineLimit(1)
         }
-        .frame(minWidth: 78)
+        .frame(minWidth: 72)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(Farbe.deep.opacity(0.45))
