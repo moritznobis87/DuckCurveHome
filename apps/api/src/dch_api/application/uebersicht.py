@@ -20,11 +20,11 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import TypeVar
 
 from dch_api.application.kennlinie import de
 from dch_api.application.runtime import Runtime
 from dch_api.schemas import (
+    Ampel,
     AnlageOut,
     KontaktwirkungOut,
     PlanOut,
@@ -34,8 +34,6 @@ from dch_api.schemas import (
     UebersichtOut,
     WaermepumpeOut,
 )
-
-T = TypeVar("T")
 
 #: Über wie viele Tage die Karte der Wirkung urteilt. Der kürzeste Zeitraum, den die Seite
 #: anbietet: die Karte soll sagen, wie es zuletzt war.
@@ -67,8 +65,12 @@ def karte_waermepumpe(w: WaermepumpeOut) -> UebersichtKarteOut:
     weg = "/waerme/waermepumpe"
     leistung = w.leistung_zaehler_kw
     if leistung.value is None or not leistung.quality.usable:
-        return UebersichtKarteOut(weg=weg, dazu_de=w.zustand_de, ampel="aus",
-                                  grund_de="Die Leistung der Wärmepumpe ist gerade nicht gemessen.")
+        return UebersichtKarteOut(
+            weg=weg,
+            dazu_de=w.zustand_de,
+            ampel="aus",
+            grund_de="Die Leistung der Wärmepumpe ist gerade nicht gemessen.",
+        )
     return UebersichtKarteOut(
         weg=weg,
         leitzahl_de=f"{de(leistung.value, 1)} kW",
@@ -98,18 +100,23 @@ def karte_fahrplan(plan: PlanOut | None) -> UebersichtKarteOut:
 
 #: Was das Urteil der Ereignisstudie für die Ampel heißt. `offen` ist kein schlechtes Urteil,
 #: sondern keines: zu wenige Ereignisse.
-_WIRKUNG_AMPEL = {"wirkt": "gut", "kein_unterschied": "warn", "seltener": "warn", "offen": "aus"}
+_WIRKUNG_AMPEL: dict[str, Ampel] = {
+    "wirkt": "gut",
+    "kein_unterschied": "warn",
+    "seltener": "warn",
+    "offen": "aus",
+}
 
 
 def karte_wirkung(k: KontaktwirkungOut) -> UebersichtKarteOut:
     """Die Wirkung: in welchem Anteil der Fälle die Maschine nach einer Anforderung anläuft."""
     weg = "/waerme/wirkung"
-    ampel = _WIRKUNG_AMPEL.get(k.urteil, "aus")
+    ampel: Ampel = _WIRKUNG_AMPEL.get(k.urteil, "aus")
     return UebersichtKarteOut(
         weg=weg,
         leitzahl_de=None if k.quote is None else f"{de(k.quote * 100, 0)} %",
         dazu_de="Anlauf nach einer Anforderung",
-        ampel=ampel,  # type: ignore[arg-type]
+        ampel=ampel,
         grund_de="" if ampel == "gut" else k.urteil_de,
     )
 
@@ -153,7 +160,7 @@ def karte_regler(e: ReglerEinstellungenOut) -> UebersichtKarteOut:
     )
 
 
-async def _karte(
+async def _karte[T](
     weg: str, quelle: Callable[[], Awaitable[T]], bauen: Callable[[T], UebersichtKarteOut]
 ) -> UebersichtKarteOut:
     """Eine Karte aus ihrer Quelle. Wirft die Quelle, bleibt die Karte stehen und sagt es."""

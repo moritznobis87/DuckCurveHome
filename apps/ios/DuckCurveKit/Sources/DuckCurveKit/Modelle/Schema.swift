@@ -1116,6 +1116,21 @@ public enum SystemMode: String, Codable, Sendable, Hashable, CaseIterable {
 
 /// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
 /// Spielart im Dienst die App nicht stehen laesst.
+public enum UebersichtKarteOutAmpelWahl: String, Codable, Sendable, Hashable, CaseIterable {
+    case gut = "gut"
+    case warn = "warn"
+    case schlecht = "schlecht"
+    case aus = "aus"
+    case unbekannt = "—unbekannt—"
+
+    public init(from decoder: any Decoder) throws {
+        let roh = try decoder.singleValueContainer().decode(String.self)
+        self = UebersichtKarteOutAmpelWahl(rawValue: roh) ?? .unbekannt
+    }
+}
+
+/// Aus dem Schema erzeugt. Unbekannte Werte landen in `.unbekannt`, damit eine neue
+/// Spielart im Dienst die App nicht stehen laesst.
 public enum UpdateAnfrageInAktionWahl: String, Codable, Sendable, Hashable, CaseIterable {
     case installieren = "installieren"
     case pruefen = "pruefen"
@@ -11039,6 +11054,61 @@ public struct Uebernahme: Codable, Sendable, Hashable {
         self.rmseAlt = try c.decodeIfPresent(Double.self, forKey: .rmseAlt)
         self.rmseNeu = try c.decodeIfPresent(Double.self, forKey: .rmseNeu)
         self.grund = try c.decode(String.self, forKey: .grund)
+    }
+}
+
+/// Eine Karte der Bereichsübersicht: die wichtigste Zahl einer Seite und ihr Zustand.
+///
+/// Der Dienst rechnet und formuliert, damit Dashboard und App nachweislich dasselbe zeigen. Die
+/// Karte selbst (Name der Seite, der feste Satz dazu) steht im Seitenbaum; hier steht nur, was
+/// sich mit der Zeit ändert.
+public struct UebersichtKarteOut: Codable, Sendable, Hashable {
+    public var weg: String
+    public var leitzahlDe: String?
+    public var dazuDe: String?
+    public var ampel: UebersichtKarteOutAmpelWahl?
+    public var grundDe: String?
+
+    public enum CodingKeys: String, CodingKey {
+        case weg
+        case leitzahlDe = "leitzahl_de"
+        case dazuDe = "dazu_de"
+        case ampel
+        case grundDe = "grund_de"
+    }
+
+    public init(weg: String, leitzahlDe: String? = nil, dazuDe: String? = nil, ampel: UebersichtKarteOutAmpelWahl? = nil, grundDe: String? = nil) {
+        self.weg = weg
+        self.leitzahlDe = leitzahlDe
+        self.dazuDe = dazuDe
+        self.ampel = ampel
+        self.grundDe = grundDe
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.weg = try c.decode(String.self, forKey: .weg)
+        self.leitzahlDe = try c.decodeIfPresent(String.self, forKey: .leitzahlDe)
+        self.dazuDe = try c.decodeIfPresent(String.self, forKey: .dazuDe)
+        self.ampel = try c.decodeIfPresent(UebersichtKarteOutAmpelWahl.self, forKey: .ampel)
+        self.grundDe = try c.decodeIfPresent(String.self, forKey: .grundDe)
+    }
+}
+
+/// Die Karten eines Bereichs. Eine Seite ohne Karte hat nichts, was sich mit der Zeit ändert.
+public struct UebersichtOut: Codable, Sendable, Hashable {
+    public var bereich: String
+    public var karten: [UebersichtKarteOut]
+
+    public init(bereich: String, karten: [UebersichtKarteOut] = []) {
+        self.bereich = bereich
+        self.karten = karten
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.bereich = try c.decode(String.self, forKey: .bereich)
+        self.karten = try c.decodeIfPresent([UebersichtKarteOut].self, forKey: .karten) ?? []
     }
 }
 

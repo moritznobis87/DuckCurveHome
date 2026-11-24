@@ -4224,6 +4224,49 @@
         }
       }
     },
+    "/api/v1/uebersicht/{bereich}": {
+      "get": {
+        "tags": [
+          "Übersicht"
+        ],
+        "summary": "Die Karten der Übersicht eines Bereichs",
+        "description": "Je Seite des Bereichs die wichtigste Zahl und ein Zustand, fertig formuliert.\n\nDer Schlüssel des Bereichs ist der aus `docs/seitenbaum.json`. Eine Übersicht gibt es für\nBereiche mit Gruppen; heute ist das die Anlage. Welche Karten ein Betrachter sieht,\nentscheidet die Oberfläche wie bei den Seiten selbst.",
+        "operationId": "bereichsuebersicht_api_v1_uebersicht__bereich__get",
+        "parameters": [
+          {
+            "name": "bereich",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bereich"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UebersichtOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/demo": {
       "post": {
         "tags": [
@@ -19186,6 +19229,73 @@
         ],
         "title": "Uebernahme",
         "description": "Ein Eintrag im Änderungsprotokoll. Was sich geändert hat, und warum."
+      },
+      "UebersichtKarteOut": {
+        "properties": {
+          "weg": {
+            "type": "string",
+            "title": "Weg"
+          },
+          "leitzahl_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leitzahl De"
+          },
+          "dazu_de": {
+            "type": "string",
+            "title": "Dazu De",
+            "default": ""
+          },
+          "ampel": {
+            "type": "string",
+            "enum": [
+              "gut",
+              "warn",
+              "schlecht",
+              "aus"
+            ],
+            "title": "Ampel",
+            "default": "aus"
+          },
+          "grund_de": {
+            "type": "string",
+            "title": "Grund De",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "weg"
+        ],
+        "title": "UebersichtKarteOut",
+        "description": "Eine Karte der Bereichsübersicht: die wichtigste Zahl einer Seite und ihr Zustand.\n\nDer Dienst rechnet und formuliert, damit Dashboard und App nachweislich dasselbe zeigen. Die\nKarte selbst (Name der Seite, der feste Satz dazu) steht im Seitenbaum; hier steht nur, was\nsich mit der Zeit ändert."
+      },
+      "UebersichtOut": {
+        "properties": {
+          "bereich": {
+            "type": "string",
+            "title": "Bereich"
+          },
+          "karten": {
+            "items": {
+              "$ref": "#/components/schemas/UebersichtKarteOut"
+            },
+            "type": "array",
+            "title": "Karten"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bereich"
+        ],
+        "title": "UebersichtOut",
+        "description": "Die Karten eines Bereichs. Eine Seite ohne Karte hat nichts, was sich mit der Zeit ändert."
       },
       "UpdateAnfrageIn": {
         "properties": {
