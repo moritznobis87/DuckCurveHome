@@ -184,7 +184,8 @@ final class StromuebersichtTests: XCTestCase {
         XCTAssertEqual(Stromuebersicht.Verbraucher.haushalt.farbe.hex, "#CFD8DC")
         XCTAssertEqual(Stromuebersicht.Herkunft.pvDirekt.farbe.hex, "#F2A900")
         XCTAssertEqual(Stromuebersicht.Herkunft.batterie.farbe.hex, "#7FA3B3")
-        XCTAssertEqual(Stromuebersicht.Herkunft.netz.farbe.hex, "#E0533D")
+        // Seit dem 24.11.2026 das Violett des Netzbezugs und nicht mehr das Rot der Störung.
+        XCTAssertEqual(Stromuebersicht.Herkunft.netz.farbe.hex, "#B48DF4")
     }
 
     func testBalkenTragenLabelUndWerteJeReihe() {
@@ -289,7 +290,8 @@ final class StromuebersichtTests: XCTestCase {
         // „Netzkosten“ trägt `--alert` wie in der Vorlage (`HouseReport.tsx:78`:
         // `tone: "ember"`; `PeriodStrip.tsx:19`). Vorher war es `glut`, weil ``Kennzahl/Ton``
         // keinen Alarmton kannte.
-        XCTAssertEqual(zeilen.map(\.ton), [.normal, .bernstein, .alarm, .normal])
+        // Seit dem 24.11.2026 `netz`: das Violett des Netzbezugs.
+        XCTAssertEqual(zeilen.map(\.ton), [.normal, .bernstein, .netz, .normal])
         XCTAssertEqual(zeilen[0].werte, ["59,2", "412", "1681", "9120"])
         XCTAssertEqual(
             zeilen[1].werte.first, "11\(Formate.schmalesLeerzeichen)%")

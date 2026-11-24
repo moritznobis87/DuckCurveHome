@@ -63,6 +63,12 @@ public struct Kennzahl: Sendable, Hashable, Identifiable {
         /// Plätze neben der Netzbezugskachel steht: zwei Kacheln in derselben Farbe für
         /// Verschiedenes.
         case alarm
+        /// Der Strom aus dem Netz und was er kostet: das Violett des Netzbezugs.
+        ///
+        /// Der Ton `netz` der Vorlage (`Stat.tsx`, `PeriodStrip.tsx`), seit dem 24.11.2026. Bis
+        /// dahin trugen diese Zahlen ``alarm``, und der Netzbezug sah aus wie eine Störung. Das
+        /// Rot gehört jetzt der Störung und dem, was auffällt.
+        case netz
         /// Geld und Preis.
         case bernstein
         /// Eine Zahl, die nur Hintergrund ist.

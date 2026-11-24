@@ -45,8 +45,11 @@ public enum Gelduebersicht {
     /// gehört allen Seiten. Darum eine eigene, kleine Aufzählung mit genau den sieben Rollen,
     /// die diese Seite kennt; die Ansicht setzt sie in Farben um und entscheidet nichts.
     public enum Ton: String, Sendable, Hashable, CaseIterable {
-        /// `--alert` #E0533D - was bezahlt wurde, und was das Verschieben gekostet hat.
+        /// `--alert` #E0533D - was insgesamt bezahlt wurde, und was das Verschieben gekostet hat.
         case alarm
+        /// `--grid-in` #B48DF4 - der Netzstrom und seine Posten, im Bild wie in der Tabelle. Bis
+        /// zum 24.11.2026 trugen sie ``alarm``; das Rot gehört jetzt nicht mehr dem Netzbezug.
+        case netz
         /// `--mist` #7FA3B3 - was hereinkam, und der Speicheranteil der Ersparnis.
         case nebel
         /// `--amber` #F2A900 - was die Sonne gespart hat.
@@ -280,20 +283,20 @@ public enum Gelduebersicht {
             Posten(
                 wort: "Netzstrom Haushalt", menge: kwhMenge(haushalt.kwh),
                 preis: ctJeKwh(haushalt.eur, haushalt.kwh), betrag: Formate.euro(haushalt.eur),
-                ton: .alarm, weg: "/strom", seite: "Strom"),
+                ton: .netz, weg: "/strom", seite: "Strom"),
             Posten(
                 wort: "Netzstrom Wärmepumpe", menge: kwhMenge(t.heatPumpGridKwh),
                 preis: ctJeKwh(t.heatPumpCostEur, t.heatPumpGridKwh),
-                betrag: Formate.euro(t.heatPumpCostEur), ton: .alarm, weg: "/waerme",
+                betrag: Formate.euro(t.heatPumpCostEur), ton: .netz, weg: "/waerme",
                 seite: "Wärme"),
             Posten(
                 wort: "Netzstrom Wallbox", menge: kwhMenge(t.evGridKwh),
                 preis: ctJeKwh(t.evCostEur, t.evGridKwh), betrag: Formate.euro(t.evCostEur),
-                ton: .alarm, weg: "/strom/wallbox", seite: "Wallbox"),
+                ton: .netz, weg: "/strom/wallbox", seite: "Wallbox"),
             Posten(
                 wort: "Netzstrom Speichergerät", menge: kwhMenge(t.batteryDeviceGridKwh),
                 preis: ctJeKwh(t.batteryDeviceCostEur, t.batteryDeviceGridKwh),
-                betrag: Formate.euro(t.batteryDeviceCostEur), ton: .alarm,
+                betrag: Formate.euro(t.batteryDeviceCostEur), ton: .netz,
                 weg: "/strom/speicher", seite: "Speicher"),
             Posten(
                 wort: "Pellets", menge: pelletmenge(ofen?.pelletKg), preis: "",
@@ -543,17 +546,16 @@ public enum Gelduebersicht {
     /// (`CostReport.tsx:79`). Darum das Vorzeichen, und darum muss die Werteachse die Null
     /// zeigen.
     ///
-    /// **Netzstrom ist #E0533D und nicht `netzBezug`.** Die App nahm `Farbe.netzBezug`
-    /// (#7FA3B3, `GeldSeiten.swift:62`) - dieselbe Farbe wie die Einspeisung in den
-    /// Kennzahlen, und damit stand in einem gestapelten Bild zweimal derselbe Ton für
-    /// Gegenteiliges. Die Vorlage nimmt `C.alert` (`palette.ts:76`).
+    /// **Netzstrom trägt das Violett des Netzbezugs** (`CostReport.tsx`, `C.grid`), seit dem
+    /// 24.11.2026 in Fluss, Diagramm und Tabelle dasselbe. Davor war er hier das Rot der
+    /// Störung, und noch davor das Nebelgrau, das in den Kennzahlen die Einspeisung trägt.
     ///
     /// Ein fehlender Betrag ist hier eine Null und kein Strich: ein Balken, der fehlt, ist
     /// kein Balken, und eine Lücke im Stapel wäre falscher als eine Null.
     public static func hauptreihen(_ b: EnergySummaryOut) -> [Balkenreihe] {
         [
             Balkenreihe(
-                name: "Netzstrom", ton: .alarm,
+                name: "Netzstrom", ton: .netz,
                 werte: b.buckets.map {
                     Balkenwert(wort: $0.label, wert: $0.totals.importCostEur ?? 0)
                 }),
@@ -597,10 +599,9 @@ public enum Gelduebersicht {
     /// (`CostReport.tsx:98`) - die vier Abfragen laufen nebeneinander, und eine gescheiterte
     /// lässt ihre Spalte leer.
     ///
-    /// **„Bezahlt (Netzstrom)“ trägt ``Kennzahl/Ton/alarm``** - `--alert` #E0533D, so wie die
-    /// Vorlage die Zeile setzt (`CostReport.tsx:229`: `tone: "ember"`; `PeriodStrip.tsx:19`
-    /// führt `ember` auf `var(--alert)`). Vorher stand hier `glut` #E0966B, weil
-    /// ``Kennzahl/Ton`` keinen Alarmton kannte; seit es ihn gibt, ist die Ersatzwahl unnötig.
+    /// **„Bezahlt (Netzstrom)“ trägt ``Kennzahl/Ton/netz``**, das Violett des Netzbezugs, so wie
+    /// die Vorlage die Zeile setzt (`CostReport.tsx`: `tone: "netz"`; `PeriodStrip.tsx` führt
+    /// `netz` auf `var(--grid-in)`).
     public static func spannenzeilen(_ je: [Spanne: EnergySummaryOut]) -> [Streifenzeile] {
         let folge = Spanne.allCases
         func reihe(_ wort: String, _ ton: Kennzahl.Ton, _ wert: (EnergyTotalsOut) -> String)
@@ -611,7 +612,7 @@ public enum Gelduebersicht {
                 ton: ton)
         }
         return [
-            reihe("Bezahlt (Netzstrom)", .alarm) { Formate.euro($0.importCostEur) },
+            reihe("Bezahlt (Netzstrom)", .netz) { Formate.euro($0.importCostEur) },
             reihe("Bekommen (Einspeisung)", .nebel) { Formate.euro($0.exportRevenueEur) },
             reihe("Gespart (Sonne, Speicher)", .bernstein) {
                 Formate.euro(summe([$0.pvDirectSavingsEur, $0.batteryNetEur]))

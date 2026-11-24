@@ -328,9 +328,8 @@ struct Hauskonsolenleiste: View {
             farbe: Farbe.waermepumpe, klappe: .waermepumpe)
     }
 
-    /// **Die Farbe der Vorlage ist `--ev`** (#5C8FA3, `Konsole.tsx:320`, `tokens.css:57`) - im
-    /// Kern `Farbe.wallbox`. Hier stand `Farbe.diagrammWallbox` (#2F89B5), die Farbe der
-    /// gestapelten Diagramme, und damit ein deutlich blaueres Blau als im Dashboard.
+    /// **Die Farbe der Vorlage ist `--ev`** (`Konsole.tsx`, `tokens.css`), im Kern
+    /// `Farbe.wallbox`. Seit dem 24.11.2026 ist das derselbe Wert wie im Diagramm (#2F89B5).
     private var kreisblock: some View {
         block(
             "Heizkreise", wert: String(Hauskonsole.offeneKreise(raeume)), einheit: "offen",

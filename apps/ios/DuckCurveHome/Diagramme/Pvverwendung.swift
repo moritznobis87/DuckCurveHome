@@ -24,16 +24,15 @@ struct Pvverwendungsbild: View {
     ///
     /// `Direkt genutzt` ist die Sonne, `In Batterie` die Speicherfarbe des Diagramms
     /// (`Marken.diagrammSpeicher` #7FA3B3 ist `C.battery` der Vorlage, `palette.ts:36`).
-    /// **`Eingespeist` weicht ab:** die Vorlage nimmt dort `rgba(228,236,239,.5)`
-    /// (`palette.ts:44`), und dafür gibt es in `Marken` keine Marke. Genommen ist die
-    /// nächstliegende vorhandene helle Diagrammfarbe; `Farbe.netzEinspeisung` wäre falsch,
-    /// weil sie ein Gelb neben das Gelb der Sonne legt - und der oberste Balkenabschnitt ist
-    /// genau der, der sich von der Erzeugung unterscheiden soll.
+    /// `Eingespeist` ist seit dem 24.11.2026 das helle Bernstein der Einspeisung, wie im
+    /// Dashboard (`palette.ts`, `export`) und im Energiefluss. Es ist mit der Sonne verwandt,
+    /// weil es Sonnenstrom ist; der Abstand zur Sonne ist 11,9 und damit kleiner als die
+    /// Schwelle, was die Legende und die Lage im Balken auffangen.
     static func farbe(_ r: Pvbild.Verwendung) -> Color {
         switch r {
         case .direkt: return Farbe.pv
         case .speicher: return Farbe.diagrammSpeicher
-        case .einspeisung: return Farbe.diagrammHaushalt
+        case .einspeisung: return Farbe.netzEinspeisung
         }
     }
 

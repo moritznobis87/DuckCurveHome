@@ -115,10 +115,18 @@ public enum Marken {
 
     // MARK: - Energie-Semantik (Serienfarben, auf flaeche2 geprueft)
 
+    // **Eine Farbe je Sache, seit dem 24.11.2026** (Vorgabe des Hausherrn, `tokens.css` und
+    // `charts/palette.ts` nennen dieselben Werte). Vorher faerbten Energiefluss und Diagramm
+    // den Netzbezug, den Speicher, die Wallbox und die Einspeisung verschieden. Gemessen in
+    // docs/design/werkstatt/LIESMICH.md, „Vorschlag fuer Zustaende und Reihen“.
+
     public static let pv = amber
-    public static let netzBezug = mist
+    /// Netzbezug: ein Violett. Er war im Fluss Nebelgrau und im Diagramm das Rot der Stoerung;
+    /// das Rot gehoert jetzt der Stoerung allein. 4,98:1 zur Karte, 25,5 von ``alarm``.
+    public static let netzBezug = Farbwert(0xB48DF4)
     public static let netzEinspeisung = amberWeich
-    public static let batterie = Farbwert(0x4F7B88)
+    /// Speicher: die Farbe des Diagramms. #4F7B88 stand nur 2,79:1 zur Karte.
+    public static let batterie = mist
 
     /// Warmes Terrakotta statt Fastweiss: Weiss ist im Energiefluss dem Haus vorbehalten (Knoten
     /// der Summe). Deutlich abgesetzt von `amber` (PV) und von `alarm`, damit die Waermepumpe
@@ -156,7 +164,8 @@ public enum Marken {
     /// Entspricht `puffer` in palette.ts.
     public static let puffer = Farbwert(0x8FBF6B)
 
-    public static let wallbox = Farbwert(0x5C8FA3)
+    /// Wallbox: die Farbe des Diagramms. #5C8FA3 lag nur 7,5 vom Nebelgrau entfernt.
+    public static let wallbox = Farbwert(0x2F89B5)
     public static let preis = mist
     public static let last = Farbwert(0xFFFFFF, deckung: 0.62)
 
@@ -202,20 +211,19 @@ public enum Marken {
     // **Warum sie nicht die des Flussbilds sind.** Im Fluss steht jede Groesse fuer sich, in
     // einem gestapelten Balken stehen drei uebereinander - und was uebereinander liegt, muss
     // sich unterscheiden lassen. `charts/palette.ts` hat das durchgerechnet (CIEDE2000, normal
-    // und bei Farbfehlsichtigkeit) und dabei zwei Werte verworfen, die die App noch benutzt:
+    // und bei Farbfehlsichtigkeit).
     //
-    // * **Wallbox** war #5C8FA3 und lag nur 7,5 vom Strompreis und 11,4 vom Haushalt entfernt.
-    //   Unter 15 sind zwei Flaechen auch mit normalem Farbsehen kaum zu trennen - auf der
-    //   Hausseite hatten die Balken drei Segmente, von denen zwei wie eines aussahen.
-    // * **Netzbezug** ist im Diagramm rot und nicht nebelfarben: dort ist er eine Menge, die
-    //   Geld kostet, und steht neben Sonne und Speicher, die keines kosten.
+    // **Seit dem 24.11.2026 sind Netz, Wallbox und Speicher hier dieselben Farben wie im Fluss.**
+    // Die drei Namen bleiben, weil die Diagramme sie benutzen; sie zeigen auf die eine Marke der
+    // Sache. Wer eine davon aendert, aendert sie fuer Fluss und Diagramm zugleich, und so soll
+    // es sein.
 
-    /// Netzbezug im Diagramm.
-    public static let diagrammNetz = Farbwert(0xE0533D)
-    /// Wallbox im Diagramm.
-    public static let diagrammWallbox = Farbwert(0x2F89B5)
-    /// Speicher im Diagramm.
-    public static let diagrammSpeicher = Farbwert(0x7FA3B3)
+    /// Netzbezug im Diagramm: ``netzBezug``.
+    public static let diagrammNetz = netzBezug
+    /// Wallbox im Diagramm: ``wallbox``.
+    public static let diagrammWallbox = wallbox
+    /// Speicher im Diagramm: ``batterie``.
+    public static let diagrammSpeicher = batterie
     /// Der Haushalt ohne Waermepumpe und Wallbox.
     ///
     /// Hell und nicht sandfarben: neben dem Orange der Waermepumpe waere Sand bei Deuteranopie

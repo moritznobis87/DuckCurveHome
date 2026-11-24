@@ -189,11 +189,9 @@ struct SpeicherSeite: View {
 
     /// Woher die Ladung kam. Gestapelt, weil Sonne und Netz sich zur geladenen Menge addieren.
     ///
-    /// **Die Farbe des Netzes ist rot und nicht nebelfarben.** Die Seite nahm bisher
-    /// `Farbe.netzBezug` (0x7FA3B3) für die Netzladung - also genau die Farbe, die im zweiten
-    /// Bild derselben Seite die Entladung trägt. Zwei Bilder einer Seite, die sich
-    /// widersprechen. `charts/palette.ts:36-37` hat das durchgerechnet: im Diagramm ist
-    /// Netzbezug `#E0533D`, weil er dort eine Menge ist, die Geld kostet.
+    /// **Die Farbe des Netzes ist das Violett des Netzbezugs** (`charts/palette.ts`, `grid`),
+    /// seit dem 24.11.2026 in Fluss und Diagramm dasselbe. Nebelfarben darf sie hier nicht
+    /// sein: das ist auf derselben Seite die Farbe der Entladung.
     private func herkunftskarte(_ b: EnergySummaryOut) -> some View {
         Karte(kicker: "Ladung nach Herkunft") {
             Balkenbild(

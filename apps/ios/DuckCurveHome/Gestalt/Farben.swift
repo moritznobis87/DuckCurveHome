@@ -137,6 +137,7 @@ public enum Farbe {
         // `PeriodStrip.tsx:19`). Siehe ``Kennzahl/Ton/alarm``, wo steht, welche drei Stellen
         // vorher auf `glut` auswichen und warum das die falsche Farbe war.
         case .alarm: return alarm
+        case .netz: return netzBezug
         case .bernstein: return amber
         case .gedaempft: return text3
         case .nebel: return mist

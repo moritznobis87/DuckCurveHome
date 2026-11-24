@@ -38,8 +38,8 @@ export function EvReport() {
       <KpiGrid cols={6}>
         <Stat label="Geladen" value={de1(t?.ev_kwh)} unit="kWh" tone="mist" hint={data ? `${data.sessions.length} Ladevorgänge` : undefined} />
         <Stat label="Sonnenanteil" value={pct(pvShare)} tone="amber" hint={t ? `PV ${de1(t.ev_pv_kwh)} · Batt. ${de1(t.ev_battery_kwh)} kWh` : undefined} />
-        <Stat label="Aus dem Netz" value={de1(t?.ev_grid_kwh)} unit="kWh" tone="ember" hint={paidCt != null ? `Ø ${de1(paidCt, 1)} ct/kWh bezahlt` : "kein Netzbezug"} />
-        <Stat label="Bezahlt" value={eur(t?.ev_cost_eur)} tone="ember" hint="Netzanteil × Strompreis" />
+        <Stat label="Aus dem Netz" value={de1(t?.ev_grid_kwh)} unit="kWh" tone="netz" hint={paidCt != null ? `Ø ${de1(paidCt, 1)} ct/kWh bezahlt` : "kein Netzbezug"} />
+        <Stat label="Bezahlt" value={eur(t?.ev_cost_eur)} tone="netz" hint="Netzanteil × Strompreis" />
         <Stat label="Entgangene Vergütung" value={eur(t?.ev_opportunity_eur)} tone="muted" hint="nicht eingespeister PV-Strom" />
         <Stat label="Effektiv je kWh" value={effCt != null ? de1(effCt, 1) : "-"} unit="ct" hint="bezahlt + entgangen" />
       </KpiGrid>
@@ -94,7 +94,7 @@ export function EvReport() {
           rows={[
             { label: "Geladen · kWh", value: (p) => val(p, (s) => de1(s.summary.totals.ev_kwh, s.summary.totals.ev_kwh >= 100 ? 0 : 1)), tone: "mist" },
             { label: "Sonnenanteil", value: (p) => val(p, (s) => pct(s.summary.totals.ev_kwh > 0 ? (s.summary.totals.ev_pv_kwh + s.summary.totals.ev_battery_kwh) / s.summary.totals.ev_kwh : null)), tone: "amber" },
-            { label: "Bezahlt", value: (p) => val(p, (s) => eur(s.summary.totals.ev_cost_eur)), tone: "ember" },
+            { label: "Bezahlt", value: (p) => val(p, (s) => eur(s.summary.totals.ev_cost_eur)), tone: "netz" },
             { label: "Ladevorgänge", value: (p) => val(p, (s) => String(s.sessions.length)) },
           ]}
         />
