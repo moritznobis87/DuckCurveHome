@@ -3,11 +3,13 @@ import SwiftUI
 
 /// Der Regelkreis: die Kaskade von außen nach innen, mit der Herkunft jeder Zahl.
 ///
-/// **Was hier anders ist als im Dashboard.** Dort steht ein Blockschaltbild von 1400 Punkten
-/// Breite, in dem man Kästchen anklickt. Am Telefon ist dieselbe Zeichnung ein Ausschnitt, durch
-/// den man schiebt - also steht hier die Kaskade als Liste: fünf Ebenen von der ökonomischen
-/// Führung bis in den einzelnen Raum, je Block sein Übertragungsglied mit Kennbild, seine
-/// Signale nach beiden Seiten und seine Parameter mit Schieber, Herkunft und Lernverlauf.
+/// **Die Kaskade steht als Blockschaltbild da, wie im Dashboard.** Der Hausherr hat das am
+/// 24.11.2026 festgelegt: überall das Schaltbild, keine Liste. Bis dahin stand hier die Kaskade
+/// als Liste von fünf Ebenen, weil die Zeichnung am Telefon ein Ausschnitt ist, durch den man
+/// schiebt. Jetzt zeichnet ``Regelkreiskarte`` dieselbe Karte aus derselben Geometrie; am
+/// Telefon wird geschoben oder mit den Knöpfen der Ebenen hineingezoomt. Ein angetippter Block
+/// zeigt darunter sein Blatt: Übertragungsglied mit Kennbild, Signale nach beiden Seiten und
+/// Parameter mit Schieber, Herkunft und Lernverlauf.
 ///
 /// **Der Zweck der Seite ist die Herkunft.** Jede Zahl in dieser Anlage ist entweder gemessen,
 /// geschätzt, angenommen, fest, aus dem Entwurf gerechnet oder von Hand übersteuert - und das
@@ -28,6 +30,11 @@ struct RegelkreisSeite: View {
     @State private var karte: RegelkreisOut?
     @State private var fehler: ApiFehler?
     @State private var laedtNeu = false
+    /// Der Ausschnitt der Karte: die ganze oder eine Ebene (`Regelkreis.tsx`, `sicht`).
+    @State private var sicht = "alles"
+    /// Der gewählte Block. Am Anfang der Pufferregler, wie im Dashboard: so steht unter der
+    /// Karte von Beginn an ein Blatt und zeigt, was ein Tippen bewirkt.
+    @State private var gewaehlt: String? = "puffer_regler"
 
     @Environment(\.horizontalSizeClass) private var breite
     private var schmal: Bool { breite == .compact }
@@ -41,10 +48,9 @@ struct RegelkreisSeite: View {
                     kacheln: Regelkreisbild.kacheln(k).map(Kacheldaten.init),
                     staffelung: Kachelraster(mittel: 2, breit: 4)
                 )
+                kaskadenkarte(k)
+                blockkarte(bild)
                 kreiskarte(bild)
-                ForEach(bild.ebenen) { ebene in
-                    ebenenkarte(ebene)
-                }
                 protokollkarte(bild)
                 Methode(
                     [], kurz: "fünf Ebenen · SIMC-Entwurf · Übernahme nur mit Beleg",
@@ -133,21 +139,124 @@ struct RegelkreisSeite: View {
         }
     }
 
-    // MARK: - Die Ebenen
+    // MARK: - Die Kaskade
 
-    @ViewBuilder private func ebenenkarte(_ ebene: Regelkreisbild.Ebenengruppe) -> some View {
-        Karte(
-            kicker: "Ebene \(ebene.id) · \(ebene.titel)",
-            beiwerk: Kartenhinweis.beiwerk(ebene.takt, mono: true)
-        ) {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(ebene.bloecke.enumerated()), id: \.element.id) { nr, block in
-                    if nr > 0 {
-                        Rectangle().fill(Farbe.linie1).frame(height: 1)
+    /// Das Blockschaltbild mit den Knöpfen zum Hineinzoomen, der Legende und der Unterschrift
+    /// (`Regelkreis.tsx`, Karte „Die Kaskade“).
+    @ViewBuilder private func kaskadenkarte(_ k: RegelkreisOut) -> some View {
+        let gewaehlteSicht =
+            Schaltbilddaten.sichten.first { $0.schluessel == sicht } ?? Schaltbilddaten.sichten[0]
+        Karte(titel: "Die Kaskade") {
+            VStack(alignment: .leading, spacing: 10) {
+                sichtwahl
+                // Unter 1080 Punkten Breite wird geschoben statt gestaucht (`.rk-karte`); ist
+                // mehr Platz da, füllt die Karte ihn.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    Regelkreiskarte(
+                        karte: k, sicht: gewaehlteSicht, gewaehlt: gewaehlt,
+                        waehle: { gewaehlt = $0 }
+                    )
+                    .containerRelativeFrame(.horizontal) { breite, _ in
+                        max(breite, Regelkreiskarte.mindestbreite)
                     }
-                    Blockansicht(block: block, schmal: schmal, karte: $karte)
-                        .padding(.vertical, 14)
                 }
+                .background(Color.black.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous))
+                Text(
+                    Schaltbild.bildunterschrift(
+                        ohnePlatz: k.bloecke.filter { Schaltbilddaten.plaetze[$0.id] == nil }.map(\.name))
+                )
+                .font(Schrift.sans(12, relativeTo: .caption))
+                .foregroundStyle(Farbe.text3)
+                .fixedSize(horizontal: false, vertical: true)
+                leitungslegende
+            }
+        }
+    }
+
+    /// Die Knöpfe der Ausschnitte: die ganze Karte oder eine Ebene der Kaskade.
+    private var sichtwahl: some View {
+        HStack(spacing: 6) {
+            ForEach(Schaltbilddaten.sichten) { s in
+                let an = s.schluessel == sicht
+                Button {
+                    sicht = s.schluessel
+                } label: {
+                    Text(s.name)
+                        .font(Schrift.mono(11, relativeTo: .caption))
+                        .foregroundStyle(an ? Farbe.grund : Farbe.text2)
+                        .lineLimit(1)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: Marken.radius2, style: .continuous)
+                                .fill(an ? Farbe.amber : Farbe.flaeche3)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(an ? [.isButton, .isSelected] : [.isButton])
+            }
+            Spacer(minLength: 0)
+        }
+        .modifier(Querschieber(an: schmal))
+    }
+
+    /// Was die Linien der Karte bedeuten (`Regelkreis.tsx`, `.rk-legende`). Die Farben der
+    /// Herkunft stehen im Kopf der Seite.
+    private var leitungslegende: some View {
+        Umbruchzeile(abstand: 14, zeilenabstand: 6) {
+            leitungsmuster("Signal", farbe: Farbe.text2, breite: 1.3, muster: [])
+            leitungsmuster("Führungsgröße", farbe: Farbe.amberWeich, breite: 1.6, muster: [])
+            leitungsmuster("Rückführung", farbe: Farbe.mist, breite: 1.3, muster: [])
+            leitungsmuster("Störgröße", farbe: Farbe.alarm, breite: 1.2, muster: [5, 3])
+            leitungsmuster("Parameterwirkung", farbe: Farbe.amber, breite: 1.2, muster: [1.5, 3])
+            HStack(spacing: 5) {
+                Text("θ")
+                    .font(Schrift.mono(8.5, relativeTo: .caption2))
+                    .foregroundStyle(Farbe.grund)
+                    .frame(width: 12, height: 12)
+                    .background(Circle().fill(Farbe.amber))
+                Text("Hier lernt das Haus")
+                    .font(Schrift.mono(10.5, relativeTo: .caption2))
+                    .foregroundStyle(Farbe.text3)
+            }
+            Text("Kennbild: Sprungantwort des Glieds")
+                .font(Schrift.mono(10.5, relativeTo: .caption2))
+                .foregroundStyle(Farbe.text3)
+        }
+    }
+
+    private func leitungsmuster(_ wort: String, farbe: Color, breite: CGFloat, muster: [CGFloat]) -> some View {
+        HStack(spacing: 5) {
+            Path { p in
+                p.move(to: CGPoint(x: 0, y: 5))
+                p.addLine(to: CGPoint(x: 22, y: 5))
+            }
+            .stroke(farbe, style: StrokeStyle(lineWidth: breite, dash: muster))
+            .frame(width: 22, height: 10)
+            Text(wort)
+                .font(Schrift.mono(10.5, relativeTo: .caption2))
+                .foregroundStyle(Farbe.text3)
+                .lineLimit(1)
+        }
+    }
+
+    // MARK: - Das Blatt des gewählten Blocks
+
+    /// Der Block, der auf der Karte angetippt ist, mit allem, was über ihn zu sagen ist
+    /// (`Regelkreis.tsx`, `Blatt`).
+    @ViewBuilder private func blockkarte(_ bild: Regelkreisbild) -> some View {
+        if let ebene = bild.ebenen.first(where: { e in e.bloecke.contains { $0.id == gewaehlt } }),
+            let block = ebene.bloecke.first(where: { $0.id == gewaehlt })
+        {
+            Karte(
+                kicker: "Ebene \(ebene.id) · \(ebene.titel)",
+                beiwerk: Kartenhinweis.beiwerk(ebene.takt, mono: true)
+            ) {
+                Blockansicht(block: block, schmal: schmal, karte: $karte)
+                    // Ein anderer Block ist ein anderes Blatt: was am vorigen aufgeklappt war,
+                    // bleibt nicht am neuen stehen.
+                    .id(block.id)
             }
         }
     }

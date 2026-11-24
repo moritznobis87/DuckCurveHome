@@ -71,6 +71,7 @@
 		99BBBD49F3FD5777A26147A2 /* Mitteilungen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1569F6F6326D9C4B70474A60 /* Mitteilungen.swift */; };
 		9A1C3FB9FF91FD7A101C7D83 /* WaermeSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D1A02B0F1DB5D6D6AFA0B27 /* WaermeSeite.swift */; };
 		9B5CE42C67067F41A23B681B /* HeizkreiseSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 751CE68FE3CF41229464D5E3 /* HeizkreiseSeite.swift */; };
+		9C953329ABFC8C774F7E71B8 /* Regelkreiskarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9FB8CAE3A83E44740E4C3C4 /* Regelkreiskarte.swift */; };
 		9FB949F248DA3A0880753B14 /* WaermepumpeSeite.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E58C41E4B28CFD2A1100B /* WaermepumpeSeite.swift */; };
 		A032CFA7AF0A6774C96282C7 /* Bericht.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30DAA240E8C7E2CE0D0D58B /* Bericht.swift */; };
 		A12C880295C6B5FFA2CC04B9 /* Zeichen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B67D80E0116B660F33FAFC6 /* Zeichen.swift */; };
@@ -218,6 +219,7 @@
 		9FE2E906879843FBFF8C04AC /* Glasmodell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Glasmodell.swift; sourceTree = "<group>"; };
 		A45F43488CBC3E8169B9B8CD /* NachbetrachtungSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NachbetrachtungSeite.swift; sourceTree = "<group>"; };
 		A5D48D7AA0788028340C51B9 /* Umbruchzeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Umbruchzeile.swift; sourceTree = "<group>"; };
+		A9FB8CAE3A83E44740E4C3C4 /* Regelkreiskarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Regelkreiskarte.swift; sourceTree = "<group>"; };
 		AAA38BD9FC62B1F89035ABAE /* GeldSeiten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeldSeiten.swift; sourceTree = "<group>"; };
 		AC7469018CE630476024776F /* Unteransichten.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Unteransichten.swift; sourceTree = "<group>"; };
 		ADF5F0D0DEFE6676CD5CDD7A /* ReglerSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReglerSeite.swift; sourceTree = "<group>"; };
@@ -324,6 +326,7 @@
 				4C209B5F303A5CDF856D0B99 /* Pvverwendung.swift */,
 				8E35561AFDDA944A9E5740F8 /* Rechnungsbilder.swift */,
 				0D20AB2C1E398977908BDF1F /* Regelkreisanzeigen.swift */,
+				A9FB8CAE3A83E44740E4C3C4 /* Regelkreiskarte.swift */,
 				8D1E1FFB855BA190928989B8 /* Speichertagbild.swift */,
 				969EAD73174365A9152E9DE5 /* Tagesbandbild.swift */,
 				9AA49FDBA50756C197DFFDBC /* Tageskurve.swift */,
@@ -691,6 +694,7 @@
 				AC796F92288EDBB6A44B67BC /* Rechnungsbilder.swift in Sources */,
 				A76D3DB7DD93C5590AC0E225 /* RegelkreisSeite.swift in Sources */,
 				36AF0B98DDE946010AE496B9 /* Regelkreisanzeigen.swift in Sources */,
+				9C953329ABFC8C774F7E71B8 /* Regelkreiskarte.swift in Sources */,
 				D742805330F9AD247E8CAB72 /* ReglerSeite.swift in Sources */,
 				1D59B9232C5BB1FFA8750A3A /* Reiterzeile.swift in Sources */,
 				BFC01C83721892608D7631E9 /* Schalterkarte.swift in Sources */,

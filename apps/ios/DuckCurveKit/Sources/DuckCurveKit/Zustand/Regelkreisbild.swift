@@ -2,13 +2,12 @@ import Foundation
 
 /// Die Regelkreis-Karte für die App: geordnet, benannt, und mit den Wörtern versehen.
 ///
-/// **Warum die App nicht dasselbe Bild zeigt wie das Dashboard.** Das Blockschaltbild ist 1400
-/// Punkte breit; am Telefon bliebe davon ein Ausschnitt, durch den man schiebt. Dieselbe
-/// Auskunft trägt hier eine Liste von außen nach innen: fünf Ebenen, je Block sein
-/// Übertragungsglied, seine Parameter mit ihrer Herkunft und seine Signale nach beiden Seiten.
-/// Die Summierstellen stehen mit darin, mit dem Vorzeichen an jedem Eingang - sie sind die
-/// Stelle, an der ein Regelkreis zum Regelkreis wird, und eine Liste, die sie weglässt, zeigt
-/// eine Kette.
+/// **Die Karte selbst zeichnet ``Schaltbild``** mit der Geometrie des Dashboards (Vorgabe des
+/// Hausherrn vom 24.11.2026: überall das Blockschaltbild, keine Liste). Dieser Typ trägt, was
+/// unter der Karte steht: zu jedem Block sein Blatt mit Übertragungsglied, Parametern samt
+/// Herkunft und Signalen nach beiden Seiten, geordnet nach den fünf Ebenen. Die Summierstellen
+/// stehen mit darin, mit dem Vorzeichen an jedem Eingang: sie sind die Stelle, an der ein
+/// Regelkreis zum Regelkreis wird.
 ///
 /// **Gerechnet wird hier nichts.** Die Reserven kommen fertig aus `/regelkreis`, die Kennbilder
 /// als Kurven, die Sätze aus dem Kern des Dienstes. Dieser Typ ordnet, gruppiert und schreibt
