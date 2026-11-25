@@ -1462,3 +1462,17 @@ button.ansicht { cursor: pointer; }
 .zugang-knopf-klein { padding: 6px 12px; font-size: 13px; }
 .konto-leise { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-3); }
 .konto-codes { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--deep) 45%, transparent); }
+
+/* ---------- Zugang und Sicherung: dieselben Karten, ohne Erklärtexte (25.11.2026) ---------- */
+.zugang-warnung { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--amber-soft) 45%, var(--line-1)); border-radius: 12px; background: color-mix(in srgb, var(--amber-soft) 10%, var(--surface-1)); color: var(--text-1); font-size: 14px; line-height: 1.45; }
+.zugang-warnung svg { flex-shrink: 0; margin-top: 1px; color: var(--amber-soft); }
+.person-anfang { display: flex; flex-shrink: 0; height: 36px; width: 36px; align-items: center; justify-content: center; border-radius: 50%; background: var(--surface-2); color: var(--text-1); font-size: 15px; font-weight: 600; }
+.person-anfang[data-rolle="hausherr"] { background: var(--amber); color: var(--deep); }
+.konto-zeile[data-aus] { opacity: 0.6; }
+.konto-marke-aus { margin-left: 6px; background: color-mix(in srgb, var(--text-3) 22%, transparent); color: var(--text-2); }
+.person-tun { align-items: center; }
+.person-anlegen { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px dashed var(--line-2); border-radius: 12px; }
+.person-versand { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-3); }
+.zugang-wahl { appearance: none; padding: 10px 34px 10px 16px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--text-1); font-size: 14px; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a9bcc6' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center; }
+.zugang-wahl.zugang-knopf-klein { padding: 6px 30px 6px 12px; font-size: 13px; background-position: right 11px center; }
+.zugang-wahl option { background: var(--deep); color: var(--text-1); }

@@ -6,7 +6,7 @@ describe("Mein Zugang", () => {
   it("nennt die Rollen wie die App", () => {
     expect(ROLLE.hausherr).toEqual({ name: "Hausherr", satz: "Sieht alles und darf alles einstellen." });
     expect(ROLLE.bewohner!.satz).toBe("Sieht das Haus und darf dort stellen.");
-    expect(ROLLE.service!.name).toBe("Beratung");
+    expect(ROLLE.service).toEqual({ name: "Beratung", satz: "Sieht alles außer den Akten und darf am Hausgerät arbeiten." });
     expect(ROLLE.gast!.satz).toBe("Sieht zu und stellt nichts.");
   });
 
@@ -21,5 +21,10 @@ describe("Mein Zugang", () => {
 
   it("fragt vor dem Löschen eines Passkeys mit seinem Namen", () => {
     expect(loeschfrage("iPhone")).toBe("„iPhone“ löschen?");
+  });
+
+  it("gibt den Karten von „Zugang und Sicherung“ dieselben Titel und Sätze wie die App", () => {
+    expect(KARTEN.platz).toEqual({ zeichen: "chart", titel: "Platzbedarf", satz: "Wie groß die Datenbank ist, Tabelle für Tabelle." });
+    expect(KARTEN.sicherung).toEqual({ zeichen: "calendar", titel: "Sicherung", satz: "Einmal im Jahr herunterladen und woanders ablegen." });
   });
 });

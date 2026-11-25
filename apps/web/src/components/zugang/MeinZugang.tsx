@@ -12,7 +12,8 @@ import { Icon } from "@/components/ui/Icon";
 import { api, ApiError } from "@/lib/api/client";
 import type { Ich } from "@/lib/api/models";
 import { BestaetigKnopf } from "./BestaetigKnopf";
-import { KARTEN, ROLLE, loeschfrage } from "./kontoworte";
+import { ROLLE, loeschfrage } from "./kontoworte";
+import { Zugangskarte } from "./Zugangskarte";
 import { MeinPasswort } from "./MeinPasswort";
 
 /**
@@ -32,24 +33,6 @@ import { MeinPasswort } from "./MeinPasswort";
  * Passwort und Sitzungen, jede mit ihrem Zeichen wie die Kacheln der Übersichten. Dieselben Worte
  * stehen in der App (`Kontoworte.swift`).
  */
-
-function Karte({ art, children }: { art: keyof typeof KARTEN; children: React.ReactNode }) {
-  const k = KARTEN[art];
-  return (
-    <section className="konto-karte" aria-label={k.titel}>
-      <header className="konto-karte-kopf">
-        <span className="konto-zeichen" aria-hidden="true">
-          <Icon name={k.zeichen} size={20} />
-        </span>
-        <div className="min-w-0">
-          <h2 className="konto-karte-titel">{k.titel}</h2>
-          <p className="konto-karte-satz">{k.satz}</p>
-        </div>
-      </header>
-      {children}
-    </section>
-  );
-}
 
 function datum(wert: string | null | undefined): string {
   if (!wert) return "nie";
@@ -166,7 +149,7 @@ export function MeinZugang({ mindestlaenge }: { mindestlaenge: number }) {
       </section>
       {fehler ? <p className="konto-fehler" role="alert">{fehler}</p> : null}
 
-      <Karte art="passkeys">
+      <Zugangskarte art="passkeys">
         {meine.length > 0 ? (
           <ul className="konto-liste">
             {meine.map((p) => (
@@ -261,9 +244,9 @@ export function MeinZugang({ mindestlaenge }: { mindestlaenge: number }) {
             <span className="text-[13px] text-text-3">Sie stehen nur jetzt hier.</span>
           </div>
         ) : null}
-      </Karte>
+      </Zugangskarte>
 
-      <Karte art="passwort">
+      <Zugangskarte art="passwort">
         <MeinPasswort
           email={ich.ausweis.email ?? ""}
           vorhanden={hatPasswort}
@@ -272,9 +255,9 @@ export function MeinZugang({ mindestlaenge }: { mindestlaenge: number }) {
           laeuft={laeuft}
           fuehre={fuehre}
         />
-      </Karte>
+      </Zugangskarte>
 
-      <Karte art="sitzungen">
+      <Zugangskarte art="sitzungen">
         <ul className="konto-liste">
           {sitzungen.map((s) => (
             <li key={s.id} className="konto-zeile" data-diese={s.diese ? "" : undefined}>
@@ -300,7 +283,7 @@ export function MeinZugang({ mindestlaenge }: { mindestlaenge: number }) {
             </li>
           ))}
         </ul>
-      </Karte>
+      </Zugangskarte>
 
       <div className="konto-reihe">
         <button
