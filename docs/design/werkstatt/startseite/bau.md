@@ -43,6 +43,21 @@ dasselbe zeigen.
 - „Nächste 24 Stunden“ zeigt auch die Brennzeiten des Pelletofens, als zweite Reihe Striche und
   als vierte Zeitspanne.
 
+## Das Ruhebild (25.11.2026, nach dem Bau)
+
+Der Hausherr nach dem Merge: „Je Gerät ist richtig so. Aber es läuft noch der Bildschirmschoner
+auf dem alten Stand. Und bitte streiche im Bildschirmschoner diesen ewig langen Text. Wenn dann
+nur ein ‚Wärmepumpe läuft‘.“
+
+- Das Ruhebild zeigt unter der Uhr dasselbe Bild wie die Startseite, Bühne oder Uhr nach der Wahl
+  des Geräts, mit dem Puffer und der Karte zum Bild, ohne Bedienung.
+- Der Begründungssatz der Regelung ist gestrichen. Läuft die Wärmepumpe, steht eine Marke unter
+  dem Datum. Der Befund der Wache bleibt, wenn eine Quelle schweigt.
+- Am Fuß steht als fünfte Zahl, was die Sonne heute (am Tag) oder morgen (nachts) bringen soll.
+  So bleibt erhalten, was der alte Schoner als „Heute erwartet“ und „Morgen Sonne“ gezeigt hat.
+- Weg sind das Flussbild aus drei Kreisen, der kleine Sonnenbogen und die Abendzeilen zum
+  Fahrplan, im Dashboard auch `fahrplan.ts` und `bogen` in `ambiente.ts`.
+
 ## Bilder der gebauten Seite
 
 `gebaut/` zeigt die Startseite des Dashboards im Demo-Betrieb am 25.11.2026: Bühne und Uhr, je an
@@ -63,6 +78,7 @@ die Anzeige des Entwicklungsservers und gehört nicht zur Seite.
 
 - Das Ruhebild (Ambiente) bleibt, wie es ist.
 - In der App wird nichts gesehen: SwiftUI baut nur der Mac-Lauf der CI.
-- Im Kit stehen noch die Sätze des früheren Ausblicks (`Ausblick.saetze` und was dazu gehört) und
-  ihre Tests. Seit die Karte ein Bild ist, zeigt sie niemand mehr; ob das Ruhebild sie braucht, ist
-  zu prüfen, bevor sie gehen.
+- Im Kit steht noch Rechnung ohne Verwendung in der App, mit ihren Tests: die Sätze des früheren
+  Ausblicks (`Ausblick.saetze` und was dazu gehört), die Zeilen zum Fahrplan (`Fahrplan.zeilen`,
+  `Planzeile`) und der Bogen des alten Ruhebilds (`Ruhebild.bogen`). Das Dashboard hat seine
+  Gegenstücke schon entfernt; im Kit ist das eine eigene Änderung.
