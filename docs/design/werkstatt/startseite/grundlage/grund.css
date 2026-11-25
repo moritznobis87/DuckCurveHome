@@ -1,0 +1,85 @@
+/* Grundlage für die Entwürfe der Startseite (Werkstatt, 25.11.2026).
+   Die Werte sind aus apps/web/src/styles/tokens.css abgeschrieben; ein Entwurf nimmt Farben nur
+   von hier. Die Schriften liegen in apps/web/public/brand. Darunter steht die eingeführte
+   Kartensprache der Übersichten, von „Einstellen“ und „Mein Zugang“, damit ein Entwurf sie
+   aufnehmen kann, ohne sie nachzubauen. */
+
+@font-face { font-family: "IBM Plex Sans"; src: url("../../../../../apps/web/public/brand/IBMPlexSans-Regular.otf") format("opentype"); font-weight: 400; }
+@font-face { font-family: "IBM Plex Sans"; src: url("../../../../../apps/web/public/brand/IBMPlexSans-SemiBold.otf") format("opentype"); font-weight: 600; }
+@font-face { font-family: "IBM Plex Mono"; src: url("../../../../../apps/web/public/brand/IBMPlexMono-Regular.otf") format("opentype"); font-weight: 400; }
+
+:root {
+  /* Marke */
+  --petrol: #0f2e3d;
+  --deep: #082431;
+  --amber: #f2a900;
+  --amber-soft: #ffd778;
+  --mist: #7fa3b3;
+  --paper: #ffffff;
+
+  /* Flächen und Linien */
+  --bg-gradient: linear-gradient(130deg, #082431, #0f2e3d 62%, #153c4c);
+  --surface-1: #0f2e3d;
+  --surface-2: #123544;
+  --surface-3: #173f50;
+  --line-1: rgba(255, 255, 255, 0.10);
+  --line-2: rgba(255, 255, 255, 0.17);
+
+  /* Text */
+  --text-1: rgba(255, 255, 255, 0.92);
+  --text-2: rgba(255, 255, 255, 0.72);
+  --text-3: rgba(255, 255, 255, 0.58);
+  --text-kicker: #8ab2c4;
+
+  /* Jede Sache hat eine Farbe, im Fluss wie im Diagramm. */
+  --pv: #f2a900;          /* Sonne */
+  --grid-in: #b48df4;     /* Netzbezug */
+  --grid-out: #ffd778;    /* Einspeisung */
+  --battery: #7fa3b3;     /* Speicher */
+  --heat-pump: #e0966b;   /* Wärmepumpe */
+  --stove: #b5651d;       /* Pelletofen, nie ohne Beschriftung */
+  --ev: #2f89b5;          /* Wallbox */
+  --house: #ffffff;       /* Haus: Weiß gehört der Summe */
+  --price: #7fa3b3;       /* Strompreis */
+
+  /* Zustände */
+  --ok: #79dd9f;          /* nur an Zustandszeichen, nie in einem Diagramm */
+  --warn: #f2a900;
+  --alert: #e0533d;       /* Flächen und Marken */
+  --alert-text: #ff7266;  /* Alarm als Schrift */
+
+  /* Puffer, von kalt nach warm */
+  --heat-0: #1f4c66;
+  --heat-1: #7fa3b3;
+  --heat-2: #ffd778;
+  --heat-3: #f2a900;
+
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius-3: 6px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg-gradient) fixed; color: var(--text-1); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.kicker { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-kicker); }
+.zeichen { display: block; flex-shrink: 0; }
+
+/* ---------- Die eingeführte Kartensprache (zum Aufnehmen, nicht als Pflicht) ---------- */
+
+/* Karte: Fläche 1, feine Linie, ein Hauch der Farbe der Sache aus der Ecke des Zeichens. */
+.karte {
+  --kartenfarbe: var(--mist);
+  border: 1px solid var(--line-1); border-radius: var(--radius-3);
+  background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--kartenfarbe) 13%, transparent), transparent 62%), var(--surface-1);
+}
+/* Zeichenfeld: getönte Fläche, runde Ecken, das Zeichen in der Farbe der Sache. */
+.zeichenfeld { display: flex; align-items: center; justify-content: center; height: 36px; width: 36px; border-radius: 10px; color: var(--kartenfarbe, var(--mist)); background: color-mix(in srgb, var(--kartenfarbe, var(--mist)) 14%, transparent); }
+/* Knopf: rund; hervorgehoben in Bernstein mit dunkler Schrift. */
+.knopf { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--text-1); font: inherit; font-size: 14px; }
+.knopf-an { border-color: var(--amber); background: var(--amber); color: var(--deep); font-weight: 600; }
+/* Marke: ein Zustand als Wort in einer Pille. */
+.marke { display: inline-flex; align-items: center; padding: 3px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: color-mix(in srgb, var(--text-3) 18%, transparent); color: var(--text-2); }
+.marke-gut { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.marke-hinweis { background: color-mix(in srgb, var(--amber) 18%, transparent); color: var(--amber-soft); }
