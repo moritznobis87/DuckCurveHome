@@ -26,7 +26,7 @@ dasselbe zeigen.
 
 | Nr. | Schritt | Stand |
 |---|---|---|
-| 1 | Kern: Rechnung für Bühne und Ring (`buehne.ts`, `stundenring.ts`, `startbild.ts` und ihre Gegenstücke im Kit) mit denselben Prüfwerten | offen |
+| 1 | Kern: Rechnung für Bühne und Ring (`buehne.ts`, `stundenring.ts`, `startbild.ts`; im Kit `Startbuehne.swift`, `Stundenring.swift`, `Startbild.swift`) mit denselben Prüfwerten | fertig |
 | 2 | Dashboard: neue Startseite mit der Bühne, an Wand, iPad und Handy angesehen | offen |
 | 3 | Dashboard: die Uhr und die Umschaltung auf „Einstellen“ | offen |
 | 4 | App: beide Bilder und die Umschaltung | offen |
