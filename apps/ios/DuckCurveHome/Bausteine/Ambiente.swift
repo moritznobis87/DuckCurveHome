@@ -295,39 +295,77 @@ struct Ambiente: View {
 
     /// **Dasselbe Bild wie die Startseite** (Hausherr am 25.11.2026: „es läuft noch der
     /// Bildschirmschoner auf dem alten Stand“): Bühne oder Uhr, wie das Gerät es gewählt hat,
-    /// daneben der Puffer und die Karte zum Bild. Vorher standen hier ein eigenes Flussbild aus
+    /// dazu der Puffer und die Karte zum Bild. Vorher standen hier ein eigenes Flussbild aus
     /// drei Kreisen und am Abend eigene Zeilen zum Fahrplan. Alles ist nur zum Ansehen: eine
     /// Berührung weckt die Seite (`Ambiente.tsx`, `ambiente-bild`).
+    ///
+    /// **Nach der Breite, die da ist.** Die Karten stehen neben dem Bild, solange ihm dabei
+    /// 520 Punkte bleiben; darunter wird es schmal und lässt Wallbox und Wärmepumpe weg
+    /// (``Startbuehne/mass(breite:hoehe:)``). Ein iPad im Hochformat hat diese Breite nicht:
+    /// dort steht das Bild oben über die ganze Breite und die Karten nebeneinander darunter.
     private func mitte(_ mass: Bildmasse) -> some View {
         let wahl = Startbild.aus(startbildGemerkt)
         let blick = Ausblick.baue(haus.plan, jetzt: datenminute)
         let nacht = jetztStand.bild == .abend
         let sonneAb: String? = blick.nacht ? blick.sonneWechsel.map { Formate.hhmm($0) } : nil
-        return HStack(alignment: .top, spacing: 14) {
-            Group {
-                switch wahl {
-                case .buehne:
-                    Buehnenbild(
-                        nacht: nacht, stand: sonnenstand, lauf: jetztStand.lauf, sonneAb: sonneAb)
-                case .uhr:
-                    Stundenringbild(nacht: nacht, ausblick: blick, sonneAb: sonneAb)
+        let innen: CGFloat = mass.breite - 2 * mass.randSeite
+        let nebeneinander = innen >= 520 + 14 + 404
+        let anordnung =
+            nebeneinander
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: 14))
+            : AnyLayout(VStackLayout(spacing: 14))
+        return anordnung {
+            startbildansicht(wahl, blick, nacht, sonneAb)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Ist selbst die ganze Breite zu schmal, steht darunter, was das Bild weglässt.
+            if innen < 520 {
+                if wahl == .uhr {
+                    Startdingliste(nacht: nacht, sonneAb: sonneAb)
+                } else {
+                    Startunterhaus()
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            VStack(spacing: 14) {
-                Startpufferkarte()
-                switch wahl {
-                case .buehne:
-                    Startausblickkarte(ausblick: blick, warnung: haus.plan?.plannerWarnDe)
-                case .uhr:
-                    Startstromkarte(ausblick: blick, warnung: haus.plan?.plannerWarnDe)
+            if nebeneinander {
+                VStack(spacing: 14) {
+                    Startpufferkarte()
+                    nebenkarte(wahl, blick)
+                }
+                .frame(width: 404)
+                .frame(maxHeight: .infinity, alignment: .top)
+            } else {
+                HStack(alignment: .top, spacing: 14) {
+                    Startpufferkarte()
+                    nebenkarte(wahl, blick)
                 }
             }
-            .frame(width: 404)
-            .frame(maxHeight: .infinity, alignment: .top)
         }
         .allowsHitTesting(false)
     }
+
+    @ViewBuilder
+    private func startbildansicht(
+        _ wahl: Startbild, _ blick: Ausblick, _ nacht: Bool, _ sonneAb: String?
+    ) -> some View {
+        switch wahl {
+        case .buehne:
+            Buehnenbild(nacht: nacht, stand: sonnenstand, lauf: jetztStand.lauf, sonneAb: sonneAb)
+        case .uhr:
+            Stundenringbild(nacht: nacht, ausblick: blick, sonneAb: sonneAb)
+        }
+    }
+
+    /// Neben der Bühne stehen die nächsten 24 Stunden als Bild; neben der Uhr, deren Ring sie
+    /// selbst zeigt, der Strompreis in großer Zahl.
+    @ViewBuilder
+    private func nebenkarte(_ wahl: Startbild, _ blick: Ausblick) -> some View {
+        switch wahl {
+        case .buehne:
+            Startausblickkarte(ausblick: blick, warnung: haus.plan?.plannerWarnDe)
+        case .uhr:
+            Startstromkarte(ausblick: blick, warnung: haus.plan?.plannerWarnDe)
+        }
+    }
+
 
     /// Wie weit die Sonne auf ihrem Bogen ist. Vor dem Aufgang und nach dem Untergang sitzt sie
     /// am Ende des Bogens, ohne Fahrplan in seiner Mitte (`JetztSeite.swift`, `sonnenstand`).
