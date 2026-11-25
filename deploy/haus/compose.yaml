@@ -27,7 +27,10 @@ x-protokoll: &protokoll
 
 services:
   postgres:
-    image: postgres:17
+    # Dieselbe Hauptversion wie die Datenbank auf Railway (seit November 2026 PostgreSQL 18):
+    # pg_dump liest nur von einem Server, der nicht neuer ist als er selbst, und `dch uebernehmen`
+    # nimmt den pg_dump aus genau diesem Image.
+    image: postgres:18
     <<: *protokoll
     restart: unless-stopped
     environment:
@@ -48,7 +51,11 @@ services:
       - -c
       - wal_compression=on
     volumes:
-      - postgres:/var/lib/postgresql/data
+      # Ab PostgreSQL 18 liegt das Datenverzeichnis unter /var/lib/postgresql/18/docker, und das
+      # Image erklaert /var/lib/postgresql zum Volume. Hier stand bis 17 .../data; mit diesem Pfad
+      # landeten die Daten unter 18 in einem anonymen Volume und waeren beim naechsten Neuanlegen
+      # des Containers weg.
+      - postgres:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dch -d dch"]
       interval: 10s
