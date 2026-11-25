@@ -10,11 +10,11 @@ export default async function Page() {
   await requireOwner();
   return (
     <AreaShell kicker="Was aufs Handy kommt: Störungen und das Morning Briefing">
-      <section className="flex max-w-[760px] flex-col gap-3">
-        <h2 className="m-0 text-[18px] font-semibold">Mitteilungen</h2>
+      {/* Zwei Karten wie auf den übrigen Systemseiten, ohne Erklärtexte (Hausherr, 25.11.2026). */}
+      <div className="konto max-w-[820px]">
         <Mitteilungen />
         <Morgenbrief />
-      </section>
+      </div>
     </AreaShell>
   );
 }

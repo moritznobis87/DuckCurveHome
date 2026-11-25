@@ -126,17 +126,6 @@ final class MitteilungsstandTests: XCTestCase {
         XCTAssertTrue(Mitteilungsstand.zeilen(PushGeraeteOut(devices: [])).isEmpty)
     }
 
-    // MARK: - Das Zählwort (`Mitteilungen.tsx:254-256`)
-
-    func testZaehlwort() {
-        XCTAssertEqual(Mitteilungsstand.zaehlwort(0), "Kein Gerät angemeldet")
-        XCTAssertEqual(Mitteilungsstand.zaehlwort(1), "1 Gerät angemeldet")
-        XCTAssertEqual(Mitteilungsstand.zaehlwort(2), "2 Geräte angemeldet")
-        XCTAssertEqual(Mitteilungsstand.zaehlwort(11), "11 Geräte angemeldet")
-        // Eine negative Zahl kann der Dienst nicht liefern; käme sie doch, ist „Kein Gerät“
-        // die einzige Aussage, die nicht falsch ist.
-        XCTAssertEqual(Mitteilungsstand.zaehlwort(-1), "Kein Gerät angemeldet")
-    }
 
     // MARK: - Die Lage dieses Geräts
 
@@ -167,9 +156,8 @@ final class MitteilungsstandTests: XCTestCase {
         let satz = Mitteilungsstand.lagesatz(.verboten).satz
         XCTAssertEqual(
             satz,
-            "Mitteilungen sind für Duck Curve Home auf diesem Gerät abgelehnt. Das lässt sich "
-                + "nur in den Einstellungen des Geräts zurücknehmen (auf dem iPhone: "
-                + "Einstellungen, Mitteilungen, Duck Curve), nicht von hier aus.")
+            "Mitteilungen sind auf diesem Gerät abgelehnt. Zurücknehmen lässt sich das nur in "
+                + "den Einstellungen des Geräts.")
     }
 
     /// Der Probeknopf: dieses Gerät schlägt die Liste, und ohne Antwort steht keiner da.
@@ -189,15 +177,15 @@ final class MitteilungsstandTests: XCTestCase {
     func testEinordnung() {
         XCTAssertEqual(
             Mitteilungsstand.einordnung(brief(fuerDe: "morgen")),
-            "Vom heutigen Tag ist zu wenig übrig. So sähe das Briefing morgen früh aus:")
+            "So sähe das Briefing morgen früh aus:")
         XCTAssertEqual(
             Mitteilungsstand.einordnung(brief(fuerDe: "heute")),
-            "Das aktuelle Briefing, für den Rest von heute:")
+            "Das Briefing für heute:")
         // Ein unbekanntes oder fehlendes Wort fällt auf den heutigen Fall - wie `!== "morgen"`
         // in der Vorlage (`Morgenbrief.tsx:76`).
         XCTAssertEqual(
             Mitteilungsstand.einordnung(brief(fuerDe: nil)),
-            "Das aktuelle Briefing, für den Rest von heute:")
+            "Das Briefing für heute:")
         XCTAssertFalse(Mitteilungsstand.einordnung(brief(fuerDe: nil)).contains("morgen früh"))
     }
 
@@ -209,6 +197,10 @@ final class MitteilungsstandTests: XCTestCase {
             .hasPrefix("Jeden Morgen um 07:00 Uhr"))
         XCTAssertTrue(Mitteilungsstand.briefErklaerung(uhrzeit: "")
             .hasPrefix("Jeden Morgen um 07:00 Uhr"))
+        // Derselbe Satz wie im Dashboard (`Morgenbrief.tsx`, `briefsatz`).
+        XCTAssertEqual(
+            Mitteilungsstand.briefErklaerung(uhrzeit: "07:00"),
+            "Jeden Morgen um 07:00 Uhr: Sonne, Strompreis und Wärme des Tages.")
     }
 
     func testVorschautitelHatEinenRueckfall() {
@@ -219,10 +211,8 @@ final class MitteilungsstandTests: XCTestCase {
     }
 
     func testZustandUndSchaltwort() {
-        XCTAssertEqual(Mitteilungsstand.briefZustand(an: true),
-            "Das Morning Briefing ist eingeschaltet.")
-        XCTAssertEqual(Mitteilungsstand.briefZustand(an: false),
-            "Das Morning Briefing ist ausgeschaltet.")
+        XCTAssertEqual(Mitteilungsstand.briefZustand(an: true), "eingeschaltet")
+        XCTAssertEqual(Mitteilungsstand.briefZustand(an: false), "ausgeschaltet")
         XCTAssertEqual(Mitteilungsstand.schaltwort(an: true), "Ausschalten")
         XCTAssertEqual(Mitteilungsstand.schaltwort(an: false), "Einschalten")
     }
@@ -247,14 +237,16 @@ final class MitteilungsstandTests: XCTestCase {
             "Das hat nicht geklappt: Zeitüberschreitung")
     }
 
-    /// Die festen Sätze: nicht auf ihren Wortlaut geprüft, sondern darauf, dass sie das sagen,
-    /// wofür sie gebaut wurden - eine Kürzung, die den Kern wegnimmt, fällt hier auf.
-    func testDieFestenSaetzeSagenDasWesentliche() {
-        XCTAssertTrue(Mitteilungsstand.erklaerung.contains("Jedes Gerät meldet sich einzeln an"))
-        XCTAssertTrue(Mitteilungsstand.fussnote.contains("„Angenommen“ heißt"))
-        XCTAssertTrue(Mitteilungsstand.fussnote.contains("Nicht stören"))
-        XCTAssertTrue(Mitteilungsstand.ohneGeraete.contains("weder Störungen noch das Morning"))
-        XCTAssertTrue(Mitteilungsstand.briefOhneGeraete.contains("geht deshalb an niemanden"))
+    /// Die festen Sätze im Wortlaut des Dashboards (`Mitteilungen.tsx`, `Morgenbrief.tsx`); seit
+    /// dem 25.11.2026 kurz, ohne Erklärtexte.
+    func testDieFestenSaetzeSagenDasselbeWieDasDashboard() {
+        XCTAssertEqual(
+            Mitteilungsstand.erklaerung, "Störungen und das Morning Briefing auf die angemeldeten Geräte.")
+        XCTAssertEqual(
+            Mitteilungsstand.ohneGeraete,
+            "Kein Gerät angemeldet. Störungen und das Morning Briefing gehen an niemanden.")
+        XCTAssertEqual(
+            Mitteilungsstand.briefOhneGeraete, "Kein Gerät angemeldet. Das Briefing geht an niemanden.")
         XCTAssertEqual(Mitteilungsstand.briefKicker, "Morning Briefing")
         XCTAssertEqual(Mitteilungsstand.abgemeldet, "Dieses Gerät bekommt keine Mitteilungen mehr.")
         XCTAssertTrue(Mitteilungsstand.schaltenGescheitert.contains("unverändert"))

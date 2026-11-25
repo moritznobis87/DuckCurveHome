@@ -71,41 +71,22 @@ struct MitteilungenSeite: View {
 
     var body: some View {
         Seite {
-            ueberschrift
-            karteMitteilungen
-            karteBrief
-            Methode([
-                "Der Dienst verschickt Mitteilungen auf zwei Wegen: als Web Push an das "
-                    + "Dashboard im Browser, und als APNs an diese App. Beide Wege bedienen "
-                    + "dieselben Mitteilungen.",
-                "Für den App-Weg braucht der Dienst einen Signierschlüssel aus einem "
-                    + "Apple-Developer-Konto. Ohne ihn kann kein Dienst eine Mitteilung an eine "
-                    + "iOS-App schicken. Das ist Apples Entwurf. Wie er eingetragen wird, steht "
-                    + "in apps/ios/README.md.",
-                "Was ohne ihn trotzdem geht: das Morning Briefing steht hier und lässt sich "
-                    + "ansehen. Nur der Weg auf den Sperrbildschirm fehlt.",
-            ])
+            // Zwei Karten wie auf den übrigen Systemseiten, ohne Erklärtexte (Hausherr,
+            // 25.11.2026). Die zugeklappte Methode über Web Push und APNs ist mit weggefallen.
+            VStack(alignment: .leading, spacing: 16) {
+                karteMitteilungen
+                karteBrief
+            }
+            .frame(maxWidth: Self.spalte, alignment: .leading)
         }
         .task { await lade() }
-    }
-
-    /// Die Überschrift der Seite (`page.tsx:14`: `h2`, 18 Punkte halbfett).
-    ///
-    /// Der Kicker der Hülle („Was aufs Handy kommt …“, `page.tsx:12`) steht nicht hier: den
-    /// zeichnet ``Seite`` aus ``Bereiche/kicker(fuer:)``, so wie die Vorlage ihn der Hülle gibt
-    /// (`AreaShell.tsx:26`). Zweimal dieselbe Auskunft übereinander wäre keine.
-    private var ueberschrift: some View {
-        Text("Mitteilungen")
-            .font(Schrift.sansHalbfett(18, relativeTo: .title3))
-            .foregroundStyle(Farbe.text1)
     }
 
     // MARK: - Karte „Mitteilungen“
 
     private var karteMitteilungen: some View {
-        Karte(kicker: Mitteilungsstand.kicker) {
-            VStack(alignment: .leading, spacing: 14) {
-                absatz(Mitteilungsstand.erklaerung, 15, Farbe.text2)
+        Kontokarte(zeichen: .glocke, titel: Mitteilungsstand.kicker, satz: Mitteilungsstand.erklaerung) {
+            VStack(alignment: .leading, spacing: 12) {
                 lagezeile
                 knoepfe
                 if let r = rueckmeldung {
@@ -113,16 +94,16 @@ struct MitteilungenSeite: View {
                 }
                 einzelheitenliste(einzelheiten)
                 geraeteabschnitt
-                absatz(Mitteilungsstand.fussnote, kleinstufe, Farbe.text3)
             }
         }
-        .frame(maxWidth: Self.spalte, alignment: .leading)
     }
 
     /// Der Satz zur Lage dieses Geräts - Warnton oder Bestätigung, wie der Kern es entscheidet.
     @ViewBuilder private var lagezeile: some View {
         let s = Mitteilungsstand.lagesatz(lage)
-        if let satz = s.satz {
+        if lage == .an, let satz = s.satz {
+            Zustandsmarke(wort: satz, an: true)
+        } else if let satz = s.satz {
             absatz(satz, 14, s.warnt ? Farbe.amberWeich : Farbe.pv)
         }
     }
@@ -167,8 +148,7 @@ struct MitteilungenSeite: View {
     /// kommt, wäre eine Behauptung über das Haus.
     @ViewBuilder private var geraeteabschnitt: some View {
         if let g = geraete {
-            VStack(alignment: .leading, spacing: 8) {
-                zweiterKicker(Mitteilungsstand.zaehlwort(g.devices.count))
+            VStack(alignment: .leading, spacing: 6) {
                 if g.devices.isEmpty {
                     absatz(Mitteilungsstand.ohneGeraete, 14, Farbe.amberWeich)
                 } else {
@@ -178,52 +158,41 @@ struct MitteilungenSeite: View {
         }
     }
 
-    /// Die Liste der Geräte, mit Linie oben **und unter jeder Zeile**.
-    ///
-    /// Die Vorlage setzt `border-top` an die Liste und `border-bottom` an jede Zeile
-    /// (`globals.css:761-762`) - also auch unter der letzten. Das ist kein Zierrat: die letzte
-    /// Linie schließt die Liste gegen die Fußnote ab, die unmittelbar darunter steht.
+    /// Die Liste der Geräte, je Gerät eine Zeile wie auf „Mein Zugang“ (`.konto-zeile`).
     private func geraeteliste(_ zeilen: [Mitteilungsstand.Geraetezeile]) -> some View {
-        VStack(spacing: 0) {
-            Divider().overlay(Farbe.linie1)
-            ForEach(zeilen) { z in
-                geraetezeile(z)
-                Divider().overlay(Farbe.linie1)
-            }
+        VStack(spacing: 6) {
+            ForEach(zeilen) { z in geraetezeile(z) }
         }
     }
 
-    /// Eine Gerätezeile: Name und Anmeldetag in einer Zeile, der Zustandssatz über beide Spalten.
-    ///
-    /// Das ist das CSS-Raster der Vorlage (`globals.css:762-765`: zwei Spalten, die zweite Zeile
-    /// über `grid-column: 1 / -1`) in SwiftUI - ein `HStack` mit `Spacer` und ein `Text`
-    /// darunter.
-    ///
-    /// **„angemeldet seit“ bleibt bei 13 Punkten, auch am Telefon.** `.geraet-seit` trägt keine
-    /// Tailwind-Klasse (`globals.css:764`), und `handy.css:189-192` vergrößert nur die
-    /// Tailwind-Stufen - die Spalte rechts soll schmal bleiben.
+    /// Eine Gerätezeile: Zeichen, Name, seit wann angemeldet, und der Zustandssatz.
     private func geraetezeile(_ z: Mitteilungsstand.Geraetezeile) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(z.name)
-                    .font(Schrift.sansHalbfett(14))
-                    .foregroundStyle(Farbe.text1)
-                Spacer(minLength: 8)
+        HStack(alignment: .top, spacing: 12) {
+            Zeichen(.geraet, groesse: 17, farbe: Farbe.text2)
+                .frame(width: 32, height: 32)
+                .background(Farbe.flaeche2)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(z.name).font(Schrift.text).foregroundStyle(Farbe.text1)
                 if let seit = z.seit {
-                    Text(seit)
-                        .font(Schrift.sans(13))
-                        .foregroundStyle(Farbe.text3)
-                        .multilineTextAlignment(.trailing)
+                    Text(seit).font(Schrift.mono(12, relativeTo: .caption)).foregroundStyle(Farbe.text3)
                 }
+                Text(z.stand)
+                    .font(Schrift.sans(13))
+                    .foregroundStyle(z.schlecht ? Farbe.amberWeich : Farbe.text2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Text(z.stand)
-                .font(Schrift.sans(14))
-                .foregroundStyle(z.schlecht ? Farbe.amberWeich : Farbe.text2)
-                .lineSpacing(3.5)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 12)
         .padding(.vertical, 10)
+        .background(Farbe.deep.opacity(0.45))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Farbe.linie1, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     // MARK: - Karte „Morning Briefing“
@@ -235,9 +204,11 @@ struct MitteilungenSeite: View {
     /// „07:00“ in den Satz. Die App zeigte die Karte erst, wenn die Antwort da war - und bei
     /// einem Dienst, der sie nicht gibt, stand von der halben Seite nichts da.
     private var karteBrief: some View {
-        Karte(kicker: Mitteilungsstand.briefKicker) {
-            VStack(alignment: .leading, spacing: 14) {
-                absatz(Mitteilungsstand.briefErklaerung(uhrzeit: brief?.uhrzeit), 15, Farbe.text2)
+        Kontokarte(
+            zeichen: .sonne, titel: Mitteilungsstand.briefKicker,
+            satz: Mitteilungsstand.briefErklaerung(uhrzeit: brief?.uhrzeit)
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
                 briefinhalt
                 if let m = briefmeldung {
                     absatz(m, 14, Farbe.text2)
@@ -245,7 +216,6 @@ struct MitteilungenSeite: View {
                 einzelheitenliste(briefeinzelheiten)
             }
         }
-        .frame(maxWidth: Self.spalte, alignment: .leading)
     }
 
     @ViewBuilder private var briefinhalt: some View {
@@ -325,10 +295,7 @@ struct MitteilungenSeite: View {
     /// trotzdem nicht schalten können.
     @ViewBuilder private func briefknoepfe(_ b: MorgenbriefOut) -> some View {
         Knopfreihe(untereinander: schmal) {
-            Text(Mitteilungsstand.briefZustand(an: b.enabled))
-                .font(Schrift.sans(14))
-                .foregroundStyle(b.enabled ? Farbe.pv : Farbe.text3)
-                .fixedSize(horizontal: false, vertical: true)
+            Zustandsmarke(wort: Mitteilungsstand.briefZustand(an: b.enabled), an: b.enabled)
             if haus.darfSchalten {
                 knopf(Mitteilungsstand.schaltwort(an: b.enabled)) { stelleBrief(!b.enabled) }
                 knopf("Jetzt senden", gesperrt: !Mitteilungsstand.darfSenden(b)) { sendeBrief() }
@@ -342,7 +309,7 @@ struct MitteilungenSeite: View {
     ///
     /// ``Seite`` setzt nur den Rand; am iPad liefen die Karten dieser Seite sonst über die ganze
     /// Breite, und ein Satz über 1100 Punkte ist keine Zeile mehr, sondern eine Strecke.
-    private static let spalte: CGFloat = 760
+    private static let spalte: CGFloat = 820
 
     /// Ein Absatz in der Größe der Vorlage, mit ihrem Zeilenabstand.
     ///
@@ -375,20 +342,6 @@ struct MitteilungenSeite: View {
         }
     }
 
-    /// Der zweite Kicker in einer Karte.
-    ///
-    /// ``Karte`` kennt nur einen (`Gestalt/Karte.swift:16`); die Vorlage hat in diesem Kasten
-    /// zwei (`Mitteilungen.tsx:189`, `:254`). Der zweite steht darum im Inhalt - am Telefon
-    /// aber ohne Sperrschrift, genau wie ``Karte`` es dort für ihren eigenen Kopf tut
-    /// (`Karte.swift:66-71`): `handy.css:3-26` hat die Sperrschrift in Überschriften
-    /// ausdrücklich abgeschafft.
-    @ViewBuilder private func zweiterKicker(_ wort: String) -> some View {
-        if schmal {
-            Text(wort).font(Schrift.karte).foregroundStyle(Farbe.text1)
-        } else {
-            Kicker(wort: wort)
-        }
-    }
 
     /// Ein Knopf in der Gestalt der Vorlage (`Mitteilungen.tsx:184`).
     ///
@@ -402,15 +355,13 @@ struct MitteilungenSeite: View {
     ) -> some View {
         let aus = laeuft || gesperrt
         return Button(action: tun) {
+            // Rund wie die Knöpfe im Dashboard (`globals.css`, `.zugang-knopf`).
             Text(wort)
                 .font(Schrift.sans(14))
                 .foregroundStyle(Farbe.text1)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
-                        .strokeBorder(Farbe.linie2, lineWidth: 1)
-                )
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .overlay(Capsule().strokeBorder(Farbe.linie2, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .disabled(aus)

@@ -26,29 +26,12 @@ public enum Mitteilungsstand {
     /// enger als die Karte: in ihr steht auch, welche *anderen* Geräte angemeldet sind.
     public static let kicker = "Mitteilungen"
 
-    /// Was die Karte eingangs erklärt (`Mitteilungen.tsx:190-193`).
+    /// Der Satz unter dem Titel der Karte, wie im Dashboard (`Mitteilungen.tsx`, `MITTEILUNGEN`).
     ///
-    /// Der letzte Halbsatz trägt die Seite: „Jedes Gerät meldet sich einzeln an“ - ein
-    /// Abonnement gehört zu einem Gerät und nicht zu einem Konto, und wer das nicht weiß, hält
-    /// das Telefon für angemeldet, weil das iPad in der Küche es ist.
-    public static let erklaerung =
-        "Wenn eine Quelle schweigt, meldet sich Duck Curve Home auf den angemeldeten Geräten, "
-        + "und morgens kommt das Morning Briefing. Jedes Gerät meldet sich einzeln an, hier auf "
-        + "dieser Seite."
-
-    /// Die Fußnote der Karte (`Mitteilungen.tsx:269-275`).
-    ///
-    /// **Warum sie nicht gekürzt wird.** Sie sagt, was „angenommen“ heißt - nämlich nur, dass
-    /// der Push-Dienst von Apple oder Google die Mitteilung entgegengenommen hat. Derselbe Satz
-    /// steht im Dienst als Begründung seiner Antwort (`apps/api/src/dch_api/routers/push.py:
-    /// 142-144`). Ohne ihn liest sich „angenommen“ als „angekommen“, und wer dann nichts auf
-    /// dem Sperrbildschirm findet, sucht den Fehler im Haus statt im Fokusmodus seines Telefons.
-    public static let fussnote =
-        "Eine Probe lohnt sich nach jedem Einschalten. Sie schickt das aktuelle Morning "
-        + "Briefing, so wie es unten steht. „Angenommen“ heißt: Der Push-Dienst von Apple oder "
-        + "Google hat die Mitteilung entgegengenommen. Kommt trotzdem nichts, liegt es am Gerät "
-        + "selbst: Fokus oder „Nicht stören“, oder die Mitteilungen der App sind in den "
-        + "Einstellungen abgeschaltet."
+    /// Seit dem 25.11.2026 kurz: Der Hausherr wollte auf den Systemseiten keine langen
+    /// Erklärtexte mehr. Die Fußnote, was „angenommen“ heißt, ist mit weggefallen; die Antwort der
+    /// Probe sagt es selbst.
+    public static let erklaerung = "Störungen und das Morning Briefing auf die angemeldeten Geräte."
 
     // MARK: - Die Lage dieses Geräts
 
@@ -105,12 +88,10 @@ public enum Mitteilungsstand {
         case .aus:
             return Lagesatz(satz: nil, warnt: false)
         case .verboten:
-            // Wortgleich mit `Mitteilungen.tsx:214-218`; die Klammer nennt denselben Weg, den
-            // auch die App nur beschreiben und nicht öffnen kann.
+            // Wortgleich mit dem Dashboard (`Mitteilungen.tsx`).
             return Lagesatz(
-                satz: "Mitteilungen sind für Duck Curve Home auf diesem Gerät abgelehnt. Das "
-                    + "lässt sich nur in den Einstellungen des Geräts zurücknehmen (auf dem "
-                    + "iPhone: Einstellungen, Mitteilungen, Duck Curve), nicht von hier aus.",
+                satz: "Mitteilungen sind auf diesem Gerät abgelehnt. Zurücknehmen lässt sich das "
+                    + "nur in den Einstellungen des Geräts.",
                 warnt: true)
         case .halb:
             // Kein Gegenstück in der Vorlage: dort ist ein Abonnement im Browser auch gleich
@@ -243,24 +224,10 @@ public enum Mitteilungsstand {
         return String(satz.dropFirst(vorsatz.count))
     }
 
-    /// „Kein Gerät angemeldet“ | „1 Gerät angemeldet“ | „N Geräte angemeldet“
-    /// (`Mitteilungen.tsx:254-256`).
-    ///
-    /// **Der Fall Null ist der Grund, warum es diese Funktion gibt.** Die App ließ die Liste
-    /// bei null Geräten ganz verschwinden (`MitteilungenSeite.swift:29` vor dem Umbau) - und
-    /// damit stand auf der Seite nichts mehr davon, dass niemand erreichbar ist.
-    public static func zaehlwort(_ anzahl: Int) -> String {
-        switch anzahl {
-        case ..<1: return "Kein Gerät angemeldet"
-        case 1: return "1 Gerät angemeldet"
-        default: return "\(anzahl) Geräte angemeldet"
-        }
-    }
 
-    /// Der Warnsatz, wenn kein Gerät angemeldet ist (`Mitteilungen.tsx:257-260`).
+    /// Der Warnsatz, wenn kein Gerät angemeldet ist (`Mitteilungen.tsx`, `KEIN_GERAET`).
     public static let ohneGeraete =
-        "Solange kein Gerät angemeldet ist, gehen weder Störungen noch das Morning Briefing an "
-        + "jemanden."
+        "Kein Gerät angemeldet. Störungen und das Morning Briefing gehen an niemanden."
 
     // MARK: - Die Karte „Morning Briefing“
 
@@ -279,13 +246,10 @@ public enum Mitteilungsstand {
     /// der `stand`-Abfrage). Ohne Rückfall stünde dort eine Lücke mitten im Satz.
     public static let briefUhrzeitRueckfall = "07:00"
 
-    /// Was die Karte eingangs erklärt, mit der Uhrzeit **im Satz** (`Morgenbrief.tsx:68-71`).
+    /// Der Satz unter dem Titel der zweiten Karte, mit der Uhrzeit (`Morgenbrief.tsx`, `briefsatz`).
     public static func briefErklaerung(uhrzeit: String?) -> String {
         let zeit = gefuellt(uhrzeit) ?? briefUhrzeitRueckfall
-        return "Jeden Morgen um \(zeit) Uhr eine kurze Mitteilung: wie viel Sonne zu erwarten "
-            + "ist, was Strom kostet, wie viel Wärme das Haus braucht und was sie kostet, "
-            + "geteilt in Strom und Pellets. Sie geht an alle Geräte, die für Mitteilungen "
-            + "angemeldet sind."
+        return "Jeden Morgen um \(zeit) Uhr: Sonne, Strompreis und Wärme des Tages."
     }
 
     /// Der Einordnungssatz über der Vorschau (`Morgenbrief.tsx:74-78`).
@@ -297,8 +261,8 @@ public enum Mitteilungsstand {
     /// Tag ist zu wenig übrig.
     public static func einordnung(_ brief: MorgenbriefOut) -> String {
         brief.fuerDe == "morgen"
-            ? "Vom heutigen Tag ist zu wenig übrig. So sähe das Briefing morgen früh aus:"
-            : "Das aktuelle Briefing, für den Rest von heute:"
+            ? "So sähe das Briefing morgen früh aus:"
+            : "Das Briefing für heute:"
     }
 
     /// Der Titel in der Vorschau, mit Rückfall (`Morgenbrief.tsx:81`).
@@ -313,9 +277,7 @@ public enum Mitteilungsstand {
     /// ist eine Überschrift und kein Schalterzustand; neben dem Knopf, der ihn ändert, ist er
     /// die Antwort auf die Frage, die der Knopf stellt.
     public static func briefZustand(an: Bool) -> String {
-        an
-            ? "Das Morning Briefing ist eingeschaltet."
-            : "Das Morning Briefing ist ausgeschaltet."
+        an ? "eingeschaltet" : "ausgeschaltet"
     }
 
     /// Das Wort auf dem Schaltknopf (`Morgenbrief.tsx:91`).
@@ -342,9 +304,7 @@ public enum Mitteilungsstand {
     }
 
     /// Der Warnsatz dazu (`Morgenbrief.tsx:100-102`).
-    public static let briefOhneGeraete =
-        "Zurzeit ist kein Gerät für Mitteilungen angemeldet. Das Briefing geht deshalb an "
-        + "niemanden; oben auf dieser Seite lässt sich dieses Gerät anmelden."
+    public static let briefOhneGeraete = "Kein Gerät angemeldet. Das Briefing geht an niemanden."
 
     /// Was nach dem Abmelden dasteht (`Mitteilungen.tsx:163`).
     ///
