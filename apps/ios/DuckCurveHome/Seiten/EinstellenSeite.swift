@@ -30,6 +30,8 @@ struct EinstellenSeite: View {
     @State private var systemkarten: [String: UebersichtKarteOut] = [:]
 
     private var schmal: Bool { breite == .compact }
+
+    @AppStorage(Startbild.merker) private var startbildGemerkt = Startbild.vorgabe.rawValue
     private var hausherr: Bool { haus.hatVollzugriff }
 
     var body: some View {
@@ -38,6 +40,7 @@ struct EinstellenSeite: View {
                 suchfeld
                 if !suche.trimmingCharacters(in: .whitespaces).isEmpty { treffer }
                 zustandskarte
+                startbildkarte
                 stufen
                 if hausherr, let system = Bereiche.alle.first(where: { $0.schluessel == .system }) {
                     abschnitt(Einstellworte.system, wort: Einstellworte.systemWort) {
@@ -109,6 +112,56 @@ struct EinstellenSeite: View {
     private var zustandsfarbe: Color {
         guard let stand else { return Seitenfarbe.ruhig.farbe }
         return stand.eingriffe.isEmpty ? Farbe.gut : Farbe.amberWeich
+    }
+
+    /// Welches Bild die Mitte der Startseite trägt: die Bühne oder die Uhr.
+    ///
+    /// Der Hausherr hat am 25.11.2026 beide bauen lassen und die Umschaltung hierher gelegt. Die
+    /// Wahl gilt für dieses Gerät und liegt in seinem Speicher, darum darf sie jeder treffen,
+    /// der die Seite sieht (`Einstellen.tsx`, `Startbildkarte`).
+    private var startbildkarte: some View {
+        Kontokarte(zeichen: .anzeige, titel: Startbild.titel, satz: Startbild.frage) {
+            let anordnung =
+                schmal
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: 10))
+            anordnung {
+                ForEach(Startbild.allCases) { bild in
+                    startbildknopf(bild)
+                }
+            }
+        }
+    }
+
+    private func startbildknopf(_ bild: Startbild) -> some View {
+        let gewaehlt = Startbild.aus(startbildGemerkt) == bild
+        let form = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return Button {
+            startbildGemerkt = bild.rawValue
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Startzeichenfeld(art: bild == .uhr ? .uhr : .haus, farbe: gewaehlt ? Farbe.amber : Farbe.text3)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(bild.name)
+                        .font(Schrift.sansHalbfett(15))
+                        .foregroundStyle(Farbe.text1)
+                    Text(bild.satz)
+                        .font(Schrift.sans(13))
+                        .foregroundStyle(Farbe.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(form.fill(gewaehlt ? Farbe.amber.opacity(0.09) : Color.clear))
+            .overlay(form.stroke(gewaehlt ? Farbe.amber : Farbe.linie2, lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(gewaehlt ? [.isButton, .isSelected] : .isButton)
     }
 
     private var zustandskarte: some View {

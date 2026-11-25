@@ -29,7 +29,7 @@ dasselbe zeigen.
 | 1 | Kern: Rechnung für Bühne und Ring (`buehne.ts`, `stundenring.ts`, `startbild.ts`; im Kit `Startbuehne.swift`, `Stundenring.swift`, `Startbild.swift`) mit denselben Prüfwerten | fertig |
 | 2 | Dashboard: neue Startseite mit der Bühne, an Wand, iPad und Handy angesehen | fertig |
 | 3 | Dashboard: die Uhr und die Umschaltung auf „Einstellen“ (Karte „Startseite“ unter der Zustandskarte) | fertig |
-| 4 | App: beide Bilder und die Umschaltung | offen |
+| 4 | App: beide Bilder und die Umschaltung | geschrieben; Kit-Tests, Syntax und Textprüfung grün; ob die Oberfläche übersetzt, zeigt der Mac-Lauf der CI |
 | 5 | Altes entfernen, Gleichstand prüfen, Pull Request | im Dashboard fertig: `FlowHero`, `FlowHandy`, `Rail`, `Ausblick` und 105 Stilregeln ohne Verwendung sind weg; App und Pull Request offen |
 
 ## Für die App mitzunehmen
@@ -43,7 +43,20 @@ dasselbe zeigen.
 - „Nächste 24 Stunden“ zeigt auch die Brennzeiten des Pelletofens, als zweite Reihe Striche und
   als vierte Zeitspanne.
 
+## Was beim Bau entschieden wurde
+
+- **Der Puffer zeigt weiter dasselbe Glas wie überall.** Der Entwurf hatte eine eigene Säule. Der
+  Hausherr hat am 14.11.2026 festgelegt, dass der Speicher überall gleich aussieht und am Telefon
+  liegt; darum steht in der Karte an der Wand das Glas der Anlage (`PufferGlasBild`), und am
+  Telefon liegt es mit den Zahlen unter ihren Fühlern.
+- **Die Unterschiede zwischen Dashboard und App** stehen in `docs/GLEICHSTAND.md` unter „Form, die
+  sich unterscheidet“: der Puffer liegt in der App auch an der Wand, die untere Reihe der Wand
+  hat in der App keine Karten, und der Lüfter dreht sich nur im Dashboard.
+
 ## Was offen bleibt
 
 - Das Ruhebild (Ambiente) bleibt, wie es ist.
 - In der App wird nichts gesehen: SwiftUI baut nur der Mac-Lauf der CI.
+- Im Kit stehen noch die Sätze des früheren Ausblicks (`Ausblick.saetze` und was dazu gehört) und
+  ihre Tests. Seit die Karte ein Bild ist, zeigt sie niemand mehr; ob das Ruhebild sie braucht, ist
+  zu prüfen, bevor sie gehen.

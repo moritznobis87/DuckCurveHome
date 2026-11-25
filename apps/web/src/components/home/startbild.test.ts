@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { EnergySnapshot } from "@/lib/api/models";
 import type { Zelle } from "./ausblick";
 import { bandbreite, buehnenmass, sonnenanteil, sonnenort } from "./buehne";
+import { flusswerte, grundlast, wpWort } from "./fluss";
 import { STARTBILDER, STARTBILD_MERKER, startbildAus } from "./startbild";
 import { preislaenge, ringmass, stunden24, stundenwinkel } from "./stundenring";
 
@@ -74,6 +76,36 @@ describe("Bühne", () => {
     const spaet = sonnenort(m, 0.75);
     expect(spaet.x).toBeCloseTo(671.0437, 3);
     expect(spaet.y).toBeCloseTo(127.868, 3);
+  });
+});
+
+describe("Fluss", () => {
+  // Nur die Felder, die der Fluss liest. Netz: Bezug ist positiv. Speicher: Abgabe ist positiv.
+  const augenblick = (w: { pv: number | null; netz: number; batterie: number; haus: number; hp: number; ev: number; rest: number | null; soc: number | null }): EnergySnapshot => {
+    const m = (value: number | null) => ({ value, quality: "ok", observed_at: "2026-11-25T12:00:00Z", source: "test" });
+    return { pv_power_kw: m(w.pv), grid_power_kw: m(w.netz), battery_power_kw: m(w.batterie), house_power_kw: m(w.haus), heat_pump_power_kw: m(w.hp), ev_power_kw: m(w.ev), base_load_kw: m(w.rest), battery_soc: m(w.soc) } as unknown as EnergySnapshot;
+  };
+
+  it("kennt Richtung und Ruhe", () => {
+    const mittag = flusswerte(augenblick({ pv: 4.6, netz: -0.3, batterie: -0.8, haus: 3.5, hp: 2.4, ev: 0, rest: 1.1, soc: 0.64 }));
+    expect(mittag.netz).toBe(0.3);
+    expect(mittag.einspeisung).toBe(true);
+    expect(mittag.speicherWort).toBe("lädt");
+    expect(mittag.speicher).toBe(0.8);
+    expect(grundlast(mittag.rest, mittag.hp + mittag.ev)).toBe("davon 1,1 kW Grundlast");
+    expect(wpWort(mittag.hp, true)).toBe("läuft");
+
+    const abend = flusswerte(augenblick({ pv: null, netz: 1.3, batterie: 0.6, haus: 1.9, hp: 0.02, ev: 0, rest: 1.9, soc: 0.22 }));
+    expect(abend.pv).toBe(0);
+    expect(abend.einspeisung).toBe(false);
+    expect(abend.speicherWort).toBe("entlädt");
+    expect(grundlast(abend.rest, abend.hp + abend.ev)).toBeUndefined();
+    expect(wpWort(abend.hp, false)).toBe("steht");
+
+    const ruhe = flusswerte(augenblick({ pv: 0, netz: 0, batterie: 0.03, haus: 0.4, hp: 0.1, ev: 0, rest: null, soc: null }));
+    expect(ruhe.speicherWort).toBe("hält");
+    expect(ruhe.soc).toBeNull();
+    expect(wpWort(ruhe.hp, false)).toBe("Bereitschaft");
   });
 });
 

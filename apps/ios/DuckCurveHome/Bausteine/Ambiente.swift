@@ -212,7 +212,7 @@ struct Ambiente: View {
                 .font(Schrift.mono(mass.aussen))
                 .kerning(mass.aussen * -0.02)
                 // Die Zahl steht da wie in der Vorlage, aber grau, wenn sie nicht traegt -
-                // so haelt es das Flussbild auch (`Energiefluss.swift`).
+                // so haelt es die Buehne auch (`Buehnenbild.swift`).
                 .foregroundStyle(aussenTraegt ? Farbe.text1 : Farbe.text3)
                 .monospacedDigit()
             Text(haus.zustand?.system.outdoorSourceDe ?? "draußen")

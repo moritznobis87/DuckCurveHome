@@ -4,9 +4,9 @@ import { hhmm } from "@/lib/format";
 /**
  * Was das Haus in den nächsten 24 Stunden vorhat, in Zeilen.
  *
- * **Warum eigenes Modul.** Dieselben Zeilen stehen an drei Stellen: in der Leiste neben dem
- * Energiefluss, im Ambiente am Abend und - wenn es eng wird - nirgends. Vorher standen sie in
- * `Rail.tsx`, und das Ambiente hätte sie ein zweites Mal gerechnet.
+ * **Warum eigenes Modul.** Die Zeilen stehen im Ambiente am Abend. Bis zum 25.11.2026 standen sie
+ * auch in der Leiste neben dem Energiefluss; seit die Startseite die nächsten 24 Stunden als Bild
+ * zeigt (`Karten.tsx`), ist das Ambiente ihr einziger Ort.
  *
  * **Eine Phase ist eine Folge von Viertelstunden.** Der Fahrplan kommt als Raster; was ihn
  * interessant macht, sind die zusammenhängenden Stücke darin („23:15 bis 02:00"), nicht die

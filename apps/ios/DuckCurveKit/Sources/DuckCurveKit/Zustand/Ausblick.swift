@@ -5,7 +5,7 @@ import Foundation
 /// **Warum es das gibt.** Die Startseite sagt, was gerade ist, in Kilowatt. Was ein Mensch im
 /// Haus daraus machen soll, sagt sie nicht: „Strom gerade 38,3 ct" ist eine Zahl ohne Maß. Am
 /// Telefon stand dort in der App nur die Karte „Als Nächstes" mit drei Uhrzeiten. Die Vorlage
-/// (`apps/web/src/components/home/ausblick.ts` und `Ausblick.tsx`) beantwortet stattdessen drei
+/// (`apps/web/src/components/home/ausblick.ts`, gezeichnet in `Karten.tsx`) beantwortet stattdessen drei
 /// Fragen, die man sich mit dem Telefon in der Hand stellt:
 ///
 /// - Ist Strom gerade teuer oder günstig? Gemessen an den nächsten 24 Stunden, nicht an einer

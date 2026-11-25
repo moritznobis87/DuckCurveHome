@@ -93,6 +93,40 @@ final class StartbildTests: XCTestCase {
         XCTAssertEqual(spaet.y, 127.868, accuracy: 1e-3)
     }
 
+    // MARK: - Der Fluss
+
+    func testDerFlussKenntRichtungUndRuhe() {
+        let mittag = Startfluss.aus(
+            pv: 4.6, netz: -0.3, batterie: -0.8, haus: 3.5, hp: 2.4, ev: 0, rest: 1.1, soc: 0.64)
+        XCTAssertEqual(mittag.netz, 0.3)
+        XCTAssertTrue(mittag.einspeisung)
+        XCTAssertEqual(mittag.netzName, "Einspeisung")
+        XCTAssertEqual(mittag.speicherWort, .laedt)
+        XCTAssertEqual(mittag.speicherName, "Speicher lädt")
+        XCTAssertEqual(mittag.speicherBand, 0.8)
+        XCTAssertEqual(mittag.socText, "64")
+        XCTAssertEqual(mittag.hausZeile, "davon 1,1 kW Grundlast")
+        XCTAssertEqual(mittag.pumpenName(laeuft: true), "Wärmepumpe läuft")
+        XCTAssertEqual(mittag.wallboxName, "Wallbox steht")
+
+        let abend = Startfluss.aus(
+            pv: nil, netz: 1.3, batterie: 0.6, haus: 1.9, hp: 0.02, ev: 0, rest: 1.9, soc: 22)
+        XCTAssertEqual(abend.pv, 0)
+        XCTAssertFalse(abend.einspeisung)
+        XCTAssertEqual(abend.netzName, "Netzbezug")
+        XCTAssertEqual(abend.speicherWort, .entlaedt)
+        XCTAssertEqual(abend.socText, "22")
+        XCTAssertEqual(abend.hausZeile, "braucht das Haus")
+        XCTAssertEqual(abend.pumpenName(laeuft: false), "Wärmepumpe steht")
+
+        let ruhe = Startfluss.aus(
+            pv: 0, netz: 0, batterie: 0.03, haus: 0.4, hp: 0.1, ev: 0, rest: nil, soc: nil)
+        XCTAssertEqual(ruhe.speicherWort, .haelt)
+        XCTAssertEqual(ruhe.speicherBand, 0)
+        XCTAssertEqual(ruhe.socText, Formate.leer)
+        XCTAssertEqual(ruhe.pumpenName(laeuft: false), "Wärmepumpe Bereitschaft")
+    }
+
     // MARK: - Der Stundenring
 
     private func um(_ stunde: Int, _ minute: Int) -> Date {
@@ -100,8 +134,10 @@ final class StartbildTests: XCTestCase {
             from: DateComponents(year: 2026, month: 11, day: 25, hour: stunde, minute: minute))!
     }
 
-    private func zelle(_ zeit: Date, _ preis: Double?, _ pv: Double, wp: Bool = false) -> Ausblick.Zelle {
-        Ausblick.Zelle(zeit: zeit, preis: preis, pv: pv, wp: wp, ofen: false)
+    private func zelle(
+        _ zeit: Date, _ preis: Double?, _ pv: Double, wp: Bool = false, ofen: Bool = false
+    ) -> Ausblick.Zelle {
+        Ausblick.Zelle(zeit: zeit, preis: preis, pv: pv, wp: wp, ofen: ofen)
     }
 
     func testViertelstundenWerdenZuStunden() {
@@ -112,7 +148,7 @@ final class StartbildTests: XCTestCase {
             zelle(um(19, 15), 44, 0.4),
             zelle(um(19, 30), nil, 0.6),
             zelle(um(19, 45), nil, 0.8),
-            zelle(um(20, 0), nil, 1),
+            zelle(um(20, 0), nil, 1, ofen: true),
         ]
         let fenster = Ausblick.Fenster(von: um(19, 30), bis: um(21, 30), mittel: 20)
         let st = Stundenring.stunden24(zellen, guenstig: fenster)
@@ -120,6 +156,7 @@ final class StartbildTests: XCTestCase {
         XCTAssertEqual(st.map(\.preis), [52, 42, nil])
         XCTAssertEqual(st[1].sonneKw, 0.5, accuracy: 1e-6)
         XCTAssertEqual(st.map(\.wp), [false, true, false])
+        XCTAssertEqual(st.map(\.ofen), [false, false, true])
         XCTAssertEqual(st.map(\.tief), [false, true, true])
     }
 
@@ -129,6 +166,22 @@ final class StartbildTests: XCTestCase {
         XCTAssertEqual(st.count, 24)
         XCTAssertEqual(st.first?.stunde, 18)
         XCTAssertEqual(st.last?.stunde, 17)
+    }
+
+    func testZeitspannenStehenInFesterFolgeUndNurWoDerFahrplanSieKennt() {
+        var a = Ausblick()
+        a.zellen = (0..<8).map { i in
+            Ausblick.Zelle(
+                zeit: um(18, 0).addingTimeInterval(Double(i) * 900), preis: 30, pv: 0,
+                wp: i == 2 || i == 3, ofen: false)
+        }
+        a.guenstig = Ausblick.Fenster(von: um(13, 0), bis: um(15, 0), mittel: 22)
+        let spannen = Stundenring.zeitspannen(a)
+        XCTAssertEqual(spannen.map(\.art), [.preistief, .waermepumpe])
+        XCTAssertEqual(spannen.map(\.wort), ["Preistief", "Wärmepumpe"])
+        XCTAssertEqual(spannen.map(\.text), ["13:00–15:00", "18:30–19:00"])
+        XCTAssertEqual(Ausblick.Preislage.guenstig.wort, "günstig")
+        XCTAssertEqual(Ausblick.Preislage.gleichmaessig.wort, "gleichmäßig")
     }
 
     func testNullUhrStehtObenUndEsGehtImUhrzeigersinn() {

@@ -38,13 +38,17 @@
 .start-grosszahl { font-size: 52px; line-height: 1; letter-spacing: -0.03em; white-space: nowrap; }
 .start-grosszahl small { margin-left: 0.25em; font-family: var(--font-sans); font-size: 0.34em; letter-spacing: 0; color: var(--text-3); }
 
-/* ---------- Puffer ---------- */
+/* ---------- Puffer: dasselbe Glas wie in der Anlage. An der Wand steht es, am Telefon liegt es. ---------- */
 .start-puffer { --kartenfarbe: var(--amber); flex-direction: row; align-items: stretch; justify-content: space-between; gap: 16px; }
 .start-puffer-links { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 10px; min-width: 0; }
-.start-tank { display: flex; align-items: stretch; gap: 10px; min-height: 92px; }
-.start-tank-glas { position: relative; width: 46px; overflow: hidden; border-radius: 23px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 0 26px rgba(242, 169, 0, 0.16); }
-.start-tank-glas::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 38%, rgba(0, 0, 0, 0.18)); }
-.start-tank-fuehler { display: flex; flex-direction: column; justify-content: space-between; padding: 5px 0; font-size: 13px; color: var(--text-2); white-space: nowrap; }
+.start-glas { align-self: stretch; height: 108px; width: auto; min-height: 0; }
+.start-glas-liegend { display: none; }
+.start-glas-quer { position: relative; display: block; height: 22px; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 11px; box-shadow: inset 0 3px 4px -2px rgba(255, 255, 255, 0.28), inset 0 -3px 4px -2px rgba(0, 0, 0, 0.25); }
+.start-puffer-fuehler { position: relative; display: block; height: 19px; font-size: 14px; }
+.start-puffer-wert { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.start-puffer-grad { margin-left: 1px; color: var(--text-3); }
+.start-puffer-orte { position: relative; display: block; height: 14px; }
+.start-puffer-ort { position: absolute; top: 0; transform: translateX(-50%); font-size: 11px; color: var(--text-3); white-space: nowrap; }
 
 /* ---------- Die nächsten 24 Stunden und der Strompreis ---------- */
 .start-preis { font-size: 22px; letter-spacing: -0.02em; white-space: nowrap; }
@@ -148,6 +152,11 @@
   .start-satz .home-satz { font-size: 22px; }
   .start-hinweise { max-width: none; }
   .start-oben, .start-unten, .start-rechts { display: flex; flex-direction: column; gap: 12px; }
+  .start-puffer { flex-direction: column; gap: 12px; }
+  .start-puffer-links { flex-direction: row; align-items: center; justify-content: space-between; }
+  .start-puffer .start-grosszahl { font-size: 34px; }
+  .start-glas { display: none; }
+  .start-glas-liegend { display: flex; flex-direction: column; gap: 7px; }
   .start-buehne { flex: none; height: 322px; }
   .start-uhrbild { height: 380px; }
   .home-kurve-kopf { flex-wrap: wrap; gap: 12px; }

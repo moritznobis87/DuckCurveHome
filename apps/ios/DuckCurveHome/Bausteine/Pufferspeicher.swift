@@ -5,13 +5,13 @@ import SwiftUI
 /// zeigt.
 ///
 /// **Der Speicher sieht überall gleich aus** (Nutzerwunsch 14.11.2026): dasselbe Glas auf der
-/// Startseite (`Leiste.swift`), in der Anlage (`AnlageSeite.swift`, `Anlagenbild.swift`) und im
+/// Startseite (`Startkarten.swift`), in der Anlage (`AnlageSeite.swift`, `Anlagenbild.swift`) und im
 /// Ruhebild (`Ambiente.swift`). Die Wärmeseite zeigt den Puffer nicht als Glas.
 ///
 /// **An der Wand steht er, am Telefon liegt er.** Hier stand einmal, die liegende Fassung sei
 /// meine Erfindung und im Dashboard gebe es sie nicht. Das war falsch, und der Satz hat eine
-/// richtige Lösung verdrängt: `home/Rail.tsx` legt den Speicher im kompakten Zweig hin
-/// (`home-puffer-flach`), auf Nutzerwunsch vom 14.11.2026 und mit dessen Begründung – „sonst
+/// richtige Lösung verdrängt: die Startseite legt den Speicher am Telefon hin (`home/Karten.tsx`,
+/// `start-glas-liegend`; bis zum 25.11.2026 `home/Rail.tsx`), auf Nutzerwunsch vom 14.11.2026 und mit dessen Begründung – „sonst
 /// streckt man die Seite unnötig". Am Telefon ist die Startseite eine Rolle, und ein Glas von
 /// 300 Punkten Höhe schiebt alles Folgende unter den Rand. Liegend ist es dasselbe Glas auf
 /// der Seite: dieselbe Farbskala, jede Zahl an der Stelle ihres Fühlers, links oben, rechts
@@ -225,7 +225,7 @@ struct Pufferflach: View {
             "Pufferspeicher: \(zustand.traegt ? Formate.prozent(soc) : "kein Füllstand"), \(zustand.wort)")
     }
 
-    /// **„Puffer" steht in der Kachel, nicht über ihr** (`Rail.tsx:56-57`): links der Kicker,
+    /// **„Puffer" steht in der Kachel, nicht über ihr** (`Rail.tsx:56-57`, Stand vor dem 25.11.2026): links der Kicker,
     /// rechts die Zahl mit ihrem Zustandswort. Als Kartenüberschrift darüber war es eine Zeile
     /// mehr für dasselbe Wort.
     private var kopf: some View {
@@ -243,7 +243,7 @@ struct Pufferflach: View {
         }
     }
 
-    /// **Die Zahlen stehen unter dem Band, nicht darüber** (`Rail.tsx:61-73`). Das Band ist die
+    /// **Die Zahlen stehen unter dem Band, nicht darüber** (`Karten.tsx`, `start-puffer-fuehler`). Das Band ist die
     /// Sache, die Zahlen sind ihre Beschriftung - und eine Beschriftung steht unter dem Bild.
     private var band: some View {
         VStack(alignment: .leading, spacing: 3) {

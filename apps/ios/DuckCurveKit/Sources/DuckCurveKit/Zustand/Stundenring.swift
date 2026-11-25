@@ -16,6 +16,8 @@ public enum Stundenring {
         public let sonneKw: Double
         /// In dieser Stunde ist ein Lauf der Wärmepumpe geplant.
         public let wp: Bool
+        /// In dieser Stunde soll der Pelletofen brennen.
+        public let ofen: Bool
         /// Die Stunde liegt im Preistief.
         public let tief: Bool
 
@@ -34,6 +36,7 @@ public enum Stundenring {
             var sonne = 0.0
             var zellen = 0
             var wp = false
+            var ofen = false
         }
         var summen: [Summe] = []
         for z in zellen {
@@ -51,6 +54,7 @@ public enum Stundenring {
             summen[i].sonne += z.pv
             summen[i].zellen += 1
             if z.wp { summen[i].wp = true }
+            if z.ofen { summen[i].ofen = true }
         }
         return summen.map { s in
             let ende = s.start.addingTimeInterval(3600)
@@ -61,6 +65,7 @@ public enum Stundenring {
                 preis: s.preise > 0 ? s.preis / Double(s.preise) : nil,
                 sonneKw: s.zellen > 0 ? s.sonne / Double(s.zellen) : 0,
                 wp: s.wp,
+                ofen: s.ofen,
                 tief: tief
             )
         }
@@ -104,5 +109,63 @@ public enum Stundenring {
             pumpe: radius - 58,
             zahl: radius - 74
         )
+    }
+}
+
+// MARK: - Zeitspannen und Preislage
+
+extension Stundenring {
+
+    /// Eine Zeitspanne der nächsten 24 Stunden: das Preistief, die beste Sonnenzeit oder der
+    /// nächste geplante Lauf. Sie stehen als Uhrzeiten da, wo früher Sätze standen.
+    public struct Zeitspanne: Sendable, Equatable, Identifiable {
+        public enum Art: String, Sendable, Hashable {
+            case preistief, sonne, waermepumpe, ofen
+        }
+
+        public let art: Art
+        public let von: Date
+        public let bis: Date
+
+        public var id: String { art.rawValue }
+
+        public var wort: String {
+            switch art {
+            case .preistief: return "Preistief"
+            case .sonne: return "Beste Sonne"
+            case .waermepumpe: return "Wärmepumpe"
+            case .ofen: return "Pelletofen"
+            }
+        }
+
+        /// „13:00–15:00“
+        public var text: String { "\(Formate.hhmm(von))–\(Formate.hhmm(bis))" }
+    }
+
+    /// Die Zeitspannen eines Ausblicks, in fester Reihenfolge. Was der Fahrplan nicht kennt, fehlt.
+    public static func zeitspannen(_ a: Ausblick) -> [Zeitspanne] {
+        var out: [Zeitspanne] = []
+        if let g = a.guenstig { out.append(Zeitspanne(art: .preistief, von: g.von, bis: g.bis)) }
+        if let s = a.sonne { out.append(Zeitspanne(art: .sonne, von: s.von, bis: s.bis)) }
+        func erster(_ abschnitte: [Range<Int>], _ art: Zeitspanne.Art) {
+            guard let r = abschnitte.first, r.lowerBound < a.zellen.count, r.upperBound >= 1 else { return }
+            let ende = a.zellen[min(r.upperBound, a.zellen.count) - 1].zeit.addingTimeInterval(Ausblick.schritt)
+            out.append(Zeitspanne(art: art, von: a.zellen[r.lowerBound].zeit, bis: ende))
+        }
+        erster(a.laeufe, .waermepumpe)
+        erster(a.braende, .ofen)
+        return out
+    }
+}
+
+extension Ausblick.Preislage {
+    /// Die Lage des Preises als ein Wort für die Marke neben der Zahl.
+    public var wort: String {
+        switch self {
+        case .guenstig: return "günstig"
+        case .mittel: return "mittel"
+        case .teuer: return "teuer"
+        case .gleichmaessig: return "gleichmäßig"
+        }
     }
 }

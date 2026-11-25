@@ -25,61 +25,6 @@
    Spaltenansicht aus globals.css mit der Leiste im Kopf: unten nähme sie dort ein Sechstel der
    Höhe. */
 
-/* ---------------------------------------------------------------------- Das Flussbild
-   Steht ohne Breitenabfrage: `FlowHandy` zeichnet nur, wo `useIsMobile` wahr ist, also auch am
-   Handy im Querformat. Höhe und Lage gehören zusammen: die untere Reihe steht bei 75 Prozent,
-   darunter brauchen Zahl, Name und Zustand gut 90 Punkte. Am Gerät fällt die Schrift höher aus
-   als in der Vorführung; mit 394 Punkten war die unterste Zeile angeschnitten (10.11.2026). */
-.fluss-h { position: relative; height: 410px; border-radius: 20px; overflow: hidden; background: radial-gradient(130% 70% at 50% 0%, #1a4658 0%, var(--surface-2) 62%); }
-.fluss-h-schein { position: absolute; left: 17%; top: 14%; width: 320px; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(242, 169, 0, 0.36) 0%, rgba(242, 169, 0, 0) 62%); transition: opacity 1.2s; }
-.fluss-h-leitungen { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.fluss-h-knoten, .fluss-h-haus { position: absolute; width: 0; height: 0; overflow: visible; color: inherit; text-decoration: none; }
-.fluss-h-ring { position: absolute; left: 0; top: 0; width: 52px; height: 52px; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1.5px solid; overflow: hidden; z-index: 2; }
-.fluss-h-ring svg { position: relative; }
-.fluss-h-fuell { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(127, 183, 200, 0.3); }
-.fluss-h-text { position: absolute; display: flex; flex-direction: column; gap: 1px; white-space: nowrap; z-index: 2; }
-.fluss-h-rechts .fluss-h-text { left: 36px; top: -3px; transform: translateY(-50%); align-items: flex-start; }
-.fluss-h-links .fluss-h-text { right: 36px; top: -3px; transform: translateY(-50%); align-items: flex-end; }
-.fluss-h-unten .fluss-h-text { top: 34px; left: 0; transform: translateX(-50%); align-items: center; }
-.fluss-h-zahl { font-size: 22px; line-height: 1.05; letter-spacing: -0.03em; }
-.fluss-h-einheit { margin-left: 4px; font-family: var(--font-sans); font-size: 12.5px; letter-spacing: 0; color: var(--text-3); }
-.fluss-h-name { font-size: 13px; line-height: 1.25; color: var(--text-2); }
-.fluss-h-wort { font-size: 12px; line-height: 1.2; color: var(--text-3); }
-.fluss-h-haus-ring { position: absolute; left: 0; top: 0; width: 108px; height: 108px; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 50%; border: 1.5px solid; background: var(--deep); box-shadow: 0 0 46px rgba(255, 255, 255, 0.09); z-index: 2; }
-.fluss-h-haus-zahl { font-size: 32px; line-height: 1; letter-spacing: -0.04em; }
-.fluss-h-haus-einheit { font-size: 12.5px; line-height: 1; color: var(--text-3); }
-.fluss-h-haus-fehlt { max-width: 84px; text-align: center; font-size: 12px; line-height: 1.25; color: var(--text-3); }
-.fluss-h-davon { position: absolute; left: calc(50% + 64px); right: 8px; transform: translateY(-50%); font-size: 11.5px; line-height: 1.3; color: var(--text-3); z-index: 2; }
-.fluss-h-knoten:focus-visible .fluss-h-ring, .fluss-h-haus:focus-visible .fluss-h-haus-ring { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18); }
-.home-kurve-legende-unten { display: none; }
-
-/* Nacht: dunkler Himmel mit ein paar Sternen, kein Sonnenschein. Die Sterne sind gesetzte Punkte
-   und keine Zufallszahlen, damit das Bild bei jedem Laden dasselbe ist. */
-.fluss-h-nacht { background: radial-gradient(120% 64% at 50% 0%, #143848 0%, #0c2a37 58%, #0b2734 100%); }
-.fluss-h-nacht .fluss-h-schein { display: none; }
-.fluss-h-nacht::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 46% 0;
-  pointer-events: none;
-  opacity: 0.85;
-  background:
-    radial-gradient(1.2px 1.2px at 34% 9%, rgba(255, 255, 255, 0.8) 50%, transparent 52%),
-    radial-gradient(1px 1px at 47% 22%, rgba(255, 255, 255, 0.55) 50%, transparent 52%),
-    radial-gradient(1.4px 1.4px at 58% 7%, rgba(255, 255, 255, 0.7) 50%, transparent 52%),
-    radial-gradient(1px 1px at 66% 31%, rgba(255, 255, 255, 0.45) 50%, transparent 52%),
-    radial-gradient(1px 1px at 41% 38%, rgba(255, 255, 255, 0.4) 50%, transparent 52%),
-    radial-gradient(1.2px 1.2px at 52% 46%, rgba(255, 255, 255, 0.35) 50%, transparent 52%),
-    radial-gradient(1px 1px at 8% 44%, rgba(255, 255, 255, 0.45) 50%, transparent 52%),
-    radial-gradient(1px 1px at 93% 52%, rgba(255, 255, 255, 0.4) 50%, transparent 52%),
-    radial-gradient(1.3px 1.3px at 27% 58%, rgba(255, 255, 255, 0.5) 50%, transparent 52%),
-    radial-gradient(1px 1px at 74% 66%, rgba(255, 255, 255, 0.4) 50%, transparent 52%);
-}
-
-/* ---------------------------------------------------------------------- Der Ausblick
-   Die nächsten 24 Stunden: Preis mit Maß, drei Bänder an einer Achse, drei Sätze. */
-.ausblick { flex: 1 1 100%; display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 16px; background: var(--surface-2); }
-
 @media (max-width: 720px) {
   /* ------------------------------------------------------------------ Grund und Seitenrand */
   .dashboard-bg { background: var(--deep); }
@@ -279,10 +224,8 @@
   .home-zeit { display: none; }
   .home-aussen { font-size: 13.5px; }
   .home-satz { font-size: 21px; line-height: 1.27; font-weight: 500; letter-spacing: -0.015em; }
-  .fluss-h { order: 3; }
   .home-kurve { order: 5; min-height: 0; gap: 10px; padding: 14px 12px 12px; border-radius: 16px; background: var(--surface-2); }
   .home-kurve-bild { flex: none; height: 262px; }
-  .home-kurve-legende-unten { display: flex; flex-wrap: wrap; gap: 5px 14px; padding: 0 2px; }
   .home-tage { border: 0; border-radius: 11px; background: rgba(255, 255, 255, 0.07); padding: 3px; gap: 2px; flex: 1; }
   .home-tag { flex: 1; padding: 8px 6px; border-radius: 8px; font-size: 14px; }
   .home-dock { background: var(--surface-2); border-radius: 16px; padding: 14px 12px 12px; }

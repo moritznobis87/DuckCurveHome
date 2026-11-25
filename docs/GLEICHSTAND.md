@@ -40,6 +40,10 @@ Behoben am 24.11.2026, nach der ersten Fassung dieser Liste:
 | Seite | Dashboard | App | Fundstelle |
 |---|---|---|---|
 | Regelkreis | Blockschaltbild mit vier Ebenen, darunter die Kreise | Liste der Kreise ohne Schaltbild | `components/regelkreis/Karte.tsx`, `RegelkreisSeite.swift` |
+| Startseite (seit dem 25.11.2026) | Der Puffer steht an der Wand als Glas in seiner Karte und liegt am Telefon. | Der Puffer liegt auch an der Wand: die Karte neben dem Bild ist für das stehende Glas der App zu niedrig. In der App ungesehen. | `components/home/Karten.tsx`, `Seiten/Jetzt/Startkarten.swift` |
+| Startseite (seit dem 25.11.2026) | An der Wand stehen Tageskurve und Schalter in je einer Karte, die vier Zahlen des Tages im Kopf der Tageskarte. | Kurve, vier Zahlen und Schalter stehen an der Wand wie bisher ohne Karten in zwei Reihen. Der Inhalt ist derselbe. | `components/home/Home.tsx`, `Seiten/Jetzt/JetztSeite.swift` |
+| Startseite (seit dem 25.11.2026) | Der Lüfter der Wärmepumpe dreht sich auf der Bühne, solange sie läuft. | Der Lüfter steht; die Bänder bewegen sich in beiden. | `components/home/Buehne.tsx`, `Seiten/Jetzt/Buehnenbild.swift` |
+| Startseite | Ein Tipp auf den Speicher führt auf seine Seite. | Ein Tipp öffnet das Blatt des Speichers. Das war schon vor dem neuen Bild so. | `components/home/Buehne.tsx`, `Seiten/Jetzt/Buehnenbild.swift` |
 
 **Entschieden am 24.11.2026:** überall das Blockschaltbild, keine Liste. Die App zeigt seitdem
 das Schaltbild des Dashboards (`Regelkreiskarte.swift`). Die Geometrie steht einmal in

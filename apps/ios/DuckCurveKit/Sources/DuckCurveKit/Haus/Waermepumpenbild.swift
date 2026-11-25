@@ -11,7 +11,7 @@ import Foundation
 public enum Wpbild {
     /// Das Zustandswort der Waermepumpe: „laeuft", „Bereitschaft", „steht".
     ///
-    /// **Drei Worte, nicht zwei** (`FlowHero.tsx`, `wpWort`). Die Maschine zieht im Stillstand
+    /// **Drei Worte, nicht zwei** (`fluss.ts`, `wpWort`). Die Maschine zieht im Stillstand
     /// rund 0,1 kW fuer Steuerung und Umwaelzpumpe. „Laeuft" waere dafuer falsch, „aus" auch -
     /// sie ist bereit und wartet. Erst wenn der Dienst sagt, dass sie laeuft, laeuft sie.
     ///

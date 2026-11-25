@@ -5,7 +5,8 @@ import type { LiveState } from "@/lib/api/models";
 import { hhmm } from "@/lib/format";
 import { useGroesse } from "@/lib/useGroesse";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { gradzahl, stufen } from "@/components/puffer/glas";
+import { PufferGlasBild } from "@/components/puffer/Glas";
+import { FUEHLER, gradzahl, stufen } from "@/components/puffer/glas";
 import { SCHRITT_MS, abschnitte, type Ausblick, type Zelle } from "./ausblick";
 import { pufferZustand } from "./puffer";
 import { preislaenge, stunden24 } from "./stundenring";
@@ -16,15 +17,22 @@ import { de } from "./tage";
  * (zur Bühne) und der Strompreis in großer Zahl (zur Uhr, deren Ring die 24 Stunden selbst zeigt).
  */
 
-/** Der Puffer: Ladestand, Zustand als Marke, der Tank im Farbverlauf und die vier Fühler. */
+/**
+ * Der Puffer: Ladestand, Zustand als Marke und das Glas mit den vier Fühlern.
+ *
+ * **Dasselbe Glas wie überall** (Wunsch des Hausherrn vom 14.11.2026): an der Wand steht es, als
+ * `PufferGlasBild` wie in der Anlage und im Ruhebild; am Telefon liegt es, weil ein stehendes
+ * Glas die Seite unnötig streckt. Jede Zahl steht dann unter der Stelle ihres Fühlers.
+ */
 export function Pufferkarte({ state, nowMs }: { state: LiveState | null; nowMs: number }) {
   const s = state?.snapshot;
   const temps = s ? [s.buffer_temps_c.top, s.buffer_temps_c.mid_top, s.buffer_temps_c.mid_bottom, s.buffer_temps_c.bottom] : [];
   const { vollstaendig, veraltet, wort } = pufferZustand(temps, nowMs, !!state?.heat_pump.running, state?.buffer?.status);
   const fuehler = temps.map((m) => m.value);
   const soc = state?.buffer?.soc ?? null;
+  const gedimmt = !vollstaendig || veraltet;
   const verlauf = stufen(fuehler);
-  const tank = verlauf.length ? `linear-gradient(180deg, ${verlauf.map((st) => `${st.farbe} ${st.bei * 100}%`).join(", ")})` : "var(--surface-3)";
+  const quer = verlauf.length ? `linear-gradient(90deg, ${verlauf.map((st) => `${st.farbe} ${st.bei * 100}%`).join(", ")})` : "var(--surface-3)";
   const prozent = soc != null ? String(Math.round(soc * 100)) : "-";
   return (
     <Link href="/waerme" className="start-karte start-puffer" aria-label={`Puffer ${prozent} %, ${wort}. Details öffnen`}>
@@ -36,10 +44,23 @@ export function Pufferkarte({ state, nowMs }: { state: LiveState | null; nowMs: 
         </span>
         <span className="mono start-grosszahl">{prozent}<small>%</small></span>
       </span>
-      <span className="start-tank" style={{ opacity: !vollstaendig || veraltet ? 0.5 : 1 }} aria-hidden>
-        <span className="start-tank-glas" style={{ background: tank }} />
-        <span className="start-tank-fuehler mono">
-          {(fuehler.length ? fuehler : [null, null, null, null]).map((v, i) => <span key={i}>{gradzahl(v) ?? "-"} °C</span>)}
+      <PufferGlasBild className="start-glas" temps={fuehler} breite={60} hoehe={120} schrift={13} gedimmt={gedimmt} />
+      <span className="start-glas-liegend" aria-hidden>
+        <span className="start-glas-quer" style={{ background: quer, opacity: gedimmt ? 0.5 : 1 }} />
+        <span className="start-puffer-fuehler">
+          {fuehler.map((v, i) => {
+            const zahl = gradzahl(v);
+            return (
+              <span key={i} className="mono start-puffer-wert" style={{ left: `${FUEHLER[i]! * 100}%` }}>
+                {zahl ?? "-"}
+                {zahl != null ? <span className="start-puffer-grad">°</span> : null}
+              </span>
+            );
+          })}
+        </span>
+        <span className="start-puffer-orte">
+          <span className="start-puffer-ort" style={{ left: `${FUEHLER[0] * 100}%` }}>oben</span>
+          <span className="start-puffer-ort" style={{ left: `${FUEHLER[3] * 100}%` }}>unten</span>
         </span>
       </span>
     </Link>

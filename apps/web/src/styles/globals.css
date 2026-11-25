@@ -249,7 +249,6 @@
      Vorher kam die Kurve nach beidem und begann unterhalb des ersten Bildschirms. */
   .home { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: min-content; }
   .home-kopf { order: 1; }
-  .fluss-h { order: 3; }
   .home-kurve { order: 4; min-height: 230px; }
   .home-dock { align-items: stretch; }
   .home-dock-reihe { justify-content: space-between; gap: 6px; }
