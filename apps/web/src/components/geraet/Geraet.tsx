@@ -1,5 +1,7 @@
 "use client";
 
+import { Systemkarte } from "@/components/ui/Systemkarte";
+import { ABSCHNITTSZEICHEN } from "./abschnitte";
 import { useState } from "react";
 import { Zustandszeichen } from "@/components/ui/Zustandszeichen";
 import { Software } from "@/components/update/Software";
@@ -72,8 +74,9 @@ function groesse(bytes: number): string {
   return `${(bytes / 1e6).toLocaleString("de-DE", { maximumFractionDigits: 1 })} MB`;
 }
 
+/** Der Inhalt einer Karte. Den Rahmen gibt seit dem 25.11.2026 die `Systemkarte` drumherum. */
 function Karte({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-col gap-2 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">{children}</div>;
+  return <div className="flex flex-col gap-2">{children}</div>;
 }
 
 function Zeile({ ampel, titel, text, rechts }: { ampel?: Ampel; titel: string; text?: string; rechts?: React.ReactNode }) {
@@ -92,13 +95,13 @@ function Zeile({ ampel, titel, text, rechts }: { ampel?: Ampel; titel: string; t
 /** Eine Rückfrage an Ort und Stelle; „Abbrechen“ ist vorausgewählt. */
 function Rueckfrage({ frage, ja, onJa, onNein }: { frage: string; ja: string; onJa: () => void; onNein: () => void }) {
   return (
-    <div className="flex flex-col gap-2 rounded-[3px] border border-amber px-3 py-2" role="alertdialog" aria-label={ja}>
+    <div className="einstellen-rueckfrage" role="alertdialog" aria-label={ja}>
       <span className="text-[14px] leading-[1.5] text-text-2">{frage}</span>
       <span className="flex gap-2">
-        <button type="button" autoFocus className="rounded-[8px] border border-line-2 px-3 py-1.5 text-[14px]" onClick={onNein}>
+        <button type="button" autoFocus className="zugang-knopf zugang-knopf-klein" onClick={onNein}>
           Abbrechen
         </button>
-        <button type="button" className="rounded-[8px] bg-amber px-3 py-1.5 text-[14px] font-semibold text-deep" onClick={onJa}>
+        <button type="button" className="zugang-knopf zugang-knopf-klein zugang-knopf-an" onClick={onJa}>
           {ja}
         </button>
       </span>
@@ -106,7 +109,7 @@ function Rueckfrage({ frage, ja, onJa, onNein }: { frage: string; ja: string; on
   );
 }
 
-const KNOPF = "rounded-[8px] border border-line-2 px-3 py-1.5 text-[13px] text-text-1 disabled:opacity-40";
+const KNOPF = "zugang-knopf zugang-knopf-klein";
 
 function DienstZeile({
   d,
@@ -437,12 +440,15 @@ export function Geraet() {
   const handgriff = (a: Handgriff, dienst?: string) => void anfragen(a, dienst);
 
   return (
-    <div className="flex max-w-[860px] flex-col gap-6">
-      <div className="flex items-start gap-3 rounded-[3px] border border-line-2 px-4 py-3" aria-live="polite">
-        <Zustandszeichen zustand={g.ampel} gross className="mt-[2px]" />
-        <span className="flex flex-col gap-0.5">
-          <span className="text-[16px] font-semibold">{g.ampel === "gut" ? "Alles in Ordnung." : g.text_de}</span>
-          <span className="text-[13px] text-text-3">
+    <div className="konto max-w-[820px]">
+      <div className="einstellen-status" data-zustand={g.ampel === "gut" ? "automatik" : g.ampel === "aus" ? "offen" : "hand"} aria-live="polite">
+        <div className="einstellen-status-kopf">
+        <span className="einstellen-status-zeichen" aria-hidden="true">
+          <Zustandszeichen zustand={g.ampel} gross stumm />
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="einstellen-status-titel">{g.ampel === "gut" ? "Alles in Ordnung." : g.text_de}</span>
+          <span className="einstellen-status-satz">
             {unerreichbar
               ? "Gerade keine Verbindung. Vielleicht startet die API neu; die Seite versucht es weiter."
               : g.unterstuetzt
@@ -450,6 +456,7 @@ export function Geraet() {
                 : "Diese Installation läuft nicht auf dem Hausgerät; hier steht nur, was die API über sich selbst weiß."}
           </span>
         </span>
+        </div>
       </div>
 
       {aktion || fehler ? (
@@ -468,8 +475,7 @@ export function Geraet() {
       ) : null}
 
       {g.unterstuetzt ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="m-0 text-[18px] font-semibold">Dienste</h2>
+        <Systemkarte zeichen={ABSCHNITTSZEICHEN["Dienste"]} titel="Dienste">
           <Karte>
             {g.dienste?.length ? (
               g.dienste.map((d) => (
@@ -485,41 +491,35 @@ export function Geraet() {
               <span className="text-[14px] text-text-3">Noch kein Bericht über die Dienste.</span>
             )}
           </Karte>
-          <span className="text-[13px] text-text-3">Antippen zeigt Fassung, die letzte Prüfung und die Handgriffe.</span>
-        </section>
+        </Systemkarte>
       ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="m-0 text-[18px] font-semibold">Rechenkern</h2>
+      <Systemkarte zeichen={ABSCHNITTSZEICHEN["Rechenkern"]} titel="Rechenkern">
         <ApiKarte api={g.api} />
-      </section>
+      </Systemkarte>
 
       {g.rechner ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="m-0 text-[18px] font-semibold">Gerät</h2>
+        <Systemkarte zeichen={ABSCHNITTSZEICHEN["Gerät"]} titel="Gerät">
           <RechnerKarte r={g.rechner} />
-        </section>
+        </Systemkarte>
       ) : null}
 
       {g.rechner?.ssd ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="m-0 text-[18px] font-semibold">SSD-Gesundheit</h2>
+        <Systemkarte zeichen={ABSCHNITTSZEICHEN["SSD-Gesundheit"]} titel="SSD-Gesundheit">
           <SsdKarte s={g.rechner.ssd} />
-        </section>
+        </Systemkarte>
       ) : null}
 
       {g.rechner?.platten?.some((p) => p.ort === "/") ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="m-0 text-[18px] font-semibold">Platz auf der SSD</h2>
+        <Systemkarte zeichen={ABSCHNITTSZEICHEN["Platz auf der SSD"]} titel="Platz auf der SSD">
           <PlatzKarte g={g} />
-        </section>
+        </Systemkarte>
       ) : null}
 
       {g.unterstuetzt ? <Verlauf /> : null}
 
       {g.sicherung ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="m-0 text-[18px] font-semibold">Sicherung</h2>
+        <Systemkarte zeichen={ABSCHNITTSZEICHEN["Sicherung"]} titel="Sicherung">
           <Karte>
             <Zeile ampel={g.sicherung.ampel} titel={g.sicherung.text_de} />
             {g.sicherung.letzte ? (
@@ -536,12 +536,11 @@ export function Geraet() {
               </button>
             </span>
           </Karte>
-        </section>
+        </Systemkarte>
       ) : null}
 
       {g.einheiten?.length ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="m-0 text-[18px] font-semibold">Abläufe auf dem Gerät</h2>
+        <Systemkarte zeichen={ABSCHNITTSZEICHEN["Abläufe auf dem Gerät"]} titel="Abläufe auf dem Gerät">
           <Karte>
             {(g.einheiten ?? []).map((e) => (
               <Zeile
@@ -552,17 +551,15 @@ export function Geraet() {
               />
             ))}
           </Karte>
-        </section>
+        </Systemkarte>
       ) : null}
 
-      <section id="software" className="flex flex-col gap-3">
-        <h2 className="m-0 text-[18px] font-semibold">Software</h2>
+      <Systemkarte id="software" zeichen={ABSCHNITTSZEICHEN["Software"]} titel="Software">
         <Software />
-      </section>
+      </Systemkarte>
 
       {g.unterstuetzt ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="m-0 text-[18px] font-semibold">Neu starten</h2>
+        <Systemkarte zeichen={ABSCHNITTSZEICHEN["Neu starten"]} titel="Neu starten">
           {frage === "alle" ? (
             <Rueckfrage
               frage="Alle Dienste starten nacheinander neu. Duck Curve regelt etwa eine Minute nicht; die Anlage läuft in dieser Zeit wie ohne Duck Curve."
@@ -593,7 +590,7 @@ export function Geraet() {
               </button>
             </span>
           )}
-        </section>
+        </Systemkarte>
       ) : null}
     </div>
   );

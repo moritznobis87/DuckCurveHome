@@ -9,6 +9,27 @@ import Foundation
 /// ob gerade etwas läuft - und die Namen müssen zu denen im Dashboard passen, sonst heißt die
 /// Datenbank im Browser anders als am iPad.
 public enum Hausgeraet {
+    /// Das Zeichen jeder Karte auf „Hausgerät“, wie im Dashboard
+    /// (`apps/web/src/components/geraet/abschnitte.ts`). Seit dem 25.11.2026 trägt jeder
+    /// Abschnitt der Seite eine Karte mit Zeichen wie die übrigen Systemseiten.
+    public static let abschnittszeichen: [String: Zeichenart] = [
+        "Dienste": .anzeige,
+        "Rechenkern": .blitz,
+        "Gerät": .haus,
+        "SSD-Gesundheit": .schild,
+        "Platz auf der SSD": .batterie,
+        "Verlauf": .diagramm,
+        "Sicherung": .kalender,
+        "Abläufe auf dem Gerät": .uhr,
+        "Software": .kreis,
+        "Neu starten": .warnung,
+    ]
+
+    /// Das Zeichen zu einem Abschnitt; ein unbekannter bekommt die Anzeige.
+    public static func zeichen(_ abschnitt: String) -> Zeichenart {
+        abschnittszeichen[abschnitt] ?? .anzeige
+    }
+
     /// Die Ampel, über alle Teile gleich. Der Generator legt für jedes Feld eine eigene
     /// Aufzählung an (`GeraetDienstOutAmpelWahl`, `ApiSelbstOutAmpelWahl`, …); die Oberfläche
     /// braucht eine.

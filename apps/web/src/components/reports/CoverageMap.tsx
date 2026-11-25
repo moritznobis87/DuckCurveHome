@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import type { Coverage, CoverageSeries } from "@/lib/api/models";
 import { C } from "@/components/charts/palette";
-import { Card, CardHead } from "@/components/ui/Card";
+import { Systemkarte } from "@/components/ui/Systemkarte";
+import { PRUEFSAETZE } from "./pruefsaetze";
 import { EChart } from "@/components/charts/EChart";
 import { yearMap } from "./charts";
 import { Note } from "./ReportShell";
@@ -102,9 +103,8 @@ export function CoverageMap({ anchor, days = 28 }: { anchor: string; days?: numb
   if (!data) return <Note>lädt …</Note>;
 
   return (
-    <Card style={{ padding: 16 }}>
-      <CardHead title={`Kommen die Daten an? ${days} Tage`} right="Farbe = Minuten je Stunde, 0 bis 60" />
-      <div className="mt-2 flex flex-col gap-4">
+    <Systemkarte zeichen="calendar" titel="Kommen die Daten an?" satz={PRUEFSAETZE.abdeckung(days)}>
+      <div className="flex flex-col gap-4">
         {data.series.map((s) => (
           <div key={s.key} className="flex flex-col gap-1">
             <Headline s={s} />
@@ -123,10 +123,8 @@ export function CoverageMap({ anchor, days = 28 }: { anchor: string; days?: numb
         ))}
       </div>
       <Note>
-        {data.note_de} Eine Zelle ohne Farbe heißt, dass für diese Stunde gar keine Minutenzeile existiert. Dann stand der Dienst still, und der Ausfall ist unserer. Eine rote Zelle heißt,
-        dass Minutenzeilen da sind und diese eine Reihe darin fehlt: dann hat das Gerät nichts
-        geliefert.
+        {data.note_de} {PRUEFSAETZE.lesehilfe}
       </Note>
-    </Card>
+    </Systemkarte>
   );
 }

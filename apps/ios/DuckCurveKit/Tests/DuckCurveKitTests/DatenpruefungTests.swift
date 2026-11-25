@@ -418,25 +418,7 @@ final class DatenpruefungTests: XCTestCase {
             Abdeckungsraster.beruehrung, "Zum Lesen einer Stunde die Karte berühren.")
     }
 
-    /// Der Fußtext ist immer sichtbar und enthält darum auch den Vorbehalt zum CSV-Verweis -
-    /// der Satz, der auf `/system/zugang` über der Jahressicherung steht.
-    func testDerFusstextTraegtDieDreiAbsaetzeUndDieZweiEigenenSaetze() {
-        XCTAssertEqual(Pruefworte.fuss.count, 5)
-        XCTAssertEqual(Array(Pruefworte.fuss.prefix(3)), Pruefworte.methode)
-        XCTAssertEqual(Pruefworte.fuss[3], Pruefworte.abdeckungssatz)
-        XCTAssertEqual(Pruefworte.fuss[4], Pruefworte.csvVorbehalt)
-        XCTAssertTrue(Pruefworte.csvVorbehalt.contains("401"))
-        for satz in Pruefworte.fuss {
-            XCTAssertFalse(satz.isEmpty)
-        }
-    }
 
-    /// Die Fläche beschreibt die Geste, die es gibt - und seit dem Umbau ist das nicht mehr
-    /// das Ziehen (``Pruefworte/flaeche``).
-    func testDerSatzZurFlaecheVersprichtKeinZiehenMehr() {
-        XCTAssertTrue(Pruefworte.flaeche.contains("Knöpfe unter dem Bild"))
-        XCTAssertFalse(Pruefworte.flaeche.contains("Ziehen"))
-    }
 
     // MARK: - Die Lücke in der Erzeugungsreihe
 
@@ -467,5 +449,17 @@ final class DatenpruefungTests: XCTestCase {
         XCTAssertEqual(fehlt.luecken()?.befund, .lueckeMitNetzbewegung)
         XCTAssertTrue(satz2?.contains("Netzladung") == true, satz2 ?? "nil")
         XCTAssertFalse(satz2?.contains("Wolke") == true, satz2 ?? "nil")
+    }
+
+    /// Die Sätze der Karten wie im Dashboard (`DataCheck.tsx`, `PRUEFSAETZE`, `datacheck.test.ts`).
+    func testDieKartensaetzeSagenDasselbeWieDasDashboard() {
+        XCTAssertEqual(
+            Pruefworte.leistungen,
+            "Bezug und Entladen zählen positiv, Einspeisung und Laden negativ; der Ladestand steht rechts in Prozent.")
+        XCTAssertEqual(Pruefworte.quellen, "Was gerade liefert und was ausbleibt.")
+        XCTAssertEqual(Pruefworte.abdeckung(tage: 28), "Minuten je Stunde über 28 Tage, von 0 bis 60.")
+        XCTAssertEqual(
+            Abdeckungsraster.lesehilfe,
+            "Ohne Farbe stand der Dienst still. Rot heißt, das Gerät hat in dieser Stunde nichts geliefert.")
     }
 }

@@ -287,4 +287,9 @@ final class TuerprotokollTests: XCTestCase {
             at: at, actor: actor, door: door, method: method, outcome: outcome,
             granted: granted, reason: reason)
     }
+
+    /// Derselbe Satz wie im Dashboard (`DoorLog.tsx`, `TUERSATZ`, `doorlog.test.ts`).
+    func testKartensatzWieImDashboard() {
+        XCTAssertEqual(Tuerprotokoll.kartensatz, "Zutritte und abgewiesene Versuche am Reader.")
+    }
 }

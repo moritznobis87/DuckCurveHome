@@ -541,24 +541,4 @@ final class DatenbildTests: XCTestCase {
                 lastAt: Zeit.iso(jetzt.addingTimeInterval(60)), jetzt: jetzt),
             "letzter Wert gerade eben")
     }
-
-    // MARK: - Die Worte der Seite
-
-    /// **Ein Test gegen das Verkuerzen.** Die drei Absaetze sind das, was die Bilder lesbar
-    /// macht; sie fehlten einmal ganz, und ein halber Absatz faellt beim Lesen nicht auf.
-    /// Darum steht hier, was in jedem von ihnen vorkommen muss.
-    func testDieDreiAbsaetzeDerMethodeNennenIhreGegenproben() {
-        XCTAssertEqual(Pruefworte.methode.count, 3)
-        XCTAssertEqual(Pruefworte.methode, [Pruefworte.flaeche, Pruefworte.ladestand, Pruefworte.zaehler])
-        XCTAssertTrue(Pruefworte.flaeche.contains("Nulllinie"))
-        XCTAssertTrue(Pruefworte.flaeche.contains("Zeitfenster"))
-        XCTAssertTrue(Pruefworte.ladestand.contains("4,2 kWh"))
-        XCTAssertTrue(Pruefworte.ladestand.contains("5,1-kWh-Speicher"))
-        XCTAssertTrue(Pruefworte.zaehler.contains("Haus = PV + Netz + Speicher"))
-        XCTAssertTrue(Pruefworte.zaehler.contains("0,00 kW"))
-        for absatz in Pruefworte.methode {
-            XCTAssertGreaterThan(absatz.count, 200, "Ein Absatz, der kuerzer ist, erklaert nichts.")
-            XCTAssertTrue(absatz.hasSuffix("."), "Jeder Absatz endet als Satz.")
-        }
-    }
 }

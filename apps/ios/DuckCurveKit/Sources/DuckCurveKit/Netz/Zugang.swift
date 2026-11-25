@@ -289,7 +289,7 @@ extension Zugang {
     ///
     /// Der Vorbehalt von ``export(art:jahr:)`` gilt hier genauso: die Antwort ist eine Datei und
     /// kein JSON, und wer die Adresse an den Browser des Geräts weitergibt, gibt die
-    /// `Authorization`-Kopfzeile nicht mit. Gesagt wird das an ``Pruefworte/csvVorbehalt``.
+    /// `Authorization`-Kopfzeile nicht mit. Gesagt wird das an ``Zugangsworte/herunterladen``.
     public func export(art: Exportart, von: Date, bis: Date) -> URL? {
         guard bis > von else { return nil }
         return adresse(

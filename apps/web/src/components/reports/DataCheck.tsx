@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import type { HistoryRow } from "@/lib/api/models";
-import { Card, CardHead } from "@/components/ui/Card";
+import { Systemkarte } from "@/components/ui/Systemkarte";
 import { EChart } from "@/components/charts/EChart";
 import { CoverageMap } from "./CoverageMap";
 import { Sources } from "./Sources";
 import { powerOverlay } from "./charts";
 import { ErrorBanner, Note, ReportShell, usePeriod } from "./ReportShell";
+import { PRUEFSAETZE } from "./pruefsaetze";
 
 /**
  * Prüfansicht: die Messreihen eines Tages so, wie sie in der Datenbank stehen.
@@ -68,82 +69,39 @@ export function DataCheck() {
     >
       {error ? <ErrorBanner message={error} /> : null}
 
-      <Card style={{ padding: 16, height: 480 }}>
-        <CardHead
-          title="Leistungen über den Tag"
-          // Die Bedienhinweise stehen im Fließtext unter der Auswertung und nicht hier: auf einem
-          // Telefon ist diese Zeile schon mit der Vorzeichenregel voll und wird abgeschnitten.
-          right="Netz + Bezug, − Einspeisung · Speicher + Entladen, − Laden · Ladestand rechts in %"
-          // gestrichelt = dasselbe, anders gemessen: Ladestand am Speicher, Zähler am Netz
-        />
-        {rows.length > 0 ? (
-          <div className="min-h-0 flex-1"><EChart option={overlay} /></div>
-        ) : (
-          <div className="flex flex-1 items-center justify-center">
+      <div className="konto">
+        <Systemkarte zeichen="chart" titel="Leistungen über den Tag" satz={PRUEFSAETZE.leistungen}>
+          {rows.length > 0 ? (
+            <div style={{ height: 400 }}>
+              <EChart option={overlay} />
+            </div>
+          ) : (
             <Note>{loading ? "lädt …" : "Für diesen Tag liegen keine Minutenwerte vor. Seine Stundenbilanzen stammen dann aus dem Historienimport."}</Note>
-          </div>
-        )}
-      </Card>
+          )}
+        </Systemkarte>
 
-      {/* Die Verfügbarkeit steht vor der Bilanz: eine Auswertung zu lesen, deren Datengrundlage
-          Löcher hat, ist die falsche Reihenfolge. Und vor der Karte steht der Augenblick: sie
-          zählt Stunden und sieht einen Ausfall erst nach einer. */}
-      <Card style={{ padding: 16 }}>
-        <CardHead title="Quellen" right="liefert gerade, was liefern soll?" />
-        <div className="mt-3">
+        {/* Die Verfügbarkeit steht vor der Bilanz: eine Auswertung zu lesen, deren Datengrundlage
+            Löcher hat, ist die falsche Reihenfolge. Und vor der Karte steht der Augenblick: sie
+            zählt Stunden und sieht einen Ausfall erst nach einer. */}
+        <Systemkarte zeichen="bolt" titel="Quellen" satz={PRUEFSAETZE.quellen}>
           <Sources />
-        </div>
-      </Card>
+        </Systemkarte>
 
-      <CoverageMap anchor={anchor} />
+        <CoverageMap anchor={anchor} />
 
-      <Card style={{ padding: 16 }}>
-        <CardHead
-          title="Stundenbilanz und auffällige Strecken"
-          right={
-            csv ? (
-              <a href={csv} className="text-amber" download>
-                Minutenwerte dieses Tages als CSV ›
-              </a>
-            ) : undefined
-          }
-        />
-        {/* Bewusst als Text und nicht als gestaltete Tabelle: das ist dieselbe Ausgabe, die auch
-            über die API kommt, Zeichen für Zeichen. Wer sie hier liest und dort abruft, vergleicht
-            dasselbe - und kann sie unverändert weitergeben, wenn etwas zu klären ist. */}
-        <pre className="mono m-0 mt-2 overflow-x-auto whitespace-pre text-[11px] leading-[1.5] text-text-2">
-          {text || (loading ? "lädt …" : "Keine Diagnose verfügbar.")}
-        </pre>
-      </Card>
-
-      <Note>
-        Die obere Fläche zeigt die Messreihen, wie sie gespeichert sind, auf einer gemeinsamen
-        kW-Achse mit hervorgehobener Nulllinie. Die Strecke, um die es geht, ist oft nur eine
-        Viertelstunde lang; über den ganzen Tag gezeichnet sind das wenige Bildpunkte. Deshalb lässt
-        sich ein Zeitfenster wählen: mit dem linken Werkzeug oben rechts ein Fenster aufziehen, mit
-        dem Regler unter dem Diagramm eines über den Tag schieben, oder mit dem Mausrad und zwei
-        Fingern dort zoomen, wo der Zeiger steht. Der Kreis daneben zeigt wieder den ganzen Tag. Die
-        kW-Achse geht dabei mit, damit auch kleine Leistungen im Ausschnitt lesbar bleiben.
-        <br />
-        Die gestrichelte Linie ist der Ladestand auf der rechten Achse. Sie steht hier als
-        Gegenprobe: Ladeleistung und Ladestand sind zwei unabhängige Messwerte desselben Geräts und
-        müssen zueinander passen. 2,8 kW über anderthalb Stunden sind 4,2 kWh und damit über 80
-        Prozentpunkte in einem 5,1-kWh-Speicher. Bewegt sich der Ladestand dabei nicht, stimmt eine
-        der beiden Reihen nicht. Steigt er wie erwartet, hat der Speicher wirklich geladen, und die
-        Frage ist nicht mehr, ob die Daten stimmen, sondern warum er es tat.
-        <br />
-        Die zweite gestrichelte Linie, in der Farbe des Netzbezugs, ist der amtliche Zähler. Er misst
-        dieselbe Größe wie der Stromwandler des Speichers und läuft vorerst nur mit: führend bleibt
-        der Wandler. Wo die beiden Linien übereinanderliegen, sind sich die Geräte einig. Wo nicht,
-        ist erst zu prüfen, ob es eine echte Abweichung ist oder nur ein Versatz von Sekunden. Dafür ist das Zeitfenster da. Der Hausverbrauch ist dabei keine eigene Messung,
-        sondern folgt aus der Bilanz Haus = PV + Netz + Speicher. Läuft die PV und zeigt das Netz
-        trotzdem Bezug, sieht man hier unmittelbar, ob der Hausverbrauch über der Erzeugung lag oder
-        ob die Erzeugungsreihe selbst eine Lücke hat. Der Text darunter nimmt diese zweite Frage noch
-        einmal auf: zwischen der ersten und der letzten Minute mit Erzeugung zählt er die Minuten auf
-        genau 0,00 kW und meldet es, wenn sich der Netzwert in derselben Strecke weiterbewegt. Dann
-        liefert der Zähler, die Erzeugungsmessung aber nicht, und die ausgewiesene Netzladung ist
-        eine Folge der Lücke, kein Verhalten des Speichers.
-      </Note>
+        <Systemkarte zeichen="table" titel="Stundenbilanz und auffällige Strecken">
+          {csv ? (
+            <a href={csv} className="zugang-knopf zugang-knopf-klein self-start" download>
+              Minutenwerte dieses Tages als CSV ›
+            </a>
+          ) : null}
+          {/* Bewusst als Text und nicht als gestaltete Tabelle: das ist dieselbe Ausgabe, die auch
+              über die API kommt, Zeichen für Zeichen. */}
+          <pre className="mono m-0 overflow-x-auto whitespace-pre text-[11px] leading-[1.5] text-text-2">
+            {text || (loading ? "lädt …" : "Keine Diagnose verfügbar.")}
+          </pre>
+        </Systemkarte>
+      </div>
     </ReportShell>
   );
 }

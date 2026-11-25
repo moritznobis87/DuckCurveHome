@@ -1,7 +1,10 @@
 name: python
 on:
+  # `push` nur auf main. Ein Arbeitszweig wird über seinen Pull Request geprüft (CLAUDE.md:
+  # jede Änderung geht über einen PR). Bis zum 25.11.2026 liefen beide Auslöser, und jeder
+  # Commit wurde zweimal geprüft: doppelte Laufzeit und bei Rot zwei gleiche E-Mails.
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
     paths: ["packages/**", "apps/api/**", "apps/bridge/**", "pyproject.toml", "uv.lock", ".github/workflows/python.yml"]
   pull_request:
     paths: ["packages/**", "apps/api/**", "apps/bridge/**", "pyproject.toml", "uv.lock", ".github/workflows/python.yml"]

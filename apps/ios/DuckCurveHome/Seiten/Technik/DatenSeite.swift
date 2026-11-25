@@ -99,7 +99,6 @@ struct DatenSeite: View {
             quellen
             abdeckungskarte
             stundenbilanz(z)
-            fusstext
         }
         .task(id: z) { await lade(z) }
     }
@@ -110,7 +109,7 @@ struct DatenSeite: View {
     /// Kartenkörper, nicht in der Kopfzeile. „Auf einem Telefon ist diese Zeile schon mit der
     /// Vorzeichenregel voll und wird abgeschnitten" (`DataCheck.tsx:74-75`).
     private var leistungen: some View {
-        Karte(kicker: "Leistungen über den Tag") {
+        Kontokarte(zeichen: .diagramm, titel: "Leistungen über den Tag", satz: Pruefworte.leistungen) {
             if let satz = stand.kurvensatz {
                 ladehinweis(satz, stand.kurve)
             } else {
@@ -149,7 +148,7 @@ struct DatenSeite: View {
     /// einer. Für „läuft es jetzt“ ist sie zu träge, für „lief es letzte Woche“ ist sie das
     /// einzige Werkzeug - beide Fragen stellt man an derselben Stelle.
     private var quellen: some View {
-        Karte(kicker: "Quellen", beiwerk: beiwerk("liefert gerade, was liefern soll?")) {
+        Kontokarte(zeichen: .blitz, titel: "Quellen", satz: Pruefworte.quellen) {
             Quellenkarte(
                 zeilen: quellenzeilen, satz: stand.quellensatz,
                 laedt: quellenlage == .laedt)
@@ -164,9 +163,9 @@ struct DatenSeite: View {
     /// (`CoverageMap.tsx:93, 101`). Eine Karte, die verschwindet, sieht aus wie eine Karte, die
     /// es nicht gibt.
     private var abdeckungskarte: some View {
-        Karte(
-            kicker: "Kommen die Daten an? \(Self.kartentage) Tage",
-            beiwerk: beiwerk("Farbe = Minuten je Stunde, 0 bis 60")
+        Kontokarte(
+            zeichen: .kalender, titel: "Kommen die Daten an?",
+            satz: Pruefworte.abdeckung(tage: Self.kartentage)
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 if let satz = stand.rastersatz {
@@ -205,10 +204,12 @@ struct DatenSeite: View {
     /// `if let d = diagnose, !d.isEmpty` gebunden und verschwand, wo die Vorlage „Keine
     /// Diagnose verfügbar." in sie schreibt.
     private func stundenbilanz(_ z: Zeitraum) -> some View {
-        Karte(
-            kicker: "Stundenbilanz und auffällige Strecken", beiwerk: csvverweis(tag: z.anker)
-        ) {
+        Kontokarte(zeichen: .tabelle, titel: "Stundenbilanz und auffällige Strecken", satz: nil) {
             VStack(alignment: .leading, spacing: 10) {
+                if let verweis = csvverweis(tag: z.anker) {
+                    verweis
+                    absatz(Zugangsworte.herunterladen)
+                }
                 if let satz = stand.diagnosesatz {
                     ladehinweis(satz, stand.diagnose)
                 } else if let d = diagnose {
@@ -233,34 +234,14 @@ struct DatenSeite: View {
     /// **Genauso gebaut wie die Jahressicherung auf `/system/zugang`**
     /// (`Seiten/Technik/ZugangSeite.swift:268-274`): die Adresse geht an den Browser des
     /// Geräts. Warum nicht `ShareLink` und was dabei nicht mitreist, steht dort ausführlich;
-    /// gesagt wird es dem Benutzer am Fuß dieser Seite (``Pruefworte/csvVorbehalt``). Einen
+    /// gesagt wird es dem Benutzer am Fuß dieser Seite (``Zugangsworte/herunterladen``). Einen
     /// zweiten Weg dafür zu erfinden, wäre der Anfang von zwei Wegen.
     ///
     /// **Ohne Adresse kein Verweis**, wie dort: ``Zugang/export(art:tag:)`` gibt `nil`, wenn der
     /// Anker kein Kalendertag ist - dann steht hier nichts, statt ins Leere zu führen.
     private func csvverweis(tag: String) -> AnyView? {
         guard let adresse = haus.zugang.export(art: .minuten, tag: tag) else { return nil }
-        return AnyView(
-            Button(Pruefworte.csvVerweis) { oeffne(adresse) }
-                .font(Schrift.winzig)
-                .buttonStyle(.plain)
-                .foregroundStyle(Farbe.amber))
-    }
-
-    // MARK: - Der Fließtext am Fuß
-
-    /// Die erklärenden Absätze, **immer sichtbar und ohne Karte** (`DataCheck.tsx:119-147`).
-    ///
-    /// **Warum hier keine ``Methode`` mehr steht.** Diese Absätze erklären die Geste, mit der
-    /// man die beiden Gegenproben vergleicht - und eine Geste, die man erst aufklappen muss,
-    /// findet niemand. Die Vorlage setzt sie darum als `<Note>` ohne `<details>`; sie benutzt
-    /// auf dieser Route weder `Methode` noch `CoverageNote`.
-    private var fusstext: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ForEach(Pruefworte.fuss, id: \.self) { satz in
-                absatz(satz)
-            }
-        }
+        return AnyView(Zugangsknopf(wort: Pruefworte.csvVerweis, klein: true) { oeffne(adresse) })
     }
 
     // MARK: - Bausteine
@@ -276,12 +257,6 @@ struct DatenSeite: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Was rechts im Kartenkopf steht (`ui/Card.tsx:26`, `right=…`).
-    /// Größe, Farbe und Ausrichtung stehen in ``Kartenhinweis`` - hier standen sie
-    /// zum zehnten Mal, und am Telefon alle drei falsch (``Karte/beiwerkzeile(_:)``).
-    private func beiwerk(_ satz: String) -> AnyView {
-        Kartenhinweis.beiwerk(satz)
-    }
 
     // MARK: - Nachladen
 

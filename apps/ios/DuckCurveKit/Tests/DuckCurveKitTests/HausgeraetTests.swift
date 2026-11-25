@@ -156,6 +156,20 @@ final class HausgeraetTests: XCTestCase {
     func testReiterNurFuerDenHausherrn() {
         XCTAssertEqual(Bereiche.bereichVon("/system/geraet").schluessel, .system)
     }
+
+    /// Dieselben Zeichen wie im Dashboard (`abschnitte.ts`, `abschnitte.test.ts`).
+    func testJederAbschnittHatDasZeichenDesDashboards() {
+        let alsVorlage = Hausgeraet.abschnittszeichen.mapValues(\.vorlage)
+        XCTAssertEqual(
+            alsVorlage,
+            [
+                "Dienste": "dashboard", "Rechenkern": "bolt", "Gerät": "house",
+                "SSD-Gesundheit": "shield", "Platz auf der SSD": "battery", "Verlauf": "chart",
+                "Sicherung": "calendar", "Abläufe auf dem Gerät": "clock", "Software": "loop",
+                "Neu starten": "alert",
+            ])
+        XCTAssertEqual(Hausgeraet.zeichen("unbekannt"), .anzeige)
+    }
 }
 
 extension Hausgeraet {

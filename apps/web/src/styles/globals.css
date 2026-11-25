@@ -1482,3 +1482,8 @@ button.ansicht { cursor: pointer; }
 .zustand-marke[data-an] { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
 .text-amber-soft { color: var(--amber-soft); }
 .konto-zeile-text .geraet-stand { font-size: 13px; line-height: 1.45; }
+
+.wahl-knopf[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+.tuer-zeit { flex-shrink: 0; min-width: 44px; font-size: 13px; color: var(--text-3); }
+.konto-zahlen div[data-ton="achtung"] dd { color: var(--amber-soft); }
+.konto-zahlen div[data-ton="alarm"] dd { color: var(--alert-text); }

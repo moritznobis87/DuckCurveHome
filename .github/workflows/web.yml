@@ -1,7 +1,10 @@
 name: web
 on:
+  # `push` nur auf main. Ein Arbeitszweig wird über seinen Pull Request geprüft (CLAUDE.md:
+  # jede Änderung geht über einen PR). Bis zum 25.11.2026 liefen beide Auslöser, und jeder
+  # Commit wurde zweimal geprüft: doppelte Laufzeit und bei Rot zwei gleiche E-Mails.
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
     paths: ["apps/web/**", "docs/openapi.json", "docs/seitenbaum.json", "docs/regelkreis-schaltbild.json", ".github/workflows/web.yml"]
   pull_request:
     paths: ["apps/web/**", "docs/openapi.json", "docs/seitenbaum.json", "docs/regelkreis-schaltbild.json", ".github/workflows/web.yml"]
