@@ -29,6 +29,7 @@
   };
   var PREIS_STUNDE = [27, 26, 24, 24, 25, 28, 34, 41, 45, 43, 38, 31, 26, 22, 22, 25, 33, 46, 53, 51, 47, 39, 34, 30];
   var PREIS_MORGEN = [28, 26, 25, 24, 26, 29, 36, 43, 44, 40, 35, 29, 25, 23, 24, 27, 35, 44, 49, 48, 42, 37, 32, 29];
+  var PREIS_GESTERN = [30, 29, 28, 27, 28, 31, 37, 42, 43, 41, 37, 33, 30, 28, 29, 32, 38, 45, 48, 46, 41, 36, 33, 31];
   var prognose = [], gemessen = [], gestern = [], haus = [], preis = [];
   for (var i = 0; i < 96; i++) {
     var h = i / 4;
@@ -48,13 +49,26 @@
     preis.push(PREIS_STUNDE[Math.floor(h)]);
   }
 
+  // Gestern lief die Wärmepumpe zu anderen Stunden. Die Reihe entsteht nach den übrigen, damit
+  // der feste Zufall für die Reihen von heute derselbe bleibt.
+  var hausGestern = [];
+  for (var g = 0; g < 96; g++) {
+    var hg = g / 4, lastG = 0.3 + 0.1 * zufall();
+    if (hg >= 2 && hg < 3.25) lastG += 4.2;
+    if (hg >= 13 && hg < 14.5) lastG += 3.9;
+    if (hg >= 6.5 && hg < 8) lastG += 0.5;
+    if (hg >= 17.5 && hg < 22) lastG += 0.9;
+    hausGestern.push(+lastG.toFixed(2));
+  }
+  var viertel = function (stundenwerte) { var r = []; for (var k = 0; k < 96; k++) r.push(stundenwerte[Math.floor(k / 4)]); return r; };
+
   var hhmm = function (stunden) {
     var s = Math.floor(stunden) % 24, m = Math.round((stunden - Math.floor(stunden)) * 60);
     return (s < 10 ? "0" : "") + s + ":" + (m < 10 ? "0" : "") + m;
   };
 
   // Der Tag bis zu einer Uhrzeit: was gemessen ist, hört bei „jetzt“ auf.
-  var tag = function (jetztStunden) {
+  var tag = function (jetztStunden, preiseMorgenBekannt) {
     var j = Math.round(jetztStunden * 4);
     return {
       jetztIndex: j,
@@ -64,6 +78,11 @@
       gesternKw: gestern,
       hausKw: haus.map(function (v, k) { return k <= j ? v : null; }),
       preisCt: preis,
+      // Gestern ist ganz gemessen. Die Preise für morgen gibt es erst am frühen Nachmittag: bis
+      // dahin ist die Reihe null, und die Kurve zeigt für morgen keinen Preis.
+      hausGesternKw: hausGestern,
+      preisGesternCt: viertel(PREIS_GESTERN),
+      preisMorgenCt: preiseMorgenBekannt ? viertel(PREIS_MORGEN) : null,
       // Bänder des Preistiefs als Viertelstunden-Indizes, Ende ausschließlich
       preistief: [{ von: 8, bis: 16 }, { von: 52, bis: 60 }],
       achseKw: 6,
@@ -138,7 +157,7 @@
       waermepumpe: { von: "12:00", bis: "13:30", laeuft: true },
       hinweis: "Preise sind bis morgen 00:00 bekannt; die für morgen kommen am frühen Nachmittag.",
     },
-    tag: tag(12.67),
+    tag: tag(12.67, false),
     zahlen: {
       gestern: [
         { wert: "3,9", einheit: "kWh", wort: "Sonne geerntet", gelb: true },
@@ -190,7 +209,7 @@
       waermepumpe: { von: "01:00", bis: "02:00", laeuft: false },
       hinweis: "",
     },
-    tag: tag(18.67),
+    tag: tag(18.67, true),
     zahlen: {
       gestern: mittag.zahlen.gestern,
       heute: [

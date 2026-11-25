@@ -76,13 +76,14 @@
     t += '<path d="' + fl.replace("M0," + boden + " L", "M") + '" fill="none" stroke="var(--pv)" stroke-width="1.5" stroke-opacity="0.9"/>';
     st.forEach(function (s, i) {
       var x = i * b + 3.5, w = b - 7;
+      // Der Fahrplan ist bekannt, auch wo es noch keinen Preis gibt.
+      if (s.waermepumpe) t += '<rect x="' + (i * b + 1) + '" y="' + (boden + 6) + '" width="' + (b - 2) + '" height="5" rx="2.5" fill="var(--heat-pump)"/>';
       if (s.preisCt == null) {
         t += '<rect x="' + x + '" y="' + (boden - 20) + '" width="' + w + '" height="20" rx="' + w / 2 + '" fill="none" stroke="var(--mist)" stroke-opacity="0.45" stroke-dasharray="2 3"/>';
         return;
       }
       var h = (s.preisCt / 60) * hoch, tief = std(s.uhr) >= tiefVon && std(s.uhr) < tiefBis;
       t += '<rect x="' + x + '" y="' + (boden - h).toFixed(1) + '" width="' + w + '" height="' + h.toFixed(1) + '" rx="' + w / 2 + '" fill="' + (i === 0 ? "var(--house)" : "var(--mist)") + '" fill-opacity="' + (i === 0 ? 0.95 : tief ? 1 : 0.42) + '"/>';
-      if (s.waermepumpe) t += '<rect x="' + (i * b + 1) + '" y="' + (boden + 6) + '" width="' + (b - 2) + '" height="5" rx="2.5" fill="var(--heat-pump)"/>';
     });
     t += '<line x1="0" x2="' + W + '" y1="' + (boden + 8.5) + '" y2="' + (boden + 8.5) + '" stroke="var(--line-1)" stroke-width="1"/>';
     st.forEach(function (s, i) {
@@ -141,19 +142,36 @@
     var heute = welcher === "heute";
     var sonne = heute ? T.sonneKw : welcher === "gestern" ? T.gesternKw : T.prognoseKw.map(function (v) { return v * 0.63; });
     var letzte = heute ? T.jetztIndex : 95;
+    var preise = heute ? T.preisCt : welcher === "gestern" ? T.preisGesternCt : T.preisMorgenCt;
+    var haus = heute ? T.hausKw : welcher === "gestern" ? T.hausGesternKw : null;
+    // Das Preistief des Tages: heute aus den Daten, sonst die Stunden bis 2 ct über dem Tiefstpreis.
+    var tief = T.preistief;
+    if (!heute) {
+      tief = [];
+      if (preise) {
+        var grenze = Math.min.apply(null, preise) + 2, von = -1;
+        for (var k = 0; k <= 96; k++) {
+          var drin = k < 96 && preise[k] <= grenze;
+          if (drin && von < 0) von = k;
+          if (!drin && von >= 0) { tief.push({ von: von, bis: k }); von = -1; }
+        }
+      }
+    }
     t += '<defs><linearGradient id="tg-sonne" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--pv)" stop-opacity="0.62"/><stop offset="1" stop-color="var(--pv)" stop-opacity="0.05"/></linearGradient></defs>';
     [2, 4].forEach(function (kw) { t += '<line x1="' + l + '" x2="' + (W - r) + '" y1="' + yk(kw) + '" y2="' + yk(kw) + '" stroke="var(--line-1)" stroke-dasharray="2 5"/>'; });
-    T.preistief.forEach(function (b) { t += '<rect x="' + x(b.von) + '" y="' + o + '" width="' + (x(b.bis) - x(b.von)) + '" height="' + (H - o - u) + '" rx="6" fill="var(--mist)" fill-opacity="0.13"/>'; });
+    tief.forEach(function (b) { t += '<rect x="' + x(b.von) + '" y="' + o + '" width="' + (x(b.bis) - x(b.von)) + '" height="' + (H - o - u) + '" rx="6" fill="var(--mist)" fill-opacity="0.13"/>'; });
     if (heute) t += '<path d="' + linie(T.gesternKw, x, yk) + " L" + x(95) + "," + yk(0) + " L" + x(0) + "," + yk(0) + ' Z" fill="var(--house)" fill-opacity="0.06"/>';
     if (welcher !== "gestern") t += '<path d="' + linie(T.prognoseKw.map(function (v) { return heute ? v : v * 0.63; }), x, yk) + '" fill="none" stroke="var(--pv)" stroke-width="1.5" stroke-dasharray="3 5" stroke-opacity="0.75"/>';
     if (welcher !== "morgen") {
       t += '<path d="' + linie(sonne, x, yk) + " L" + x(letzte) + "," + yk(0) + " L" + x(0) + "," + yk(0) + ' Z" fill="url(#tg-sonne)"/>';
       t += '<path d="' + linie(sonne, x, yk) + '" fill="none" stroke="var(--pv)" stroke-width="2.2" stroke-linejoin="round"/>';
-      t += '<path d="' + linie(T.hausKw, x, yk) + '" fill="none" stroke="var(--house)" stroke-width="1.5" stroke-opacity="0.9" stroke-linejoin="round"/>';
+      t += '<path d="' + linie(haus, x, yk) + '" fill="none" stroke="var(--house)" stroke-width="1.5" stroke-opacity="0.9" stroke-linejoin="round"/>';
     }
-    var stufen = "";
-    T.preisCt.forEach(function (ct, i) { stufen += (i ? " L" : "M") + x(i).toFixed(1) + "," + yc(ct).toFixed(1) + " L" + x(i + 1).toFixed(1) + "," + yc(ct).toFixed(1); });
-    t += '<path d="' + stufen + '" fill="none" stroke="var(--price)" stroke-width="1.5" stroke-opacity="0.95"/>';
+    if (preise) {
+      var stufen = "";
+      preise.forEach(function (ct, i) { stufen += (i ? " L" : "M") + x(i).toFixed(1) + "," + yc(ct).toFixed(1) + " L" + x(i + 1).toFixed(1) + "," + yc(ct).toFixed(1); });
+      t += '<path d="' + stufen + '" fill="none" stroke="var(--price)" stroke-width="1.5" stroke-opacity="0.95"/>';
+    }
     [0, 6, 12, 18, 24].forEach(function (h) {
       t += '<text x="' + x(h * 4) + '" y="' + (H - 3) + '" text-anchor="' + (h === 0 ? "start" : h === 24 ? "end" : "middle") + '">' + (h < 10 ? "0" : "") + h + ":00</text>";
     });
