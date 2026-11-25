@@ -129,11 +129,29 @@ Das lädt die Datenbank herunter, sichert vorher den Stand auf dem Gerät und sp
 Dafür muss das Gerät dieselbe Hauptversion von PostgreSQL haben wie Railway oder eine neuere
 (`pg_dump` liest von keinem neueren Server). Seit November 2026 sind das beide 18.
 
-**Ein Gerät, das noch mit PostgreSQL 17 eingerichtet wurde**, hebt man so: Datenbank sichern
-(`sudo dch sichern`), Dienste anhalten (`sudo dch stoppen`), das alte Volume löschen
-(`sudo docker volume rm duckcurve_postgres`), dann `sudo dch selbst-aktualisieren` und die Sicherung
-mit `sudo dch wiederherstellen <datei>` einspielen. Eine 17er-Sicherung lässt sich in 18 einspielen,
-umgekehrt nicht. Ist die Datenbank noch leer, entfallen Sichern und Wiederherstellen. Die API
+**Ein Gerät, das noch mit PostgreSQL 17 eingerichtet wurde**, hebt man von Hand, und zwar
+**bevor** es ein Update bekommt:
+
+```bash
+sudo dch sichern
+```
+```bash
+sudo docker compose --project-directory /opt/duckcurve -f /opt/duckcurve/compose.yaml down
+```
+```bash
+sudo docker volume rm duckcurve_postgres
+```
+```bash
+sudo dch selbst-aktualisieren
+```
+```bash
+sudo dch wiederherstellen /var/lib/duckcurve/sicherung/<neueste>.dump
+```
+
+`down` entfernt die Container, ohne Volumes zu löschen. `dch stoppen` genügt hier nicht: Es hält die
+Container nur an, und ein angehaltener Container belegt sein Volume weiter, sodass
+`docker volume rm` abgelehnt wird. Eine 17er-Sicherung lässt sich in 18 einspielen, umgekehrt nicht.
+Ist die Datenbank noch leer, entfallen Sichern und Wiederherstellen. Die API
 startet danach neu und bringt das Schema auf den Stand ihres Codes. Die Übernahme lässt sich
 wiederholen, etwa unmittelbar vor dem Umstellen der Bridge, damit möglichst wenig fehlt.
 
