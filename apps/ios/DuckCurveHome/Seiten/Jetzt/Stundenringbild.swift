@@ -299,8 +299,10 @@ struct Startding: Identifiable {
     let grad: Double
     /// Öffnet eine Auswahl, statt auf die Seite zu führen.
     let auswahl: Bool
-    let tippen: () -> Void
+    /// Läuft auf dem Hauptfaden, wie der Wegweiser, den sie bewegt.
+    let tippen: @MainActor () -> Void
 
+    @MainActor
     static func alle(
         fluss f: Startfluss, augenblick s: EnergySnapshot?, nacht: Bool, sonneAb: String?,
         wpLaeuft: Bool, wegweiser: Wegweiser
