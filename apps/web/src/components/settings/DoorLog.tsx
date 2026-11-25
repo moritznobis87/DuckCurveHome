@@ -1,5 +1,6 @@
 "use client";
 
+import { Systemkarte } from "@/components/ui/Systemkarte";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import { Pill } from "@/components/ui/Pill";
@@ -60,20 +61,33 @@ function Entry({ e }: { e: DoorEntry }) {
   const opened = e.outcome === "geöffnet";
   const failed = e.outcome === "fehlgeschlagen";
   return (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line-1 py-2 last:border-b-0">
-      <span className="mono w-[44px] shrink-0 text-[13px] text-text-3">{time(e.at)}</span>
-      <span className="text-[14px] text-text-1">{e.actor || "unbekannt"}</span>
-      <span className="text-[13px] text-text-3">per {methodLabel(e.method)}</span>
-      <span className="ml-auto flex items-center gap-2">
-        {/* Ein Fehlschlag ist etwas anderes als eine Ablehnung: dort hat das Haus nein gesagt,
-            hier hat das Schloss nicht reagiert. Nur das zweite ist ein Defekt. */}
-        <Pill tone={failed ? "alert" : opened ? "amber" : "neutral"}>{e.outcome}</Pill>
-      </span>
-      {!opened && e.reason ? (
-        <span className="w-full pl-[56px] text-[13px] leading-[1.5] text-text-3">{e.reason}</span>
-      ) : null}
-    </div>
+    <li className="konto-zeile">
+      <span className="tuer-zeit mono">{time(e.at)}</span>
+      <div className="konto-zeile-text">
+        <span className="konto-zeile-name">{e.actor || "unbekannt"}</span>
+        <span className="konto-zeile-dazu">per {methodLabel(e.method)}</span>
+        {!opened && e.reason ? <span className="konto-zeile-dazu">{e.reason}</span> : null}
+      </div>
+      {/* Ein Fehlschlag ist etwas anderes als eine Ablehnung: dort hat das Haus nein gesagt,
+          hier hat das Schloss nicht reagiert. Nur das zweite ist ein Defekt. */}
+      <Pill tone={failed ? "alert" : opened ? "amber" : "neutral"}>{e.outcome}</Pill>
+    </li>
   );
+}
+
+/** Der Satz unter dem Titel der Karte; derselbe in der App (`Tuerprotokoll.kartensatz`). */
+export const TUERSATZ = "Zutritte und abgewiesene Versuche am Reader.";
+
+/** Die drei Zahlen über der Liste, wie in der App (`Tuerprotokoll.kacheln`). */
+export function zaehlung(entries: DoorEntry[]): { wort: string; wert: number; ton: "" | "achtung" | "alarm" }[] {
+  const n = (o: string) => entries.filter((e) => e.outcome === o).length;
+  const abgelehnt = n("abgelehnt");
+  const fehlgeschlagen = n("fehlgeschlagen");
+  return [
+    { wort: "Öffnungen", wert: n("geöffnet"), ton: "" },
+    { wort: "abgewiesen", wert: abgelehnt, ton: abgelehnt > 0 ? "achtung" : "" },
+    { wort: "fehlgeschlagen", wert: fehlgeschlagen, ton: fehlgeschlagen > 0 ? "alarm" : "" },
+  ];
 }
 
 export function DoorLog() {
@@ -96,44 +110,45 @@ export function DoorLog() {
 
   const groups = data ? groupByDay(data.entries) : [];
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
+    <Systemkarte zeichen="door" titel="Haustür" satz={TUERSATZ}>
+      <div className="konto-reihe" role="group" aria-label="Zeitraum">
         {SPANS.map((d) => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => setDays(d)}
-            aria-pressed={days === d}
-            className={`mono rounded-[2px] border px-3 py-1 text-[12px] ${
-              days === d
-                ? "border-amber text-amber"
-                : "border-line-1 text-text-3 hover:text-text-2"
-            }`}
-          >
+          <button key={d} type="button" onClick={() => setDays(d)} aria-pressed={days === d} className="zugang-knopf zugang-knopf-klein wahl-knopf">
             {d} Tage
           </button>
         ))}
       </div>
 
-      {error ? <p className="m-0 text-[14px] text-text-3">{error}</p> : null}
-      {!error && !data ? <p className="m-0 text-[14px] text-text-3">lädt …</p> : null}
+      {error ? <p className="konto-leise">{error}</p> : null}
+      {!error && !data ? <p className="konto-leise">lädt …</p> : null}
 
-      {data && groups.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          {groups.map(([key, rows]) => (
-            <div key={key} className="rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3">
-              <div className="kicker mb-1" style={{ fontSize: 11 }}>
-                {dayLabel(rows[0]!.at)}
-              </div>
-              {rows.map((e, i) => (
-                <Entry key={`${e.at}-${i}`} e={e} />
-              ))}
+      {data ? (
+        <dl className="konto-zahlen">
+          {zaehlung(data.entries).map((z) => (
+            <div key={z.wort} data-ton={z.ton || undefined}>
+              <dt>{z.wort}</dt>
+              <dd>{z.wert}</dd>
             </div>
           ))}
-        </div>
+        </dl>
       ) : null}
 
-      {data ? <p className="m-0 text-[14px] leading-[1.6] text-text-3">{data.note_de}</p> : null}
-    </div>
+      {data && groups.length > 0
+        ? groups.map(([key, rows]) => (
+            <div key={key} className="flex flex-col gap-2">
+              <span className="kicker" style={{ fontSize: 11 }}>
+                {dayLabel(rows[0]!.at)}
+              </span>
+              <ul className="konto-liste">
+                {rows.map((e, i) => (
+                  <Entry key={`${e.at}-${i}`} e={e} />
+                ))}
+              </ul>
+            </div>
+          ))
+        : null}
+
+      {data ? <p className="konto-leise">{data.note_de}</p> : null}
+    </Systemkarte>
   );
 }

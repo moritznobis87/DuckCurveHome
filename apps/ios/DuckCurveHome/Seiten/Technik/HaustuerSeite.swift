@@ -65,45 +65,33 @@ struct HaustuerSeite: View {
         .task(id: tage) { await lade() }
     }
 
-    /// Alles in einer Spalte, und die Spalte ist begrenzt.
-    ///
-    /// **860 Punkte, wie die Vorlage** (`page.tsx:10`, `max-w-[860px]`). Ohne diese Grenze läuft
-    /// die Seite an der Wand über die ganze Breite, und eine Protokollzeile ist dann 1300 Punkte
-    /// weit - die Plakette rechts steht so weit vom Namen links, dass man beide nicht mehr als
-    /// eine Zeile liest. Der Abstand 12 ist `gap-3` der Vorlage und nicht die 14 von ``Seite``;
-    /// darum eine eigene Spalte und nicht die Kinder des Gerippes.
+    /// Eine Karte wie auf den übrigen Systemseiten (`DoorLog.tsx`), ohne Erklärtexte (Hausherr,
+    /// 25.11.2026).
     private var spalte: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            absatz(Tuerprotokoll.einleitung, 15, Farbe.text2)
-            // Der eigene Knopf dieser Seite (`DoorLog.tsx:107-111`): Rechteck, Rand, Mono 12,
-            // gewählt amber in Schrift und Rand, ohne Füllung - keine Kapsel.
-            Tagewahl(tage: $tage, moeglich: Tuerprotokoll.spannen, form: .haustuerprotokoll)
-            if let fehler {
-                Stoerung(fehler: fehler) { Task { await lade() } }
+        Kontokarte(zeichen: .tuer, titel: "Haustür", satz: Tuerprotokoll.kartensatz) {
+            VStack(alignment: .leading, spacing: 12) {
+                Tagewahl(tage: $tage, moeglich: Tuerprotokoll.spannen, form: .haustuerprotokoll)
+                if let fehler {
+                    Stoerung(fehler: fehler) { Task { await lade() } }
+                }
+                if let p = protokoll {
+                    protokollteil(p)
+                } else if fehler == nil {
+                    absatz(Tuerprotokoll.ladesatz, 14, Farbe.text3)
+                }
             }
-            if let p = protokoll {
-                protokollteil(p)
-            } else if fehler == nil {
-                // **Hier bleibt der bloße Absatz, und das ist entschieden und nicht
-                // übersehen.** Der Hinweis ersetzt die Seite nicht: Einleitung, Tagewahl und
-                // Nachsatz stehen weiter darüber und darunter, und die Tagewahl bleibt
-                // bedienbar - nach ``Ladehinweis/Stufe`` also die kleine Stufe. Deren Grad ist
-                // 13 auf der Kurve der Fußnote, dieser Absatz ist 14 auf der des Fließtextes,
-                // wie die drei anderen dieser Spalte. Eine Ente kostete hier einen Punkt
-                // Schriftgröße und die Kurve, auf der die Spalte wächst, an genau einem von
-                // vier gleich gesetzten Absätzen - eine Änderung an der Typografie der Seite
-                // und nicht am Ladehinweis.
-                absatz(Tuerprotokoll.ladesatz, 14, Farbe.text3)
-            }
-            absatz(Tuerprotokoll.nachsatz, 14, Farbe.text3)
         }
-        .frame(maxWidth: 860, alignment: .leading)
+        .frame(maxWidth: 820, alignment: .leading)
     }
 
     // MARK: - Das Protokoll
 
     @ViewBuilder private func protokollteil(_ p: DoorLogOut) -> some View {
-        Kachelfeld(kacheln: kacheln(p))
+        HStack(spacing: 8) {
+            ForEach(Tuerprotokoll.kacheln(p.entries), id: \.wort) { k in
+                Zahlkachel(wert: k.wert, wort: k.wort, farbe: farbe(k.hervor))
+            }
+        }
         tagesliste(Tuerprotokoll.gruppen(p.entries, jetzt: haus.jetzt))
         // **Der Satz des Dienstes steht sichtbar da und nicht hinter einem Deckel.** Er ist die
         // einzige Zählung der Seite („… Ereignisse in … Tagen, davon … geöffnet.“,
@@ -131,41 +119,24 @@ struct HaustuerSeite: View {
         }
     }
 
-    /// Ein Kalendertag als eigener Kasten.
-    ///
-    /// **Das ist keine ``Karte``, und das ist der Grund, warum er hier von Hand steht.** Der
-    /// Kasten der Vorlage trägt nicht `.card` (`DoorLog.tsx:124`: `rounded-[3px] border
-    /// border-line-1 bg-surface-2 px-4 py-3`), und damit greift die Handy-Regel nicht, die
-    /// Karten am Telefon den Rand nimmt und ihnen 16 Punkte Radius gibt (`handy.css:182`,
-    /// Entscheidung „Flächen statt Rahmen“). Die Tagesgruppe behält also auch am Telefon ihre
-    /// Haarlinie und ihre drei Punkte Radius. ``Karte`` zu nehmen hieße, diese Ausnahme
-    /// einzuziehen.
+    /// Ein Kalendertag: sein Name als Kicker, darunter je Zutritt eine Zeile wie auf „Mein
+    /// Zugang“ (`DoorLog.tsx`, `.konto-zeile`).
     private func tagesgruppe(_ g: Tuerprotokoll.Tagesgruppe) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Die Überschrift ist in der Vorlage ein `kicker` mit `style={{ fontSize: 11 }}`
-            // (`DoorLog.tsx:125`). Weil der Schriftgrad dort inline steht, hebt ihn die
-            // Handy-Schicht nicht an - und ``Kicker`` tut das auch nicht.
+        VStack(alignment: .leading, spacing: 6) {
             Kicker(wort: g.wort)
-                .padding(.bottom, 4)
-            ForEach(Array(g.eintraege.enumerated()), id: \.offset) { i, e in
+            ForEach(Array(g.eintraege.enumerated()), id: \.offset) { _, e in
                 eintrag(e)
-                // Der Strich steht **unter** jeder Zeile außer der letzten
-                // (`DoorLog.tsx:63`, `border-b … last:border-b-0`) und nicht zwischen den
-                // Zeilen: so endet die Gruppe nicht mit einem Strich ins Leere.
-                if i < g.eintraege.count - 1 {
-                    Divider().overlay(Farbe.linie1)
-                }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 2)
+                    .background(Farbe.deep.opacity(0.45))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Farbe.linie1, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Farbe.flaeche2, in: kastenhuelle)
-        .overlay { kastenhuelle.strokeBorder(Farbe.linie1, lineWidth: 1) }
-    }
-
-    private var kastenhuelle: RoundedRectangle {
-        RoundedRectangle(cornerRadius: Marken.radius2)
     }
 
     // MARK: - Eine Zeile
@@ -264,12 +235,6 @@ struct HaustuerSeite: View {
     }
 
     // MARK: - Die Kennzahlen
-
-    private func kacheln(_ p: DoorLogOut) -> [Kacheldaten] {
-        Tuerprotokoll.kacheln(p.entries).map { k in
-            Kacheldaten(k.wort, k.wert, farbe: farbe(k.hervor))
-        }
-    }
 
     /// Die Stufe des Kerns als Farbe. ``Kennzahl/Ton`` kennt keinen Alarm, und darum geht diese
     /// Seite nicht über ``Kacheldaten/init(_:)``, sondern setzt die Farbe selbst - aus den

@@ -33,28 +33,12 @@ public enum Tuerprotokoll {
 
     // MARK: - Die Worte der Seite
 
-    /// Der einleitende Absatz (`apps/web/src/app/system/haustuer/page.tsx:11-16`).
+    /// Der Satz unter dem Titel der Karte, wie im Dashboard (`DoorLog.tsx`, `TUERSATZ`).
     ///
-    /// **Er ist die Hauptaussage der Seite und nicht Beiwerk.** Er sagt, was die Seite *nicht*
-    /// kann, und warum das Entwurf ist und nicht Sparsamkeit - die Begründung steht so auch am
-    /// Baustein (`DoorLog.tsx:8-21`: „Eine Schaltfläche „öffnen“ an dieser Stelle wäre eine
-    /// Haustür am Internet.“) und am Endpunkt (`system.py:173-182`). Ohne ihn ist die Seite
-    /// eine Liste ohne Begründung, warum sie nichts kann.
-    public static let einleitung =
-        "Von hier führt kein Weg zur Tür: die Entscheidung fällt im Haus, an einer "
-        + "Erlaubnisliste in der Bridge, und diese Seite liest nur mit. Abgelehnte Versuche "
-        + "stehen mit dabei; sie sind die eigentliche Auskunft, wenn man wissen will, ob "
-        + "jemand vor der Tür stand, den das Haus nicht kannte."
-
-    /// Der Schlussabsatz (`page.tsx:18-22`).
-    ///
-    /// Dieselbe Abwägung steht in der Bridge, dort als Preis benannt
-    /// (`apps/bridge/src/dch_bridge/door.py:125-127`): die Namen wandern in Klartext in die
-    /// Datenbank, und deshalb ist diese Seite dem Hausherrn vorbehalten.
-    public static let nachsatz =
-        "Die Namen kommen aus UniFi Access und stehen in der Datenbank im Klartext. Deshalb "
-        + "steht diese Liste unter System und nicht auf der Startseite: ein Gast sieht sie "
-        + "nicht, und auf der Küchenanzeige hat sie nichts verloren."
+    /// Seit dem 25.11.2026 steht nur noch dieser Satz da: Der Hausherr wollte auf den
+    /// Systemseiten keine langen Erklärtexte mehr. Einleitung und Nachsatz über die
+    /// Erlaubnisliste und die Namen im Klartext sind weggefallen.
+    public static let kartensatz = "Zutritte und abgewiesene Versuche am Reader."
 
     /// Was dasteht, solange die erste Antwort unterwegs ist (`DoorLog.tsx:119`).
     ///

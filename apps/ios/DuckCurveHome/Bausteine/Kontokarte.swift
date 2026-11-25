@@ -109,3 +109,28 @@ struct Zustandsmarke: View {
             .clipShape(Capsule())
     }
 }
+
+/// Eine Zahl mit ihrem Wort darunter, in einer kleinen dunklen Fläche (`globals.css`,
+/// `.konto-zahlen`). „Mein Zugang“ und „Haustür“ zeigen ihre Zahlen so.
+struct Zahlkachel: View {
+    let wert: String
+    let wort: String
+    var farbe: Color = Farbe.text1
+
+    var body: some View {
+        VStack(spacing: 1) {
+            Text(wert)
+                .font(Schrift.mono(22, relativeTo: .title3))
+                .foregroundStyle(farbe)
+                .monospacedDigit()
+            Text(wort).font(Schrift.sans(11.5)).foregroundStyle(Farbe.text3).lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, minHeight: 0)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Farbe.deep.opacity(0.45))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
