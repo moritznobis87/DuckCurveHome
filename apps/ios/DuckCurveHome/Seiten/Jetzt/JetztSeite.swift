@@ -26,6 +26,11 @@ struct JetztSeite: View {
 
     private var schmal: Bool { breite == .compact }
 
+    /// Welches Bild die Mitte trägt, die Bühne oder die Uhr. Die Wahl gilt für dieses Gerät und
+    /// wird auf „Einstellen“ getroffen (``Startbild``).
+    @AppStorage(Startbild.merker) private var startbildGemerkt = Startbild.vorgabe.rawValue
+    private var startbild: Startbild { Startbild.aus(startbildGemerkt) }
+
     /// Welcher Tag gezeigt wird - im ``Wegweiser`` und nicht in der Seite.
     ///
     /// **Weil die Heimkehr sonst nicht ankommt.** Hier stand `@State private var tag`, und
@@ -70,8 +75,25 @@ struct JetztSeite: View {
         Task { await haus.ladeTag(haus.heute) }
     }
 
+    /// Ab dieser Breite trägt der Schirm die Wandfassung: zweimal 32 Punkte Rand, das Bild mit
+    /// mindestens 520 Punkten (darunter wird es schmal und lässt Wallbox und Wärmepumpe weg,
+    /// ``Startbuehne/mass(breite:hoehe:)``), 14 Punkte Abstand und die 404 Punkte der Karten.
+    private static let wandAb: CGFloat = 1002
+
+    /// **Nach der Breite, die da ist, nicht nach der Größenklasse.** Ein iPad im Hochformat hat
+    /// die breite Klasse, aber nur 820 Punkte: neben den Karten bliebe dem Bild ein schmaler
+    /// Streifen, es ließe Sachen weg, und was sie am Telefon ersetzt, stünde nur in der
+    /// Handfassung. Darum bekommt jeder Schirm unter ``wandAb`` die Handfassung, und die zeigt
+    /// die Kacheln oder die Liste genau dann, wenn ihr Bild schmal ist.
     @ViewBuilder private var gerippe: some View {
-        if schmal { hand } else { wand }
+        GeometryReader { raum in
+            if raum.size.width >= Self.wandAb {
+                wand
+            } else {
+                // ``Seite`` nimmt links und rechts je 16 Punkte.
+                hand(schmalesBild: raum.size.width - 32 < 520)
+            }
+        }
     }
 
     // MARK: - Die Wandanzeige
@@ -95,25 +117,20 @@ struct JetztSeite: View {
             let eng = raum.size.height < 820
             VStack(alignment: .leading, spacing: eng ? 8 : 12) {
                 satzzeile(breit: raum.size.width, eng: eng)
-                HStack(alignment: .center, spacing: 18) {
-                    Energiefluss(
-                        augenblick: haus.augenblick, jetzt: haus.jetzt,
-                        pvSpitzeKw: pvSpitze, wpLaeuft: haus.zustand?.heatPump.running,
-                        nacht: istNacht, sonneAb: sonneAb,
-                        // Auf einem niedrigen Schirm ruecken auch die Knotenkreise zurueck
-                        // (`globals.css:272-273`), nicht nur die Blockabstaende.
-                        eng: eng
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // Die Leiste ist 272 Punkte breit (`globals.css:211`).
-                    // Die Leiste dehnt sich über die ganze Zeilenhöhe - darauf beruht, dass
-                    // der Puffer „die ganze Hoehe" bekommt (`globals.css:242`).
-                    Leiste()
-                        .frame(width: 272)
-                        .frame(maxHeight: .infinity)
+                HStack(alignment: .top, spacing: 14) {
+                    bild
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Rechts der Puffer und, je nach Bild, die nächsten 24 Stunden oder der
+                    // Strompreis (`start.css`, `.start-rechts`, 404 Punkte breit).
+                    VStack(spacing: 14) {
+                        Startpufferkarte()
+                        nebenkarte
+                    }
+                    .frame(width: 404)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .opacity(haus.gestoert ? 0.6 : 1)
+                .clipped()
                 kurve
                     .frame(height: kurvenhoehe(raum.size.height))
                 fuss
@@ -169,20 +186,24 @@ struct JetztSeite: View {
 
     // MARK: - Die Handfassung
 
-    private var hand: some View {
+    private func hand(schmalesBild: Bool) -> some View {
         Seite {
             satzblock
-            // **Am Telefon das Hochformat-Bild** (`FlowHandy.tsx`): sechs Knoten mit Zahlen
-            // in der Anordnung der Wandanzeige liefen auf 390 Punkten Breite ineinander.
-            Energiefluss(
-                augenblick: haus.augenblick, jetzt: haus.jetzt,
-                pvSpitzeKw: pvSpitze, wpLaeuft: haus.zustand?.heatPump.running,
-                nacht: istNacht, sonneAb: sonneAb, fassung: .hand
-            )
-            // **Bei unterbrochener Verbindung blasser** (`Home.tsx:227`). Das Bild zeigt
-            // dann Zahlen von vorhin, und es soll aussehen, als meinte es sie nicht mehr.
-            .opacity(haus.gestoert ? 0.6 : 1)
-            Leiste(kompakt: true)
+            // **Das Bild in fester Höhe** (`start.css`: 322 Punkte für die Bühne, 380 für die
+            // Uhr). Ist es schmal, steht darunter, was neben dem Haus oder dem Ring keinen Platz
+            // hat: Wallbox und Wärmepumpe als zwei Kacheln, bei der Uhr alle fünf Sachen als
+            // Liste. Ist es breit genug, zeigt es sie selbst, und darunter stünden sie doppelt.
+            bild
+                .frame(height: startbild == .uhr ? 380 : 322)
+            if schmalesBild {
+                if startbild == .uhr {
+                    Startdingliste(nacht: nacht, sonneAb: sonneAb)
+                } else {
+                    Startunterhaus()
+                }
+            }
+            Startpufferkarte()
+            nebenkarte
             kurve
             // **Vier gleich grosse Zahlen in zwei Spalten, ohne Ueberschrift**
             // (`handy.css:279-283`). „Eine Zahl fuehrt" gilt in der Vorlage fuer die
@@ -220,13 +241,8 @@ struct JetztSeite: View {
                     // der nächsten Zeile nicht wieder (`globals.css:208`, `max-width: 70ch`).
                     .frame(maxWidth: 820, alignment: .leading)
                 Spacer(minLength: 12)
-                if !unterzeile.isEmpty {
-                    Text(unterzeile)
-                        .font(Schrift.sans(13))
-                        .foregroundStyle(Farbe.text3)
-                        .lineLimit(1)
-                }
             }
+            marken
             Wache(befunde: haus.zustand?.system.watch ?? [], zuerst: haus.uhrbefunde)
             if let f = haus.fehler {
                 Stoerung(fehler: f) { Task { await haus.ersteLadung() } }
@@ -249,11 +265,7 @@ struct JetztSeite: View {
                 .lineSpacing(2)
                 .foregroundStyle(Farbe.text1)
                 .fixedSize(horizontal: false, vertical: true)
-            if !unterzeile.isEmpty {
-                Text(unterzeile)
-                    .font(Schrift.sans(13))
-                    .foregroundStyle(Farbe.text3)
-            }
+            marken
             Wache(befunde: haus.zustand?.system.watch ?? [], zuerst: haus.uhrbefunde)
             // **Nur am Telefon, und hier und nicht unter Technik** (`Home.tsx:225`): wer unter
             // Technik ist, hat den Weg schon gefunden. Ob der Hinweis dasteht, entscheidet
@@ -268,13 +280,33 @@ struct JetztSeite: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Die Zeile unter dem Satz, in Worten statt in Kennungen. Erst, wer gerade entscheidet; dann,
-    /// was als Naechstes kommt oder seit wann der Satz gilt.
-    private var unterzeile: String {
-        var teile: [String] = []
-        let wort = haus.betriebswort
-        if !wort.isEmpty { teile.append(wort) }
+    /// Die Zeile unter dem Satz: wer gerade entscheidet, steht als Marke da; läuft die
+    /// Wärmepumpe, steht eine zweite daneben; dahinter, was als Nächstes kommt oder seit wann
+    /// der Satz gilt (`Home.tsx`, `.start-marken`). Am Telefon stehen die Teile untereinander,
+    /// weil eine Zeile sie dort nicht fasst.
+    private var marken: some View {
+        let anordnung =
+            schmal
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+            : AnyLayout(HStackLayout(spacing: 8))
+        return anordnung {
+            if !haus.betriebswort.isEmpty {
+                Startmarke(wort: haus.betriebswort)
+            }
+            if haus.zustand?.heatPump.running == true {
+                Startmarke(wort: "Wärmepumpe läuft", art: .laeuft)
+            }
+            if let dazu = unterzeile {
+                Text(dazu)
+                    .font(Schrift.sans(13))
+                    .foregroundStyle(Farbe.text3)
+                    .lineLimit(1)
+            }
+        }
+    }
 
+    /// Was als Nächstes kommt oder seit wann der Satz gilt, als ganzer Satz.
+    private var unterzeile: String? {
         let laeuft = haus.zustand?.heatPump.running ?? false
         let vonHand = haus.zustand?.operatingMode.override != nil
         let aus = haus.zustand?.operatingMode.systemMode == .off
@@ -288,11 +320,64 @@ struct JetztSeite: View {
            ).first,
            naechster.von > haus.jetzt
         {
-            teile.append("nächster geplanter Lauf um \(Formate.hhmm(naechster.von))")
-        } else if let d = haus.zustand?.decision, let at = Zeit.ausIso(d.at) {
-            teile.append("Stand \(Formate.hhmm(at))")
+            return "Der nächste Lauf ist für \(Formate.hhmm(naechster.von)) geplant."
         }
-        return teile.joined(separator: " · ")
+        if let d = haus.zustand?.decision, let at = Zeit.ausIso(d.at) {
+            return "Entschieden um \(Formate.hhmm(at))."
+        }
+        return nil
+    }
+
+    // MARK: - Das Bild der Mitte
+
+    @ViewBuilder private var bild: some View {
+        switch startbild {
+        case .buehne:
+            Buehnenbild(nacht: nacht, stand: sonnenstand, lauf: sonnenlauf, sonneAb: sonneAb)
+        case .uhr:
+            Stundenringbild(nacht: nacht, ausblick: ausblick, sonneAb: sonneAb)
+        }
+    }
+
+    /// Neben der Bühne stehen die nächsten 24 Stunden als Bild; neben der Uhr, deren Ring sie
+    /// selbst zeigt, der Strompreis in großer Zahl.
+    @ViewBuilder private var nebenkarte: some View {
+        switch startbild {
+        case .buehne:
+            Startausblickkarte(ausblick: ausblick, warnung: haus.plan?.plannerWarnDe)
+        case .uhr:
+            Startstromkarte(ausblick: ausblick, warnung: haus.plan?.plannerWarnDe)
+        }
+    }
+
+    private var ausblick: Ausblick { Ausblick.baue(haus.plan, jetzt: haus.jetzt) }
+
+    /// Aufgang und Untergang des Tages aus dem Fahrplan, wie im Ruhebild.
+    private var sonnenlauf: Ruhebild.Sonnenlauf? {
+        Ruhebild.sonnenlauf(haus.plan, jetzt: haus.jetzt)
+    }
+
+    /// Tag oder Nacht: aus der Erwartung des Fahrplans, nicht aus der Uhr; liefert die Anlage
+    /// trotzdem, ist es Tag (`ambiente.ts`, `bild`).
+    private var nacht: Bool {
+        Ruhebild.bild(sonnenlauf, jetzt: haus.jetzt, pvKw: haus.augenblick?.pvPowerKw.value) == .abend
+    }
+
+    /// Wie weit die Sonne auf ihrem Bogen ist. Vor dem Aufgang und nach dem Untergang sitzt sie
+    /// am Ende des Bogens, ohne Fahrplan in seiner Mitte.
+    private var sonnenstand: Double {
+        let lauf = sonnenlauf
+        if let anteil = Startbuehne.sonnenanteil(lauf, jetzt: haus.jetzt) { return anteil }
+        guard let lauf else { return 0.5 }
+        return haus.jetzt < lauf.von ? 0 : 1
+    }
+
+    /// Wann die Sonne wiederkommt. Nur die Uhrzeit, ohne „morgen“: ein Sonnenaufgang ist immer
+    /// der nächste.
+    private var sonneAb: String? {
+        let blick = ausblick
+        guard blick.nacht, let wechsel = blick.sonneWechsel else { return nil }
+        return Formate.hhmm(wechsel)
     }
 
     // MARK: - Die Kurve
@@ -373,37 +458,6 @@ struct JetztSeite: View {
     }
 
     // MARK: - Nachladen
-
-    private var pvSpitze: Double {
-        let erwartet = (haus.plan?.intervals ?? []).map(\.expectedPvKw).max() ?? 0
-        return max(4, erwartet)
-    }
-
-    /// Tag oder Nacht - aus der Erwartung des Fahrplans, nicht aus der Uhr. Im Dezember ist um
-    /// 17 Uhr Nacht und im Juni nicht.
-    private var istNacht: Bool {
-        let jetzt = haus.jetzt
-        let nah = (haus.plan?.intervals ?? []).filter {
-            guard let t = Zeit.ausIso($0.ts) else { return false }
-            return abs(t.timeIntervalSince(jetzt)) < 1800
-        }
-        guard !nah.isEmpty else {
-            // Ohne Plan: nach der Sonne im Augenblick.
-            return (haus.augenblick?.pvPowerKw.belastbar ?? 0) < 0.05
-        }
-        return nah.allSatisfy { $0.expectedPvKw < 0.05 }
-    }
-
-    /// Wann die Sonne wiederkommt. Nur die Uhrzeit, ohne „morgen": ein Sonnenaufgang ist immer
-    /// der naechste, und neben dem Mond ist kein Platz fuer mehr.
-    private var sonneAb: String? {
-        guard istNacht else { return nil }
-        let kuenftig = (haus.plan?.intervals ?? []).compactMap { iv -> Date? in
-            guard let t = Zeit.ausIso(iv.ts), t > haus.jetzt, iv.expectedPvKw >= 0.05 else { return nil }
-            return t
-        }
-        return kuenftig.min().map { Formate.hhmm($0) }
-    }
 
     private func ladeFuerTag() async {
         switch tag {

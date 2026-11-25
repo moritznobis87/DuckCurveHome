@@ -11,13 +11,18 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { MitteilungsHinweis } from "./MitteilungsHinweis";
 import { UpdateHinweis } from "@/components/update/UpdateHinweis";
 import { useRuhe } from "@/lib/useRuhe";
-import { celsius, hhmm, longDate } from "@/lib/format";
+import { celsius, hhmm, kw, longDate } from "@/lib/format";
 import { isoDay } from "@/lib/day";
 import { AreaIcons, Brand, Fussleiste, Kontoknopf, Systemknopf } from "@/components/layout/AreaNav";
 import { abschnitte, ausblick } from "./ausblick";
-import { FlowHandy } from "./FlowHandy";
-import { FlowHero } from "./FlowHero";
-import { Rail } from "./Rail";
+import { bild as himmel, sonnenlauf } from "./ambiente";
+import { sonnenanteil } from "./buehne";
+import { Buehne } from "./Buehne";
+import { wpWort } from "./fluss";
+import { Ausblickkarte, Pufferkarte, Stromkarte } from "./Karten";
+import { Uhr } from "./Uhr";
+import { useStartbild } from "./useStartbild";
+import { WpMenue } from "./WpMenue";
 import { DayCurve } from "./DayCurve";
 import { Dock } from "./Dock";
 import { Wache } from "./Wache";
@@ -110,7 +115,6 @@ export function Home() {
   }, [heute, setHistory]);
 
   const s = state?.snapshot;
-  const pvPeak = useMemo(() => Math.max(4, ...(plan?.intervals ?? []).map((i) => i.expected_pv_kw)), [plan]);
   const degraded = connection !== "live";
   const now = nowMs ?? Date.now() + offset;
   // Die Kurve und die Tagesgrenzen brauchen die Sekunde nicht. Mit ihr rechnete die Zeichnung
@@ -193,13 +197,23 @@ export function Home() {
   const laufStart = naechsterLauf && naechsterLauf[0] > 0 ? blick.zellen[naechsterLauf[0]]?.ts : undefined;
   const dazu =
     laufStart != null && !state?.heat_pump.running && !state?.operating_mode.override && state?.operating_mode.system_mode !== "off"
-      ? `nächster geplanter Lauf um ${hhmm(new Date(laufStart))}`
+      ? `Der nächste Lauf ist für ${hhmm(new Date(laufStart))} geplant.`
       : d
-        ? `Stand ${hhmm(d.at)}`
+        ? `Entschieden um ${hhmm(d.at)}.`
         : "";
 
+  // Der Himmel der Bühne: Tag oder Nacht und wo die Sonne auf ihrem Bogen steht. Vor dem Aufgang
+  // und nach dem Untergang sitzt sie am Ende des Bogens, ohne Fahrplan in seiner Mitte.
+  const lauf = useMemo(() => sonnenlauf(plan, minute), [plan, minute]);
+  const nacht = himmel(lauf, minute, s?.pv_power_kw.value) === "abend";
+  const stand = sonnenanteil(lauf, minute) ?? (lauf ? (minute < lauf.von ? 0 : 1) : 0.5);
+  const vonEben = degraded && lastFrameAt ? hhmm(new Date(lastFrameAt + offset)) : null;
+  const [wpMenue, setWpMenue] = useState(false);
+  const [startbild] = useStartbild();
+  const wpLaeuft = state?.heat_pump.running;
+
   return (
-    <main className={`home dashboard-bg ${isMobile ? "home-telefon" : ""}`}>
+    <main className={`home start dashboard-bg ${isMobile ? "home-telefon" : ""}`}>
       <header className="home-kopf">
         <div className="flex items-center gap-5">
           <Brand />
@@ -209,48 +223,83 @@ export function Home() {
             <Kontoknopf />
           </span>
         </div>
-        <div className="home-uhr" suppressHydrationWarning>
-          <span className="home-datum">{nowMs ? longDate(new Date(nowMs)) : ""}</span>
+        <div className="home-uhr start-uhr" suppressHydrationWarning>
+          <div className="start-daten">
+            <span className="home-datum">{nowMs ? longDate(new Date(nowMs)) : ""}</span>
+            <span className="start-zeile">
+              <span className="flex items-center gap-2" title={state?.system.connection_label_de}>
+                <span className={`home-punkt ${degraded ? "home-punkt-aus" : ""}`} aria-hidden />
+                <span className="kicker home-status-wort" data-stoerung={degraded} style={{ fontSize: 11, color: degraded ? "var(--alert-text)" : "var(--text-3)" }}>{degraded ? (lastFrameAt ? `unterbrochen · ${hhmm(new Date(lastFrameAt + offset))}` : "verbinde") : state?.system.mode === "demo" ? `demo${state.system.sim_speed !== 1 ? ` ${state.system.sim_speed}×` : ""}` : "live"}</span>
+              </span>
+              <span className="mono home-aussen" title={state?.system.outdoor_source_de ? "Der Messwert aus dem Haus ist alt oder unglaubwürdig; gezeigt wird der Wert des Wetterdienstes." : undefined}>{celsius(state?.system.outdoor_shown_c ?? s?.outdoor_temp_c.value, 1)}<span className="home-aussen-wort">{state?.system.outdoor_source_de || "draußen"}</span></span>
+            </span>
+          </div>
           <span className="mono home-zeit">{nowMs ? hhmm(new Date(nowMs)) : ""}</span>
-          <span className="mono home-aussen" title={state?.system.outdoor_source_de ? "Der Messwert aus dem Haus ist alt oder unglaubwürdig; gezeigt wird der Wert des Wetterdienstes." : undefined}>{celsius(state?.system.outdoor_shown_c ?? s?.outdoor_temp_c.value, 1)}<span className="home-aussen-wort">{state?.system.outdoor_source_de || "draußen"}</span></span>
-          <span className="flex items-center gap-2" title={state?.system.connection_label_de}>
-            <span className={`home-punkt ${degraded ? "home-punkt-aus" : ""}`} aria-hidden />
-            <span className="kicker home-status-wort" data-stoerung={degraded} style={{ fontSize: 11, color: degraded ? "var(--alert-text)" : "var(--text-3)" }}>{degraded ? (lastFrameAt ? `unterbrochen · ${hhmm(new Date(lastFrameAt + offset))}` : "verbinde") : state?.system.mode === "demo" ? `demo${state.system.sim_speed !== 1 ? ` ${state.system.sim_speed}×` : ""}` : "live"}</span>
-          </span>
         </div>
       </header>
 
-      <div className="home-satz-block">
-        <div className="home-satz-zeile">
+      <div className="start-satzzeile">
+        <div className="start-satz">
           <p className="home-satz">{satz}</p>
-          <span className="home-satz-meta">{[modeWort, dazu].filter(Boolean).join(" · ")}</span>
+          <div className="start-marken">
+            <span className="start-marke">{modeWort}</span>
+            {wpLaeuft ? <span className="start-marke" data-art="laeuft">Wärmepumpe läuft</span> : null}
+            {dazu ? <span>{dazu}</span> : null}
+          </div>
         </div>
-        <Wache befunde={wache} />
-        {isMobile ? <MitteilungsHinweis /> : null}
-        <UpdateHinweis />
-      </div>
-
-      <div className="home-hero" style={{ opacity: degraded ? 0.6 : 1, transition: "opacity .4s" }}>
-        {isMobile ? <FlowHandy snapshot={s ?? null} pvPeakKw={pvPeak} wpLaeuft={state?.heat_pump.running} nacht={blick.nacht} sonneAb={sonneAb} /> : <FlowHero snapshot={s ?? null} nowMs={now} pvPeakKw={pvPeak} wpLaeuft={state?.heat_pump.running} />}
-        <Rail state={state} plan={plan} nowMs={now} kompakt={isMobile} />
-      </div>
-
-      <DayCurve tag={tag} onTag={(t) => { setTag(t); setGetippt(Date.now()); }} history={reihe} plan={plan} heat={waerme} schatten={schattenKurve} nowMs={minute} start={start} end={end} />
-
-      <div className="home-fuss">
-        <div className="home-heute">
-          {zahlen.map((k) => (
-            <span key={k.wort} className="home-heute-wert">
-              <span className="mono home-heute-zahl" style={k.gelb ? { color: "var(--pv)" } : undefined}>
-                {k.wert} <span className="home-einheit">{k.einheit}</span>
-              </span>
-              <span className="home-heute-wort">{k.wort}</span>
-            </span>
-          ))}
+        <div className="start-hinweise">
+          <Wache befunde={wache} />
+          {isMobile ? <MitteilungsHinweis /> : null}
+          <UpdateHinweis />
         </div>
-        <Dock state={state} readOnly={role !== "owner"} />
       </div>
 
+      <div className="start-oben">
+        {/* Solange die Wahl des Geräts noch nicht gelesen ist, steht nur der Rahmen da: eine Wand,
+            die erst die Bühne zeigt und dann zur Uhr springt, wäre ein Flackern bei jedem Laden. */}
+        {startbild === "uhr" ? (
+          <Uhr snapshot={s ?? null} nowMs={minute} wpLaeuft={wpLaeuft} nacht={nacht} blick={blick} sonneAb={sonneAb} vonEben={vonEben} onPumpe={() => setWpMenue(true)} />
+        ) : startbild === "buehne" ? (
+          <Buehne snapshot={s ?? null} nowMs={now} wpLaeuft={wpLaeuft} nacht={nacht} stand={stand} lauf={lauf} sonneAb={sonneAb} vonEben={vonEben} onPumpe={() => setWpMenue(true)} />
+        ) : (
+          <div className="start-mitte"><div className="start-buehne" data-nacht={nacht} /></div>
+        )}
+        <div className="start-rechts">
+          <Pufferkarte state={state} nowMs={now} />
+          {startbild === "uhr" ? <Stromkarte blick={blick} warnung={plan?.planner_warn_de} /> : startbild === "buehne" ? <Ausblickkarte blick={blick} warnung={plan?.planner_warn_de} /> : <div className="start-karte" aria-hidden />}
+        </div>
+      </div>
+
+      <div className="start-unten">
+        <section className="start-karte start-tag" aria-label="Der Tag">
+          <DayCurve
+            tag={tag}
+            onTag={(t) => { setTag(t); setGetippt(Date.now()); }}
+            history={reihe}
+            plan={plan}
+            heat={waerme}
+            schatten={schattenKurve}
+            nowMs={minute}
+            start={start}
+            end={end}
+            zahlen={
+              <div className="start-zahlen">
+                {zahlen.map((k) => (
+                  <span key={k.wort} className="start-zahl">
+                    <span className="mono start-zahl-wert" data-gelb={k.gelb || undefined}>{k.wert}<small>{k.einheit}</small></span>
+                    <span className="start-zahl-wort">{k.wort}</span>
+                  </span>
+                ))}
+              </div>
+            }
+          />
+        </section>
+        <section className="start-karte start-schalter" aria-label="Schalter">
+          <Dock state={state} readOnly={role !== "owner"} />
+        </section>
+      </div>
+
+      <WpMenue offen={wpMenue} onZu={() => setWpMenue(false)} zeile={`${kw(s?.heat_pump_power_kw.value)} kW · ${wpWort(s?.heat_pump_power_kw.value ?? 0, wpLaeuft)}`} />
       <Fussleiste />
 
       {ruhe && tag === "heute" ? (

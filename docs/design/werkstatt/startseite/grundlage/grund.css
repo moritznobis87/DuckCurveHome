@@ -39,7 +39,7 @@
   --heat-pump: #e0966b;   /* Wärmepumpe */
   --stove: #b5651d;       /* Pelletofen, nie ohne Beschriftung */
   --ev: #2f89b5;          /* Wallbox */
-  --house: #ffffff;       /* Haus: Weiß gehört der Summe */
+  --house: #ffffff;       /* Haus: Weiß gehört der Summe. Nur hier in der Werkstatt so benannt; im Dashboard ist es --paper. */
   --price: #7fa3b3;       /* Strompreis */
 
   /* Zustände */

@@ -136,39 +136,31 @@
 
     // MARK: - Einzelne Bausteine
 
-    #Preview("Energiefluss") {
+    #Preview("Bühne") {
         Vorschaurahmen(breit: true) {
-            Energiefluss(
-                augenblick: Vorschau.augenblick(),
-                jetzt: Vorschau.jetzt,
-                pvSpitzeKw: 5.1,
-                wpLaeuft: true
-            )
-            .padding()
-        }
-    }
-
-    /// Nachts, mit dem Mond an der Stelle der Sonne. Der zweite Zustand des Bildes, und der,
-    /// den die Wandanzeige die halbe Zeit zeigt.
-    #Preview("Energiefluss bei Nacht") {
-        Vorschaurahmen(breit: true) {
-            Energiefluss(
-                augenblick: Vorschau.augenblick(pv: 0, waermepumpe: 0, k1: false),
-                jetzt: Vorschau.jetzt,
-                wpLaeuft: false,
-                nacht: true,
-                sonneAb: "07:42"
-            )
-            .padding()
-        }
-    }
-
-    /// Was passiert, wenn nichts da ist. Das ist der Zustand am ersten Tag und nach jedem
-    /// Ausfall - und er ist genauso zu gestalten wie der gefüllte.
-    #Preview("Energiefluss ohne Werte") {
-        Vorschaurahmen(breit: true) {
-            Energiefluss(augenblick: nil, jetzt: Vorschau.jetzt)
+            Buehnenbild(nacht: false, stand: 0.55, lauf: nil, sonneAb: nil)
+                .frame(height: 400)
                 .padding()
+        }
+    }
+
+    /// Nachts, mit Mond und Sternen. Der zweite Zustand des Bildes, und der, den die
+    /// Wandanzeige im Winter die meiste Zeit zeigt.
+    #Preview("Bühne bei Nacht") {
+        Vorschaurahmen(breit: true) {
+            Buehnenbild(nacht: true, stand: 1, lauf: nil, sonneAb: "07:42")
+                .frame(height: 400)
+                .padding()
+        }
+    }
+
+    #Preview("Uhr") {
+        Vorschaurahmen(breit: true) {
+            Stundenringbild(
+                nacht: true, ausblick: Ausblick.baue(nil, jetzt: Vorschau.jetzt), sonneAb: "07:42"
+            )
+            .frame(height: 400)
+            .padding()
         }
     }
 

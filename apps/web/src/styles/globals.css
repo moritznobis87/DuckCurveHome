@@ -123,21 +123,6 @@
    fuellte den halben Bildschirm und sah aus wie eine Tabelle; hier traegt die Groesse die
    Bedeutung. */
 
-/* ---------- Puffer am Telefon: das Glas, auf die Seite gelegt ----------
-   Ueberall sonst steht der Speicher als Glas (components/puffer/Glas). Am Telefon liegt er, damit
-   die Kachel so flach bleibt wie die darueber: links oben, rechts unten, dieselbe Farbskala,
-   derselbe weiche Verlauf, jede Zahl unter der Stelle ihres Fuehlers. */
-.home-puffer-flach { flex: 1 1 100%; background: rgba(15,46,61,.55); border: 1px solid var(--line-1); border-radius: 8px; padding: 12px 14px 11px; display: flex; flex-direction: column; gap: 9px; text-decoration: none; color: inherit; }
-.home-puffer-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.home-puffer-zahl { font-size: 26px; line-height: 1; letter-spacing: -.03em; color: var(--text-1); white-space: nowrap; }
-.home-puffer-wort { font-family: var(--font-sans); font-size: 12px; color: var(--text-2); margin-left: 10px; letter-spacing: 0; }
-/* Rund wie das Glas, mit demselben hellen Rand und einem Glanz an der Oberkante. */
-.home-glas-quer { position: relative; display: block; height: 18px; border-radius: 9px; border: 1px solid rgba(255,255,255,.28); box-shadow: inset 0 3px 4px -2px rgba(255,255,255,.28), inset 0 -3px 4px -2px rgba(0,0,0,.25); }
-.home-puffer-fuehler { position: relative; display: block; height: 17px; font-size: 13px; color: var(--text-1); }
-.home-puffer-wert { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
-.home-puffer-grad { color: var(--text-3); margin-left: 1px; }
-.home-puffer-orte { position: relative; display: block; height: 13px; }
-.home-puffer-ort { position: absolute; top: 0; transform: translateX(-50%); font-size: 10px; color: var(--text-3); white-space: nowrap; }
 /* Das Glas als Bild: die Hoehe kommt von aussen, die Breite aus dem Seitenverhaeltnis. */
 .puffer-glas { display: block; flex: none; width: auto; overflow: visible; }
 
@@ -198,8 +183,6 @@
 .home-punkt { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: dch-atmen 3.6s ease-in-out infinite; }
 .home-punkt-aus { background: var(--alert); animation: none; }
 @keyframes dch-atmen { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
-.home-satz-block { display: flex; flex-direction: column; gap: 8px; }
-.home-satz-zeile { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; }
 /* Der Waechter. Keine Kachel, kein Fenster: eine Zeile mit Kante, die man im Vorbeigehen sieht
    und die nichts verdeckt. Der Normalfall ist, dass hier nichts steht. */
 .home-wache { display: flex; flex-direction: column; gap: 6px; }
@@ -207,53 +190,16 @@
 .home-wache-zeile[data-schwere="warn"] { color: var(--amber-soft); background: rgba(255,215,120,.10); }
 .home-wache-zeile span:last-child { color: var(--text-1); }
 .home-satz { margin: 0; font-size: clamp(20px, 2.1vw, 28px); font-weight: 500; letter-spacing: -.015em; line-height: 1.25; max-width: 70ch; }
-.home-satz-meta { white-space: nowrap; font-size: 13px; color: var(--text-3); }
 
-.home-hero { display: grid; grid-template-columns: minmax(0, 1fr) 272px; gap: 18px; min-height: 0; }
-.home-fluss { position: relative; min-height: 0; }
-/* Der Lichtschein hinter der Sonne ist ein Messwert: seine Staerke ist die PV-Leistung. */
-.home-sonnenschein { position: absolute; left: 50%; top: 14%; width: min(520px, 60%); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(242,169,0,.26) 0%, rgba(242,169,0,0) 62%); transition: opacity 1.2s; }
-.home-leitungen { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.home-fluss-strich { animation: dch-fluss var(--dauer, 2.4s) linear infinite; }
-@keyframes dch-fluss { to { stroke-dashoffset: -34; } }
-@media (prefers-reduced-motion: reduce) { .home-fluss-strich { animation: none; } .home-punkt { animation: none; } }
-.home-knoten { --r: 28px; position: absolute; width: 0; height: 0; overflow: visible; text-decoration: none; color: inherit; }
-.home-knoten-gross { --r: 56px; }
-/* Der Kreis deckt die Enden der Leitungen ab: deckender Grund unter der Tönung, und er liegt
-   über dem SVG. */
-.home-ring { position: absolute; left: 0; top: 0; width: calc(var(--r) * 2); height: calc(var(--r) * 2); transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1.5px solid; overflow: hidden; z-index: 2; transition: box-shadow .15s; }
-.home-knoten:hover .home-ring, .home-knoten:focus-visible .home-ring { box-shadow: 0 0 0 3px rgba(255,255,255,.1); }
-.home-knoten-gross .home-ring { box-shadow: 0 0 60px rgba(255,255,255,.07); }
-.home-fuell { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(127,183,200,.28); }
-.home-knoten-text { position: absolute; display: flex; flex-direction: column; gap: 2px; white-space: nowrap; z-index: 2; }
-.home-knoten-unten .home-knoten-text { top: calc(var(--r) + 8px); left: 0; transform: translateX(-50%); align-items: center; }
-.home-knoten-rechts .home-knoten-text { left: calc(var(--r) + 14px); top: 0; transform: translateY(-50%); align-items: flex-start; }
-.home-zahl { font-size: clamp(22px, 2.6vw, 34px); line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
-.home-knoten-gross .home-zahl { font-size: clamp(34px, 4.2vw, 56px); }
+@media (prefers-reduced-motion: reduce) { .home-punkt { animation: none; } }
 .home-einheit { font-family: var(--font-sans); font-size: .42em; color: var(--text-3); letter-spacing: 0; }
-.home-wort { font-size: 13px; color: var(--text-2); white-space: nowrap; }
 
-.home-rail { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-.home-kachel { background: rgba(15,46,61,.55); border: 1px solid var(--line-1); border-radius: 6px; padding: 12px 16px; flex: 1 1 0; min-height: 0; text-decoration: none; color: inherit; transition: border-color .15s; }
-.home-kachel:hover { border-color: var(--line-2); }
-.home-kachel-plan { flex: none; }
-.home-rail-zahl { font-size: clamp(22px, 2.2vw, 30px); line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
-/* Die Pufferkachel nimmt, was die Planzeilen uebrig lassen; der Tank fuellt ihre Hoehe. Kein
-   min-height am Tank: das liess ihn an der Wand ueber die Kachel hinauslaufen. */
-.home-kachel-puffer { flex: 1 1 auto; min-height: 0; display: flex; gap: 16px; align-items: stretch; overflow: hidden; }
-.home-glas { align-self: stretch; height: auto; min-height: 0; max-height: 100%; }
-.home-kachel-puffer .home-rail-zahl { font-size: clamp(28px, 2.8vw, 40px); }
 
 /* Gestern, heute, morgen: gross genug fuer einen Daumen im Vorbeigehen. */
 .home-tage { display: flex; gap: 2px; border: 1px solid var(--line-2); border-radius: 5px; padding: 2px; }
 .home-tag { padding: 5px 14px; border-radius: 3px; font-size: 13px; line-height: 1.2; transition: background .15s, color .15s; }
 .home-kurve { display: flex; flex-direction: column; gap: 4px; min-height: 0; }
 
-.home-fuss { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
-.home-heute { display: flex; gap: 32px; align-items: baseline; }
-.home-heute-wert { display: flex; flex-direction: column; gap: 3px; }
-.home-heute-zahl { font-size: 26px; line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
-.home-heute-wort { font-size: 12px; color: var(--text-2); }
 .home-dock { position: relative; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .home-dock-reihe { display: flex; gap: 10px; align-items: flex-start; }
 .home-dock-item { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 60px; }
@@ -270,8 +216,6 @@
 @media (max-height: 820px) {
   .home { gap: 8px; --home-pad: 14px; }
   .home-satz { font-size: clamp(18px, 1.9vw, 24px); }
-  .home-knoten { --r: 24px; }
-  .home-knoten-gross { --r: 46px; }
 }
 
 /* ---------- Telefon: eine Spalte, Seite scrollt ----------
@@ -298,38 +242,20 @@
   .home-datum { display: none; }
   .home-zeit { font-size: 24px; }
   .home-aussen { font-size: 14px; }
-  /* Drei Zeilen Satz schoben auf dem iPhone die Kurve unter den ersten Bildschirm. Zwei reichen. */
-  .home-satz-zeile { flex-direction: column; gap: 2px; }
   .home-satz { font-size: 17px; line-height: 1.3; }
   /* **Die Kurve steht vor dem Puffer.** `display: contents` loest den Zweispalter auf, damit
      seine beiden Kinder direkte Kinder des Seitenrasters werden und sich einsortieren lassen:
      erst das Jetzt, dann die Tageskurve - die Marke der Seite -, danach Puffer und Fahrplan.
      Vorher kam die Kurve nach beidem und begann unterhalb des ersten Bildschirms. */
   .home { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: min-content; }
-  .home-hero { display: contents; }
   .home-kopf { order: 1; }
-  .fluss-h { order: 3; }
-  .home-satz-zeile { order: 2; }
   .home-kurve { order: 4; min-height: 230px; }
-  .home-rail { order: 5; flex-direction: row; flex-wrap: wrap; }
-  .home-fuss { order: 6; }
-  .home-kachel { flex: 1 1 45%; }
-  .home-kachel-plan { flex: 1 1 100%; }
-  .home-fuss { flex-direction: column; align-items: stretch; }
-  .home-heute { justify-content: space-between; gap: 12px; }
-  .home-heute-zahl { font-size: 20px; }
   .home-dock { align-items: stretch; }
   .home-dock-reihe { justify-content: space-between; gap: 6px; }
   .home-dock-knopf { width: 46px; height: 46px; border-radius: 12px; }
   .home-dock-item { width: 46px; }
-  /* Der Tank liegt im Hochformat quer: eine schmale Saeule neben den vier Fuehlern, nicht ein
-     Block ueber die halbe Kachel. */
-  .home-kachel-puffer { flex: 1 1 100%; min-height: 0; gap: 12px; padding: 12px 14px; }
-  .home-kachel-puffer .home-glas { min-height: 86px; }
-  .home-kachel-puffer .home-rail-zahl { font-size: 30px; }
   .home-dock-trenner { display: none; }
   .home-blatt { left: 0; right: 0; width: auto; }
-  .home-kurve-legende { display: none; }
   .home-tag { padding: 6px 12px; }
   .card { padding: 14px; }
 
@@ -362,12 +288,6 @@
 @media (max-height: 560px) and (min-width: 600px) {
   .home { padding-top: 10px; gap: 10px; }
   .home-satz { font-size: 18px; }
-  .home-satz-zeile { flex-direction: row; align-items: baseline; }
-  .home-hero { grid-template-columns: minmax(0, 1fr) 240px; }
-  .home-rail { flex-direction: column; }
-  .home-kachel { flex: 1 1 auto; }
-  .home-kachel-puffer { flex: 1 1 auto; min-height: 120px; }
-  .home-fuss { flex-direction: row; align-items: flex-end; }
   .home-datum { display: none; }
 }
 

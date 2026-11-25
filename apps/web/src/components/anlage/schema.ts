@@ -194,7 +194,7 @@ export function heizungStatus(h: Anlage["heizkreis"]): string {
   return h.rooms_open > 0 ? "Räume nehmen Wärme" : "kein Raum nimmt Wärme";
 }
 
-/** Wohin ein Symbol führt. Dieselben Ziele wie die Knoten der Startseite (`FlowHero`): wer dort
+/** Wohin ein Symbol führt. Dieselben Ziele wie die Sachen auf der Bühne der Startseite (`Buehne`): wer dort
  *  auf die Sonne tippt, landet auf der Photovoltaik, und hier auch. Die Wärme-Ziele bekommen eine
  *  Sprungmarke auf die Karte der Erzeugerseite, die das Gerät zeigt. */
 export const ZIELE = {

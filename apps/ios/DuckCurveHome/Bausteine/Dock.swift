@@ -100,6 +100,7 @@ struct Dock: View {
         Knopf(
             name: "Wärmepumpe",
             kurz: "Pumpe",
+            dazu: haus.zustand?.heatPump.running == true ? "läuft" : "aus",
             zeichen: .waermepumpe,
             an: haus.zustand?.heatPump.running,
             farbe: Farbe.waermepumpe,
@@ -119,6 +120,7 @@ struct Dock: View {
                 Knopf(
                     name: "Pelletofen",
                     kurz: "Ofen",
+                    dazu: haus.zustand?.stove?.running == true ? "brennt" : "aus",
                     zeichen: .ofen,
                     an: haus.zustand?.stove?.running ?? false,
                     farbe: Farbe.ofen,
@@ -143,6 +145,7 @@ struct Dock: View {
                 Knopf(
                     name: "Alarmanlage · \(haus.zustand?.alarm?.stateDe ?? "")",
                     kurz: "Alarm",
+                    dazu: haus.zustand?.alarm?.stateDe,
                     zeichen: .schild,
                     an: Dockzustand.alarmLeuchtet(haus.zustand?.alarm),
                     farbe: Color(Dockzustand.alarmfarbe(haus.zustand?.alarm)),
@@ -208,6 +211,8 @@ struct Dock: View {
 struct Knopf: View {
     let name: String
     let kurz: String
+    /// Der Zustand als Wort, bei Schaltern, die eine Auswahl öffnen (`Dock.tsx`, `dazu`).
+    var dazu: String?
     let zeichen: Zeichenart
     /// `nil` heisst: der Dienst weiss es nicht.
     let an: Bool?
@@ -273,6 +278,14 @@ struct Knopf: View {
                 .kerning(schmal ? 0 : 0.4)
                 .foregroundStyle(leuchtet ? Farbe.text2 : Farbe.text3)
                 .accessibilityHidden(true)
+            if let dazu {
+                Text(dazu)
+                    .font(Schrift.sans(10.5))
+                    .foregroundStyle(Farbe.text3)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .accessibilityHidden(true)
+            }
         }
         .frame(width: kante)
     }

@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
+import { Systemkarte } from "@/components/ui/Systemkarte";
+import { STARTBILDER, STARTBILD_FRAGE, STARTBILD_TITEL } from "@/components/home/startbild";
+import { useStartbild } from "@/components/home/useStartbild";
 import { Zustandszeichen } from "@/components/ui/Zustandszeichen";
 import { Kachel, useKarten } from "@/components/layout/Bereichsuebersicht";
 import { api, ApiError } from "@/lib/api/client";
@@ -161,6 +164,34 @@ function Zustandskarte({ darfStellen }: { darfStellen: boolean }) {
   );
 }
 
+/**
+ * Welches Bild die Mitte der Startseite trägt: die Bühne oder die Uhr.
+ *
+ * Der Hausherr hat am 25.11.2026 beide bauen lassen und die Umschaltung hierher gelegt. Die Wahl
+ * gilt für dieses Gerät und liegt in seinem Speicher, darum darf sie jeder treffen, der die Seite
+ * sieht. Dieselbe Karte baut die App aus `Startbild.swift`.
+ */
+function Startbildkarte() {
+  const [bild, waehle] = useStartbild();
+  return (
+    <Systemkarte zeichen="dashboard" titel={STARTBILD_TITEL} satz={STARTBILD_FRAGE} id="startseite">
+      <div className="startbild-wahl" role="group" aria-label={STARTBILD_TITEL}>
+        {STARTBILDER.map((b) => (
+          <button key={b.id} type="button" className="wahl-knopf startbild-knopf" aria-pressed={bild === b.id} onClick={() => waehle(b.id)}>
+            <span className="startbild-zeichen" aria-hidden="true">
+              <Icon name={b.id === "uhr" ? "clock" : "home"} size={20} />
+            </span>
+            <span className="startbild-text">
+              <span className="startbild-name">{b.name}</span>
+              <span className="startbild-satz">{b.satz}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </Systemkarte>
+  );
+}
+
 export function Einstellen() {
   const sitzung = useSitzung();
   // Abstimmen und System erst zeigen, wenn feststeht, dass hier der Hausherr sitzt: Ein Bewohner
@@ -203,6 +234,7 @@ export function Einstellen() {
       ) : null}
 
       <Zustandskarte darfStellen={darfStellen} />
+      <Startbildkarte />
 
       <div className="einstellen-stufen">
         {STUFEN.filter((s) => hausherr || !s.nurHausherr).map((stufe) => {

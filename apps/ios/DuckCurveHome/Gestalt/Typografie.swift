@@ -224,3 +224,11 @@ extension View {
         font(Schrift.text).foregroundStyle(Farbe.text1)
     }
 }
+
+extension Schrift {
+    /// Eine Zahl in einer festen Groesse. Für Zahlen in Feldern fester Größe: eine Schrift, die mit „Größerer Text“ wächst,
+    /// läuft dort aus ihrem Feld.
+    static func custom(_ groesse: CGFloat) -> Font {
+        Font.custom(mono, fixedSize: groesse)
+    }
+}
