@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entwurf: Das Kachelfeld</title>
+<link rel="stylesheet" href="../grundlage/grund.css">
+<link rel="stylesheet" href="../grundlage/bausteine.css">
+<style>
+  .seite { display: grid; gap: 14px; padding: 14px 22px 20px; }
+  .seite > *, .feld > * { min-width: 0; }
+  .feld { display: grid; gap: 14px; min-height: 0; }
+
+  /* Die Kachel des Satzes trägt die Farbe des Zustands. */
+  .k-satz { display: flex; flex-direction: column; justify-content: space-between; gap: 14px; padding: 20px 22px; border-color: color-mix(in srgb, var(--kartenfarbe) 40%, transparent); background: radial-gradient(130% 100% at 0% 0%, color-mix(in srgb, var(--kartenfarbe) 30%, transparent), transparent 70%), var(--surface-1); }
+  .k-satz .satz h1 { font-size: 27px; }
+  .k-satz .wache { font-size: 13.5px; }
+  .k-satz .kicker { display: flex; align-items: center; gap: 8px; }
+  /* Das Zeichen des Zustands steht groß und blass in der Ecke. */
+  .k-satz .wasser { position: absolute; right: -18px; top: -14px; color: var(--kartenfarbe); opacity: 0.16; pointer-events: none; }
+  .k-satz .wasser svg { stroke-width: 1.1; }
+  .k-satz .satz { position: relative; }
+
+  /* Eine Sache: Zeichenfeld und Name oben, große Zahl und Zustand unten, ein Balken am Fuß. */
+  .sache { display: flex; flex-direction: column; justify-content: space-between; gap: 8px; padding: 14px 16px 16px; }
+  .sache .grosszahl { font-size: 40px; }
+  .sache-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .sache-name span { font-size: 12.5px; color: var(--text-3); white-space: nowrap; }
+  .sache[data-an="true"] .sache-name span { color: color-mix(in srgb, var(--kartenfarbe) 62%, #fff); }
+  .sache-balken { position: absolute; left: 0; bottom: 0; height: 4px; width: var(--anteil); border-radius: 0 3px 3px 0; background: var(--kartenfarbe); box-shadow: 0 0 12px var(--kartenfarbe); }
+  .sache[data-an="true"] { border-color: color-mix(in srgb, var(--kartenfarbe) 48%, transparent); background: radial-gradient(130% 110% at 0% 0%, color-mix(in srgb, var(--kartenfarbe) 30%, transparent), transparent 70%), var(--surface-1); }
+  .sache[data-an="false"] .grosszahl { color: var(--text-3); }
+  .sache[data-an="false"] .zeichenfeld { color: var(--text-3); background: color-mix(in srgb, var(--text-3) 12%, transparent); }
+  .k-haus { --kartenfarbe: var(--house); }
+  .k-haus .grosszahl { font-size: 48px; }
+
+  @media (min-width: 721px) {
+    html, body { height: 100%; overflow: hidden; }
+    .seite { height: 100dvh; grid-template-rows: auto minmax(0, 1fr); }
+    .feld { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: 136px 136px minmax(0, 1fr) 88px; }
+    .k-satz { grid-column: span 2; grid-row: span 2; }
+    .k-puffer { grid-column: span 2; }
+    .k-tag { grid-column: span 4; }
+    .k-ausblick { grid-column: span 2; }
+    .k-ausblick .ausblick-bild { flex: 1; min-height: 0; }
+    /* Die Schalter liegen als Streifen am Fuß; Alfred hat rechts sein eigenes Feld. */
+    .k-dock { grid-column: 1 / -1; justify-content: center; padding: 10px 100px 10px 18px; }
+    .k-dock .tasten { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+    .k-dock .taste { display: grid; grid-template-columns: auto 1fr; grid-template-rows: 1fr 1fr; column-gap: 11px; justify-items: start; align-items: center; }
+    .k-dock .taste-rund { grid-row: 1 / span 2; height: 52px; width: 52px; }
+    .k-dock .taste-wort { align-self: end; font-size: 13px; }
+    .k-dock .taste-wort:last-child { grid-row: 1 / span 2; align-self: center; }
+    .k-dock .taste-dazu { align-self: start; margin-top: 1px; font-size: 11.5px; }
+    .ente { right: 40px; bottom: 36px; }
+  }
+  @media (max-width: 720px) {
+    .seite { padding: 10px 16px 112px; gap: 12px; }
+    .feld { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .k-satz, .k-puffer, .k-tag, .k-ausblick, .k-dock { grid-column: 1 / -1; }
+    .k-satz { padding: 16px; }
+    .sache { min-height: 124px; }
+    .sache .grosszahl { font-size: 34px; }
+    .k-haus .grosszahl { font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+<div class="seite" id="seite"></div>
+<script src="../grundlage/zeichen.js"></script>
+<script src="../grundlage/daten.js"></script>
+<script src="../grundlage/bausteine.js"></script>
+<script>
+(function () {
+  var S = window.SZENE, B = window.BAU, z = window.zeichen, de = window.de, f = S.fluss;
+  var laeuft = S.zustand === "waermepumpe-laeuft";
+
+  // Eine Sache als Kachel. anteil ist der Balken am Fuß: Leistung von 6 kW oder der Ladestand.
+  var sache = function (o) {
+    return '<a class="karte sache' + (o.klasse ? " " + o.klasse : "") + '" href="#" data-an="' + o.an + '" style="--kartenfarbe:' + o.farbe + ";--anteil:" + Math.round(Math.min(1, o.anteil) * 100) + '%">' +
+      '<div class="k-kopf"><span class="zeichenfeld">' + z(o.bild, 20) + '</span><div class="sache-name"><h2>' + o.name + "</h2><span>" + o.wort + "</span></div></div>" +
+      '<div class="grosszahl">' + o.zahl + "<small>" + o.einheit + "</small></div>" +
+      (o.an ? '<i class="sache-balken"></i>' : "") + "</a>";
+  };
+  var bezug = f.netz.richtung === "bezug";
+  var sachen = [
+    { klasse: "k-haus", farbe: "var(--house)", bild: "house", name: "Haus", zahl: de(f.haus.kw), einheit: "kW", wort: "braucht", an: true, anteil: f.haus.kw / 6 },
+    { farbe: "var(--pv)", bild: S.nacht ? "moon" : "sun", name: "Sonne", zahl: de(f.sonne.kw), einheit: "kW", wort: S.nacht ? "ab " + S.sonneAuf : "liefert", an: f.sonne.kw >= 0.05, anteil: f.sonne.kw / 6 },
+    { farbe: bezug ? "var(--grid-in)" : "var(--grid-out)", bild: "grid", name: "Netz", zahl: de(f.netz.kw), einheit: "kW", wort: bezug ? "Bezug" : "Einspeisung", an: f.netz.kw >= 0.05, anteil: f.netz.kw / 6 },
+    { farbe: "var(--battery)", bild: "battery", name: "Speicher", zahl: f.speicher.prozent, einheit: "%", wort: f.speicher.wort, an: f.speicher.wort !== "hält", anteil: f.speicher.prozent / 100 },
+    { farbe: "var(--heat-pump)", bild: "pump", name: "Wärmepumpe", zahl: de(f.waermepumpe.kw), einheit: "kW", wort: f.waermepumpe.wort, an: f.waermepumpe.kw >= 0.05, anteil: f.waermepumpe.kw / 6 },
+    { farbe: "var(--ev)", bild: "car", name: "Wallbox", zahl: de(f.wallbox.kw), einheit: "kW", wort: f.wallbox.wort, an: f.wallbox.kw >= 0.05, anteil: f.wallbox.kw / 6 },
+  ];
+  var satzfarbe = S.wache.length ? "var(--amber-soft)" : laeuft ? "var(--heat-pump)" : "var(--mist)";
+  var satz = '<section class="karte k-satz" style="--kartenfarbe:' + satzfarbe + '"><span class="kicker">' + z("duck", 18) + "Was das Haus gerade tut</span>" + '<span class="wasser">' + z(S.wache.length ? "alert" : laeuft ? "pump" : S.nacht ? "moon" : "sun", 170) + "</span>" + B.satz() + B.wache() + "</section>";
+
+  document.getElementById("seite").innerHTML = B.kopf() + '<div class="feld">' +
+    satz + sachen.slice(0, 4).map(sache).join("") +
+    sachen.slice(4).map(sache).join("") + B.puffer() +
+    B.tag() + B.ausblick() +
+    '<section class="karte k-dock">' + B.tasten() + "</section>" +
+    "</div>" + B.leiste() + B.ente();
+
+  B.tagEinrichten();
+  B.schalten();
+})();
+</script>
+</body>
+</html>
