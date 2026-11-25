@@ -1,27 +1,19 @@
 import DuckCurveKit
 import SwiftUI
 
-/// Die Seite „Zugang und Sicherung“: wie man hereinkommt, wie dieses Gerät hereingekommen ist,
-/// was die Datenbank wiegt, und wie man eine Kopie davon aus dem Haus bekommt.
+/// Die Seite „Zugang und Sicherung“: wie dieses Gerät hereingekommen ist, was die Datenbank wiegt,
+/// wie man eine Kopie davon aus dem Haus bekommt, und wie die Verbindung steht.
 ///
-/// **Die Vorlage** ist `apps/web/src/app/system/zugang/page.tsx`. Sie setzt ihre Abschnitte als
-/// `<section>` mit `<h2>` ohne Kasten; in der App steht jeder in einer ``Karte``, und wo die
-/// Vorlage zwei Abschnitte zusammenrückt, stehen hier „Sichtbarkeit“ und „Konfiguration“ in
-/// einer.
+/// **Die Vorlage** ist `apps/web/src/app/system/zugang/page.tsx`. Seit dem 25.11.2026 stehen dort
+/// wie hier Karten ohne Erklärtexte (der Hausherr: „der Text muss weg“); Platzbedarf und Sicherung
+/// tragen in beiden denselben Titel und Satz (``Kontoworte/Kartenart``).
 ///
-/// **Was der App gegenüber der Vorlage noch fehlt** (`docs/GLEICHSTAND.md`): die Liste der
-/// Personen mit dem Einladen, die eigenen Passkeys und die eigenen Sitzungen. „Gerade
-/// verbunden“ liest im Dashboard eine `Map` im Arbeitsspeicher von Next; im Dienst des Hauses
-/// gibt es dafür keinen Endpunkt, und eine erfundene Liste von Zuschauern wäre schlimmer als
-/// keine.
-///
-/// **Was seit dem 24.11.2026 da ist:** der Abschnitt „Wie man hereinkommt“ im Wortlaut des
-/// Dashboards und der Verweis auf „Mein Zugang“ (``KontoSeite``), die Seite für den eigenen
-/// Zugang, die jede angemeldete Person erreicht. Bis dahin beschrieb die Seite Kopplungslinks und Gast-Token, die es
-/// seit dem 23.11.2026 nicht mehr gibt.
+/// **Was nur die App hat:** „Dieses Gerät“, „Verbindung“ und „Neu einrichten“. Ein Browser hat
+/// weder eine Adresse des Hauses noch einen Schlüsselbund. **Was der App noch fehlt**
+/// (`docs/GLEICHSTAND.md`): die Liste der Personen mit dem Einladen und „Gerade verbunden“, das im
+/// Dashboard eine Liste im Arbeitsspeicher des Web-Dienstes liest.
 struct ZugangSeite: View {
     @Environment(Hauszustand.self) private var haus
-    @Environment(Wegweiser.self) private var wegweiser
     @Environment(\.horizontalSizeClass) private var breite
     /// Das Mittel, mit dem iOS eine Adresse an den Browser gibt - siehe ``exportknopf(_:jahr:)``.
     @Environment(\.openURL) private var oeffne
@@ -32,63 +24,22 @@ struct ZugangSeite: View {
 
     private var schmal: Bool { breite == .compact }
 
-    /// Die 13 Punkte der Vorlage sind am Telefon 14,5 (`handy.css:189-192`: kleine Schrift eine
-    /// Stufe größer, mit der Begründung an `handy.css:187-188` - „am Handy aus dreißig, aber im
-    /// Gehen“). Das trifft auf dieser Route die Noten der Rollen, die Jahresgröße und die
-    /// Fachwörter in Festbreitenschrift.
-    private var notenstufe: CGFloat { schmal ? 14.5 : 13 }
 
     var body: some View {
         Seite {
-            hereinkommen
-            diesesGeraet
-            meinZugang
-            platzbedarf
-            sicherung
-            sichtbarkeitUndKonfiguration
-            verbindung
-            aendern
-            Methode(Zugangsworte.methode.map(Optional.init))
+            VStack(alignment: .leading, spacing: 16) {
+                diesesGeraet
+                platzbedarf
+                sicherung
+                verbindung
+                aendern
+            }
+            .frame(maxWidth: 820, alignment: .leading)
         }
         .sheet(isPresented: $neuEinrichten) {
             Einrichten()
         }
         .task { await ladeBestand() }
-    }
-
-    // MARK: - 1. Wie man hereinkommt
-
-    /// Der Abschnitt „Wie man hereinkommt“ der Vorlage, im Wortlaut des Dashboards
-    /// (``Zugangsworte/hereinkommen``).
-    private var hereinkommen: some View {
-        Karte(kicker: Zugangsworte.ueberschriften[0]) {
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(Zugangsworte.hereinkommen, id: \.self) { absatz($0) }
-            }
-        }
-    }
-
-    // MARK: - Mein Zugang, der Verweis
-
-    /// Der Absatz der Vorlage (`page.tsx`, „Mein Zugang“): Der eigene Zugang steht auf einer
-    /// eigenen Seite, die jede angemeldete Person erreicht. Hier bleibt der Weg dorthin.
-    private var meinZugang: some View {
-        Karte(kicker: Zugangsworte.meinZugangUeberschrift) {
-            VStack(alignment: .leading, spacing: 12) {
-                absatz(Zugangsworte.meinZugang)
-                if haus.zugang.istPerson {
-                    Button {
-                        wegweiser.merkeReiter()
-                        wegweiser.gehe(Bereiche.kontoweg)
-                    } label: {
-                        Text(Zugangsworte.meinZugangUeberschrift)
-                            .font(Schrift.klein)
-                            .foregroundStyle(Farbe.amber)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
     }
 
     // MARK: - 2. Dieses Gerät
@@ -138,11 +89,8 @@ struct ZugangSeite: View {
     /// Schlusszeile und den drei Zuständen, die dort alle fehlten; gerechnet wird das in
     /// ``Datenbestand``.
     private var platzbedarf: some View {
-        Karte(kicker: Zugangsworte.ueberschriften[2]) {
-            VStack(alignment: .leading, spacing: 12) {
-                absatz(Zugangsworte.platzbedarf)
-                platzbedarfstand
-            }
+        Kontokarte(art: .platz) {
+            platzbedarfstand
         }
     }
 
@@ -215,36 +163,53 @@ struct ZugangSeite: View {
 
     // MARK: - 4. Sicherung
 
-    /// Die Jahresdateien (`page.tsx:126-156`) - der Abschnitt fehlte ganz.
+    /// Die Jahresdateien, je Jahr eine Zeile mit zwei runden Knöpfen wie im Dashboard.
     private var sicherung: some View {
-        Karte(kicker: Zugangsworte.ueberschriften[3]) {
-            VStack(alignment: .leading, spacing: 12) {
-                absatz(Zugangsworte.sicherung)
-                hinweis(Zugangsworte.herunterladen)
-                VStack(spacing: 0) {
-                    ForEach(Zugangsworte.sicherungsjahre(jetzt: haus.jetzt), id: \.self) { jahr in
-                        sicherungsjahr(jahr)
-                    }
+        Kontokarte(art: .sicherung) {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(Zugangsworte.sicherungsjahre(jetzt: haus.jetzt), id: \.self) { jahr in
+                    sicherungsjahr(jahr)
                 }
-                hinweis(Zugangsworte.sicherungsschluss)
+                hinweis(Zugangsworte.herunterladen)
+                    .padding(.top, 4)
             }
         }
     }
 
     private func sicherungsjahr(_ jahr: Int) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(alignment: .firstTextBaseline, spacing: 14) {
-                Text(String(jahr)).font(Schrift.zahl).foregroundStyle(Farbe.text1)
-                exportknopf(.minuten, jahr: jahr)
-                exportknopf(.stunden, jahr: jahr)
-                Spacer(minLength: 0)
+        HStack(alignment: .center, spacing: 12) {
+            Zeichen(.kalender, groesse: 17, farbe: Farbe.text2)
+                .frame(width: 32, height: 32)
+                .background(Farbe.flaeche2)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(String(jahr)).font(Schrift.mono(15)).foregroundStyle(Farbe.text1)
+                Text(Zugangsworte.sicherungszeile)
+                    .font(Schrift.mono(12, relativeTo: .caption))
+                    .foregroundStyle(Farbe.text3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Text(Zugangsworte.jahresgroesse)
-                .font(Schrift.sans(notenstufe, relativeTo: .footnote))
-                .foregroundStyle(Farbe.text3)
-                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            if schmal {
+                VStack(alignment: .trailing, spacing: 6) { knoepfe(jahr) }
+            } else {
+                HStack(spacing: 6) { knoepfe(jahr) }
+            }
         }
-        .padding(.vertical, 7)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Farbe.deep.opacity(0.45))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Farbe.linie1, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    @ViewBuilder private func knoepfe(_ jahr: Int) -> some View {
+        exportknopf(.minuten, jahr: jahr)
+        exportknopf(.stunden, jahr: jahr)
     }
 
     /// Ein Verweis, der eine Datei holt - das erste Mal, dass diese App das Gerät verlässt.
@@ -264,54 +229,8 @@ struct ZugangSeite: View {
     /// keines ist, das der Dienst annimmt - dann steht hier nichts, statt ins Leere zu führen.
     @ViewBuilder private func exportknopf(_ art: Zugang.Exportart, jahr: Int) -> some View {
         if let adresse = haus.zugang.export(art: art, jahr: jahr) {
-            Button(art.wort) { oeffne(adresse) }
-                .font(Schrift.sans(14, relativeTo: .footnote))
-                .buttonStyle(.plain)
-                .foregroundStyle(Farbe.amber)
+            Zugangsknopf(wort: art.wort, klein: true) { oeffne(adresse) }
         }
-    }
-
-    // MARK: - 5. Sichtbarkeit und Konfiguration
-
-    /// Die zwei letzten Abschnitte der Vorlage in einer Karte (`page.tsx:158-175`).
-    ///
-    /// Zwei Abschnitte, eine Karte - begründet im Kopf dieser Datei. Die Vorlage rückt sie
-    /// selbst enger zusammen als die vier darüber (`gap-2` statt `gap-3`).
-    private var sichtbarkeitUndKonfiguration: some View {
-        Karte(kicker: "\(Zugangsworte.ueberschriften[4]) und \(Zugangsworte.ueberschriften[5])") {
-            VStack(alignment: .leading, spacing: 12) {
-                satz(Zugangsworte.sichtbarkeit)
-                satz(Zugangsworte.konfiguration)
-                Button(Zugangsworte.annahmenverweis) {
-                    wegweiser.gehe(Zugangsworte.annahmenweg)
-                }
-                .font(Schrift.klein)
-                .buttonStyle(.plain)
-                .foregroundStyle(Farbe.amber)
-            }
-        }
-    }
-
-    /// Ein Absatz, in dem einzelne Fachwörter in Festbreitenschrift stehen.
-    ///
-    /// **Aus `Text` + `Text` und nicht aus einem `HStack`.** Ein Absatz muss umbrechen, und
-    /// zwar mitten im Satz; nebeneinandergestellte Ansichten brechen nur zwischen sich. SwiftUI
-    /// kann mehrere Schriften in *einem* `Text` führen, und genau dafür liegt die Fuge im Kern
-    /// (``Zugangsworte/Satzteil``) - welches Wort ein Dateiname ist, ist eine Aussage über den
-    /// Satz und keine über die Schrift.
-    private func satz(_ teile: [Zugangsworte.Satzteil]) -> some View {
-        teile.reduce(Text("")) { gesammelt, teil in
-            gesammelt
-                + Text(teil.wort)
-                .font(
-                    teil.mono
-                        ? Schrift.mono(notenstufe, relativeTo: .footnote)
-                        : Schrift.sans(15, relativeTo: .body)
-                )
-        }
-        .foregroundStyle(Farbe.text2)
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - 6. Verbindung
@@ -354,33 +273,13 @@ struct ZugangSeite: View {
 
     private var aendern: some View {
         Karte(kicker: "Ändern") {
-            Button {
-                neuEinrichten = true
-            } label: {
-                Text("Neu einrichten")
-                    .font(Schrift.klein)
-                    .foregroundStyle(Farbe.deep)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Farbe.amberWeich)
-                    .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
-            }
-            .buttonStyle(.plain)
+            Zugangsknopf(wort: "Neu einrichten", art: .hervor) { neuEinrichten = true }
         }
     }
 
     // MARK: - Die Bausteine des Textes
 
-    /// Ein Absatz der Vorlage: 15 px, `--text-2`, Zeilenhöhe 1,6 (`page.tsx:62`).
-    private func absatz(_ wort: String) -> some View {
-        Text(wort)
-            .font(Schrift.sans(15, relativeTo: .body))
-            .foregroundStyle(Farbe.text2)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// Ein Schlussabsatz der Vorlage: 14 px, `--text-3` (`page.tsx:79`, `:108`, `:150`).
+    /// Ein leiser Satz unter einer Karte: 14 Punkte, dritte Textstufe.
     private func hinweis(_ wort: String) -> some View {
         Text(wort)
             .font(Schrift.sans(14, relativeTo: .footnote))

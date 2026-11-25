@@ -18,6 +18,11 @@ export const KARTEN = {
   passkeys: { zeichen: "key", titel: "Passkeys", satz: "Anmelden mit Gesicht oder Finger, ohne Passwort." },
   passwort: { zeichen: "lock", titel: "Passwort", satz: "Der zweite Weg herein, an jedem Gerät." },
   sitzungen: { zeichen: "device", titel: "Sitzungen", satz: "Wo du gerade angemeldet bist." },
+  // „Zugang und Sicherung“, die Seite des Hausherrn (24.11.2026: die langen Texte sind weg).
+  personen: { zeichen: "person", titel: "Personen", satz: "Wer sich anmelden darf, und mit welcher Rolle." },
+  verbunden: { zeichen: "device", titel: "Gerade verbunden", satz: "Wer in den letzten fünf Minuten zugesehen hat." },
+  platz: { zeichen: "chart", titel: "Platzbedarf", satz: "Wie groß die Datenbank ist, Tabelle für Tabelle." },
+  sicherung: { zeichen: "calendar", titel: "Sicherung", satz: "Einmal im Jahr herunterladen und woanders ablegen." },
 } satisfies Record<string, { zeichen: IconName; titel: string; satz: string }>;
 
 

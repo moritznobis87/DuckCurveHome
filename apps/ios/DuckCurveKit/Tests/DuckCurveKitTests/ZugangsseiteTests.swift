@@ -80,81 +80,25 @@ final class ZugangsseiteTests: XCTestCase {
         XCTAssertEqual(Zugangsworte.sicherungsjahre(jetzt: jetzt), [2026, 2025])
     }
 
-    // MARK: - Die Reihenfolge und die Fugen
+    // MARK: - Kurz statt lang (25.11.2026)
 
-    /// Die sechs Abschnitte der Vorlage in ihrer Reihenfolge - der Bereichskicker
-    /// („wer Zugang hat · wer zusieht · Daten sichern“, `Bereiche.swift:170`) nennt die ersten
-    /// drei in genau dieser Folge.
-    func testUeberschriftenInDerReihenfolgeDerVorlage() {
+    /// Die Seite trägt keine Erklärtexte mehr. Was bleibt, ist je Karte ein Satz wie im
+    /// Dashboard und der eine Satz der App zum Herunterladen.
+    func testDieKartenSagenDasselbeWieDasDashboard() {
+        XCTAssertEqual(Kontoworte.Kartenart.platz.titel, "Platzbedarf")
+        XCTAssertEqual(Kontoworte.Kartenart.platz.satz, "Wie groß die Datenbank ist, Tabelle für Tabelle.")
+        XCTAssertEqual(Kontoworte.Kartenart.sicherung.titel, "Sicherung")
         XCTAssertEqual(
-            Zugangsworte.ueberschriften,
-            [
-                "Wie man hereinkommt", "Gerade verbunden", "Platzbedarf", "Sicherung",
-                "Sichtbarkeit", "Konfiguration",
-            ])
+            Kontoworte.Kartenart.sicherung.satz, "Einmal im Jahr herunterladen und woanders ablegen.")
+        XCTAssertEqual(Kontoworte.Kartenart.platz.zeichen.vorlage, "chart")
+        XCTAssertEqual(Kontoworte.Kartenart.sicherung.zeichen.vorlage, "calendar")
+        XCTAssertEqual(Zugangsworte.sicherungszeile, "gzip-komprimiertes CSV, Minutenwerte rund 20 MB im Jahr")
     }
 
-    /// Die Fachwörter von „Sichtbarkeit“ stehen in Festbreitenschrift und nichts sonst
-    /// (`page.tsx:161-165`).
-    func testSichtbarkeitSetztDreiFachwoerterInFestbreite() {
-        let mono = Zugangsworte.sichtbarkeit.filter(\.mono).map(\.wort)
-        XCTAssertEqual(mono, ["robots.txt", "noindex", "X-Robots-Tag"])
-    }
-
-    /// Ein Absatz in Stücken muss zusammengesetzt wieder ein Absatz sein - keine doppelten
-    /// und keine fehlenden Leerzeichen an den Fugen.
-    func testDieStueckeFuegenSichZuEinemSatz() {
-        let ganz = Zugangsworte.sichtbarkeit.map(\.wort).joined()
-        XCTAssertEqual(
-            ganz,
-            "Das Dashboard ist für Suchmaschinen gesperrt, und zwar über robots.txt, den noindex-Meta-Tag und den Header X-Robots-Tag. Ein Schutz vor unbefugtem Zugriff ist das nicht; dafür sorgt die Anmeldung."
-        )
-        XCTAssertFalse(ganz.contains("  "))
-    }
-
-    /// „Konfiguration“ nennt eine Datei in Festbreite und endet mit dem Doppelpunkt, auf den
-    /// der Verweis folgt (`page.tsx:171-173`).
-    func testKonfigurationNenntDieDateiUndFuehrtZuDenAnnahmen() {
-        XCTAssertEqual(Zugangsworte.konfiguration.filter(\.mono).map(\.wort), ["CONFIGURATION.md"])
-        XCTAssertTrue(Zugangsworte.konfiguration.map(\.wort).joined().hasSuffix(":"))
-        XCTAssertEqual(Zugangsworte.annahmenweg, "/waerme/annahmen")
-        // Das Ziel ist ein Weg, den die App wirklich kennt - sonst führt der Verweis auf
-        // `Unbekannt`.
-        XCTAssertTrue(Bereiche.alleWege.contains(Zugangsworte.annahmenweg))
-    }
-
-    // MARK: - Was die Absätze nicht sein dürfen
-
-    /// Jeder sichtbare Absatz ist da und ist ein Satz und kein Stichwort.
-    ///
-    /// **Das prüft eine Lücke, die zweimal aufgefallen ist:** eine Zeichenkette, die beim
-    /// Umbau leer geblieben ist, fällt auf dem Gerät nur auf, wenn man die Seite ganz
-    /// herunterrollt - und in der Vorschau steht sie gar nicht.
-    func testJederAbsatzStehtDaUndIstEinSatz() {
-        let absaetze =
-            Zugangsworte.hereinkommen + [
-                Zugangsworte.platzbedarf, Zugangsworte.sicherung,
-                Zugangsworte.jahresgroesse, Zugangsworte.herunterladen,
-                Zugangsworte.sicherungsschluss,
-            ]
-        for a in absaetze {
-            XCTAssertGreaterThan(a.count, 40, "Zu kurz für einen Absatz: \(a)")
-            XCTAssertFalse(a.hasPrefix(" "))
-            XCTAssertFalse(a.contains("  "))
-        }
-        XCTAssertEqual(Zugangsworte.methode.count, 3)
-    }
-
-    /// Deutsche Anführungszeichen immer als Paar: gleich viele „ wie “.
-    ///
-    /// Ein mit dem geraden Zeichen geschlossenes Zitat ist im Satzbild ein Fehler, den man am
-    /// Gerät übersieht, und in dieser Datei stehen vier Zitate.
-    func testAnfuehrungszeichenStehenPaarweise() {
-        let alles =
-            (Zugangsworte.hereinkommen + [Zugangsworte.herunterladen]
-            + Zugangsworte.methode + Zugangsworte.sichtbarkeit.map(\.wort)).joined(separator: " ")
-        XCTAssertEqual(
-            alles.filter { $0 == "\u{201E}" }.count, alles.filter { $0 == "\u{201C}" }.count)
-        XCTAssertFalse(alles.contains("\""))
+    /// Der Satz zum Herunterladen bleibt ein Satz und wird nicht wieder zum Absatz.
+    func testDerSatzZumHerunterladenIstKurz() {
+        XCTAssertLessThan(Zugangsworte.herunterladen.count, 120)
+        XCTAssertTrue(Zugangsworte.herunterladen.hasSuffix("."))
+        XCTAssertFalse(Zugangsworte.herunterladen.contains("\""))
     }
 }

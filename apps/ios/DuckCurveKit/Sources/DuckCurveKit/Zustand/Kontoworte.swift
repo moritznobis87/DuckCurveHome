@@ -20,12 +20,16 @@ public enum Kontoworte {
     /// Eine der drei Karten: Zeichen, Titel und der Satz darunter.
     public enum Kartenart: String, Sendable, CaseIterable {
         case passkeys, passwort, sitzungen
+        /// Die Karten von „Zugang und Sicherung“, soweit die App sie zeigt.
+        case platz, sicherung
 
         public var zeichen: Zeichenart {
             switch self {
             case .passkeys: return .schluessel
             case .passwort: return .schloss
             case .sitzungen: return .geraet
+            case .platz: return .diagramm
+            case .sicherung: return .kalender
             }
         }
 
@@ -34,6 +38,8 @@ public enum Kontoworte {
             case .passkeys: return "Passkeys"
             case .passwort: return "Passwort"
             case .sitzungen: return "Sitzungen"
+            case .platz: return "Platzbedarf"
+            case .sicherung: return "Sicherung"
             }
         }
 
@@ -42,6 +48,8 @@ public enum Kontoworte {
             case .passkeys: return "Anmelden mit Gesicht oder Finger, ohne Passwort."
             case .passwort: return "Der zweite Weg herein, an jedem Gerät."
             case .sitzungen: return "Wo du gerade angemeldet bist."
+            case .platz: return "Wie groß die Datenbank ist, Tabelle für Tabelle."
+            case .sicherung: return "Einmal im Jahr herunterladen und woanders ablegen."
             }
         }
     }

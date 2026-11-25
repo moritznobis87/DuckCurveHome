@@ -22,4 +22,9 @@ describe("Mein Zugang", () => {
   it("fragt vor dem Löschen eines Passkeys mit seinem Namen", () => {
     expect(loeschfrage("iPhone")).toBe("„iPhone“ löschen?");
   });
+
+  it("gibt den Karten von „Zugang und Sicherung“ dieselben Titel und Sätze wie die App", () => {
+    expect(KARTEN.platz).toEqual({ zeichen: "chart", titel: "Platzbedarf", satz: "Wie groß die Datenbank ist, Tabelle für Tabelle." });
+    expect(KARTEN.sicherung).toEqual({ zeichen: "calendar", titel: "Sicherung", satz: "Einmal im Jahr herunterladen und woanders ablegen." });
+  });
 });

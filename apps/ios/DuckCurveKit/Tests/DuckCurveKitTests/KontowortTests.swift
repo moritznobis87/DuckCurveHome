@@ -17,7 +17,7 @@ final class KontowortTests: XCTestCase {
         XCTAssertEqual(Kontoworte.Kartenart.passwort.zeichen.vorlage, "lock")
         XCTAssertEqual(Kontoworte.Kartenart.sitzungen.zeichen.vorlage, "device")
         XCTAssertEqual(
-            Kontoworte.Kartenart.allCases.map(\.satz),
+            [Kontoworte.Kartenart.passkeys, .passwort, .sitzungen].map(\.satz),
             [
                 "Anmelden mit Gesicht oder Finger, ohne Passwort.",
                 "Der zweite Weg herein, an jedem Gerät.",
