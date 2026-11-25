@@ -1,6 +1,8 @@
 # Empfehlung: „Die Bühne“
 
-Vorgelegt am 25.11.2026. Gebaut wird erst nach der Entscheidung des Hausherrn.
+Vorgelegt am 25.11.2026. Gebaut wird erst nach der Entscheidung des Hausherrn. Die Vorlage mit
+allen Bildern nebeneinander steht unter https://claude.ai/artifact/QaZgh7e8UAbubqCipKh572 (nur
+für den Hausherrn sichtbar).
 
 ## Warum die Bühne
 
