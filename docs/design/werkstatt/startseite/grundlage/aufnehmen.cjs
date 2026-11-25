@@ -27,7 +27,9 @@ const { chromium } = require("playwright");
     const mass = await seite.evaluate(() => ({ h: document.documentElement.scrollHeight, b: document.documentElement.scrollWidth, ih: innerHeight, ib: innerWidth }));
     if (mass.b > mass.ib + 1) { fehler++; console.log(`FEHLER ${name}: rollt seitwärts (${mass.b} > ${mass.ib}).`); }
     if (!ganz && mass.h > mass.ih + 1) { fehler++; console.log(`FEHLER ${name}: läuft über den Schirm hinaus (${mass.h} > ${mass.ih}). Die Wand rollt nicht.`); }
-    await seite.screenshot({ path: path.join(aus, `${name}.png`), fullPage: ganz });
+    // Die ganze Seite: der Schirm wird so hoch wie das Dokument, damit Leiste und Ente am Fuß stehen.
+    if (ganz) { await seite.setViewportSize({ width: breite, height: mass.h }); await seite.waitForTimeout(200); }
+    await seite.screenshot({ path: path.join(aus, `${name}.png`) });
     console.log(`${name}.png  ${breite} × ${ganz ? mass.h : hoehe}`);
     await seite.close();
   };

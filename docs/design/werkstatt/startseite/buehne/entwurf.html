@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entwurf: Die Bühne</title>
+<link rel="stylesheet" href="../grundlage/grund.css">
+<link rel="stylesheet" href="../grundlage/bausteine.css">
+<style>
+  .seite { display: grid; gap: 14px; padding: 14px 22px 20px; }
+  .seite > * { min-width: 0; }
+  .satzzeile { display: flex; align-items: flex-end; gap: 28px; }
+  .satzzeile .satz { flex: 1; min-width: 0; }
+  .satzzeile .wache { max-width: 430px; }
+  .buehne { min-height: 0; }
+  .k-ausblick .ausblick-bild { flex: 1; min-height: 0; }
+  .k-dock { justify-content: center; }
+  .fl-sache { cursor: pointer; }
+  .fl-luefter { transform-box: fill-box; transform-origin: center; }
+  .laeuft .fl-luefter { animation: drehen 2.4s linear infinite; }
+  @keyframes drehen { to { transform: rotate(360deg); } }
+  .stern-blinkt { animation: blinken 4s ease-in-out infinite; }
+  @keyframes blinken { 50% { opacity: 0.15; } }
+  .unterhaus { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .unterhaus .karte { display: flex; align-items: center; gap: 10px; padding: 12px; }
+  .unterhaus .zeichenfeld { height: 32px; width: 32px; }
+  .unterhaus b { display: block; font-family: var(--font-mono); font-weight: 400; font-size: 22px; line-height: 1.1; letter-spacing: -0.02em; }
+  .unterhaus b small { font-family: var(--font-sans); font-size: 12px; color: var(--text-3); margin-left: 4px; }
+  .unterhaus span span { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+  .hof { paint-order: stroke; stroke: color-mix(in srgb, var(--petrol) 88%, transparent); stroke-width: 6px; stroke-linejoin: round; }
+
+  @media (min-width: 721px) {
+    html, body { height: 100%; overflow: hidden; }
+    .seite { height: 100dvh; grid-template-rows: auto auto minmax(0, 1fr) 212px; }
+    .oben, .unten { display: grid; grid-template-columns: minmax(0, 1fr) 404px; gap: 14px; min-height: 0; }
+    .rechts { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 14px; min-height: 0; }
+    .unterhaus { display: none; }
+    /* Alfred sitzt im achten Feld der Schalter und verdeckt nichts. */
+    .ente { right: 58px; bottom: 50px; }
+  }
+  @media (max-width: 720px) {
+    .seite { padding: 10px 16px 112px; gap: 12px; }
+    .satzzeile { flex-direction: column; align-items: stretch; gap: 10px; }
+    .oben, .rechts, .unten { display: grid; gap: 12px; }
+    .buehne { height: 322px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .laeuft .fl-luefter, .stern-blinkt { animation: none; } }
+</style>
+</head>
+<body>
+<div class="seite" id="seite"></div>
+<script src="../grundlage/zeichen.js"></script>
+<script src="../grundlage/daten.js"></script>
+<script src="../grundlage/bausteine.js"></script>
+<script>
+(function () {
+  var S = window.SZENE, B = window.BAU, z = window.zeichen, de = window.de, f = S.fluss;
+
+  var kachel = function (farbe, bild, kw, name, wort) {
+    return '<a class="karte" href="#" style="--kartenfarbe:' + farbe + '"><span class="zeichenfeld">' + z(bild, 20) + "</span><span><b>" + de(kw) + "<small>kW</small></b><span>" + name + " " + wort + "</span></span></a>";
+  };
+  document.getElementById("seite").innerHTML =
+    B.kopf() +
+    '<div class="satzzeile">' + B.satz() + B.wache() + "</div>" +
+    '<div class="oben"><div class="buehne" id="buehne" data-nacht="' + S.nacht + '" data-gestoert="' + S.verbindung.gestoert + '"></div>' +
+    '<div class="unterhaus">' + kachel("var(--ev)", "car", f.wallbox.kw, "Wallbox", f.wallbox.wort) + kachel("var(--heat-pump)", "pump", f.waermepumpe.kw, "Wärmepumpe", f.waermepumpe.wort) + "</div>" +
+    '<div class="rechts">' + B.puffer() + B.ausblick() + "</div></div>" +
+    '<div class="unten">' + B.tag() + '<section class="karte k-dock">' + B.tasten() + "</section></div>" +
+    B.leiste() + B.ente();
+
+  var stunden = function (hhmm) { return parseInt(hhmm.slice(0, 2), 10) + parseInt(hhmm.slice(3), 10) / 60; };
+
+  function zeichne() {
+    var el = document.getElementById("buehne"), W = el.clientWidth, H = el.clientHeight, schmal = W < 520;
+    var G = H - (schmal ? 54 : 60), cx = W / 2, t = "";
+    var hb = schmal ? 60 : Math.min(88, W * 0.105), hh = schmal ? 76 : 84, dach = schmal ? 50 : 62, ueber = schmal ? 13 : 18;
+    var breite = function (kw) { return 5 + kw * 4.5; };
+
+    // Ein Band: breit nach Leistung, in der Farbe der Sache, mit Lichtpunkten in Flussrichtung.
+    var band = function (d, kw, farbe, rueck) {
+      if (kw < 0.05) return '<path d="' + d + '" fill="none" stroke="var(--house)" stroke-opacity="0.22" stroke-width="1.5" stroke-dasharray="3 6" stroke-linecap="round"/>';
+      var w = breite(kw);
+      return '<path d="' + d + '" fill="none" stroke="' + farbe + '" stroke-width="' + w + '" stroke-linecap="round" stroke-opacity="0.92" style="filter:drop-shadow(0 0 9px ' + farbe + ')"/>' +
+        '<path class="fl-fliessen' + (rueck ? " fl-rueck" : "") + '" d="' + d + '" fill="none" stroke="var(--house)" stroke-opacity="0.85" stroke-width="' + Math.max(2, w * 0.28) + '" stroke-linecap="round" stroke-dasharray="8 30"/>';
+    };
+    var schild = function (x, y, zahl, einheit, name, anker, farbe, ruht) {
+      return '<text x="' + x + '" y="' + y + '" text-anchor="' + anker + '" class="fl-zahl' + (schmal ? " hof" : "") + '" font-size="' + (schmal ? 26 : 30) + '"' + (ruht ? ' fill-opacity="0.5"' : "") + (farbe ? ' style="fill:' + farbe + '"' : "") + ">" + zahl + '<tspan class="fl-einheit" font-size="13" dx="4" style="font-family:var(--font-sans)">' + einheit + "</tspan></text>" +
+        '<text x="' + x + '" y="' + (y + 18) + '" text-anchor="' + anker + '" class="fl-name' + (schmal ? " hof" : "") + '" font-size="12.5">' + name + "</text>";
+    };
+    var bild = function (name, x, masz, farbe) {
+      return '<g transform="translate(' + (x - 12 * masz) + "," + (G - 24 * masz + 2.4 * masz) + ") scale(" + masz + ')" fill="none" stroke="' + farbe + '" stroke-width="' + (1.9 / masz * 1.6) + '" stroke-linecap="round" stroke-linejoin="round">' + window.ZEICHEN[name] + "</g>";
+    };
+    var treffer = function (x, breit) { return '<rect x="' + (x - breit / 2) + '" y="' + (G - 112) + '" width="' + breit + '" height="112" fill="transparent"/>'; };
+
+    // ---- Himmel: Sterne und Mond, oder die Sonne auf ihrem Bogen
+    var x0 = schmal ? 22 : 36, rx = (W - 2 * x0) / 2, ry = G - (schmal ? 64 : 40);
+    var auf = stunden(S.sonneAuf), unter = stunden(S.sonneUnter);
+    var anteil = Math.max(0, Math.min(1, (S.jetztStunden - auf) / (unter - auf)));
+    var sx = cx - rx * Math.cos(Math.PI * anteil), sy = G - ry * Math.sin(Math.PI * anteil);
+    t += '<defs><radialGradient id="schein"><stop offset="0" stop-color="var(--amber)" stop-opacity="0.55"/><stop offset="1" stop-color="var(--amber)" stop-opacity="0"/></radialGradient>' +
+      '<linearGradient id="strahl" gradientUnits="userSpaceOnUse" x1="' + sx + '" y1="' + sy + '" x2="' + cx + '" y2="' + (G - hh) + '"><stop offset="0" stop-color="var(--amber)" stop-opacity="0.62"/><stop offset="1" stop-color="var(--amber)" stop-opacity="0.16"/></linearGradient>' +
+      '<linearGradient id="boden" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--deep)" stop-opacity="0.9"/><stop offset="1" stop-color="var(--deep)" stop-opacity="0.55"/></linearGradient></defs>';
+    if (S.nacht) {
+      var saat = 7;
+      for (var i = 0; i < (schmal ? 34 : 70); i++) {
+        saat = (saat * 16807) % 2147483647; var px = (saat % 1000) / 1000 * W;
+        saat = (saat * 16807) % 2147483647; var py = (saat % 1000) / 1000 * (G - 70) + 6;
+        saat = (saat * 16807) % 2147483647; var pr = 0.5 + (saat % 100) / 100;
+        t += '<circle' + (i % 9 === 0 ? ' class="stern-blinkt"' : "") + ' cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="' + pr.toFixed(2) + '" fill="var(--house)" fill-opacity="' + (0.25 + pr * 0.35).toFixed(2) + '"/>';
+      }
+    }
+    t += '<path d="M' + x0 + "," + G + " A" + rx + "," + ry + " 0 0 1 " + (W - x0) + "," + G + '" fill="none" stroke="var(--house)" stroke-opacity="' + (S.nacht ? 0.16 : 0.3) + '" stroke-width="1.5" stroke-dasharray="2 7" stroke-linecap="round"/>';
+    if (S.nacht) {
+      var mx = W * (schmal ? 0.76 : 0.7), my = schmal ? 40 : 54, R = 15;
+      t += '<circle cx="' + mx + '" cy="' + my + '" r="62" fill="var(--amber-soft)" fill-opacity="0.07"/>';
+      t += '<path transform="rotate(-28 ' + mx + " " + my + ')" d="M' + mx + "," + (my - R) + " A" + R + "," + R + " 0 0 0 " + mx + "," + (my + R) + " A" + R * 1.55 + "," + R * 1.55 + " 0 0 1 " + mx + "," + (my - R) + ' Z" fill="var(--amber-soft)" style="filter:drop-shadow(0 0 10px var(--amber-soft))"/>';
+      t += '<text x="' + (schmal ? 16 : 24) + '" y="' + (schmal ? 34 : 42) + '" font-size="' + (schmal ? 14 : 15.5) + '" class="fl-name">Die Sonne geht um ' + S.sonneAuf + " auf.</text>";
+    } else {
+      t += '<path d="M' + x0 + "," + G + " A" + rx + "," + ry + " 0 0 1 " + sx + "," + sy + '" fill="none" stroke="var(--amber)" stroke-opacity="0.85" stroke-width="2" stroke-linecap="round"/>';
+      t += '<circle cx="' + sx + '" cy="' + sy + '" r="' + (schmal ? 78 : 104) + '" fill="url(#schein)"/>';
+      if (f.sonne.kw >= 0.05) {
+        var halb = Math.min(hb + ueber - 6, 18 + f.sonne.kw * 14);
+        t += '<path d="M' + (sx - 9) + "," + (sy + 6) + " L" + (sx + 9) + "," + (sy + 6) + " L" + (cx + halb) + "," + (G - hh - dach * (1 - halb / (hb + ueber)) - 3) + " L" + cx + "," + (G - hh - dach - 3) + " L" + (cx - halb) + "," + (G - hh - dach * (1 - halb / (hb + ueber)) - 3) + ' Z" fill="url(#strahl)"/>';
+        t += '<path class="fl-fliessen" d="M' + sx + "," + (sy + 20) + " L" + cx + "," + (G - hh - dach - 6) + '" fill="none" stroke="var(--house)" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 30"/>';
+      }
+      t += '<circle cx="' + sx + '" cy="' + sy + '" r="16" fill="var(--amber-soft)" style="filter:drop-shadow(0 0 14px var(--amber))"/>';
+      t += '<a class="fl-sache" href="#"><text x="' + (schmal ? 16 : 24) + '" y="' + (schmal ? 44 : 58) + '" class="fl-zahl" font-size="' + (schmal ? 30 : 40) + '" style="fill:var(--amber)">' + de(f.sonne.kw) + '<tspan font-size="14" dx="5" class="fl-einheit" style="font-family:var(--font-sans)">kW Sonne</tspan></text></a>';
+    }
+
+    // ---- Boden, mit Aufgang und Untergang an den Enden des Bogens
+    t += '<path d="M0,' + (G - 10) + " C" + W * 0.18 + "," + (G - 30) + " " + W * 0.32 + "," + (G - 4) + " " + W * 0.5 + "," + (G - 14) + " S" + W * 0.82 + "," + (G - 34) + " " + W + "," + (G - 8) + " V" + G + ' H0 Z" fill="var(--deep)" fill-opacity="0.45"/>';
+    t += '<rect x="0" y="' + G + '" width="' + W + '" height="' + (H - G) + '" fill="url(#boden)"/><line x1="0" x2="' + W + '" y1="' + G + '" y2="' + G + '" stroke="var(--line-2)"/>';
+    t += '<text x="' + x0 + '" y="' + (H - 10) + '" font-size="10.5" class="fl-zahl fl-einheit">' + S.sonneAuf + '</text><text x="' + (W - x0) + '" y="' + (H - 10) + '" text-anchor="end" font-size="10.5" class="fl-zahl fl-einheit">' + S.sonneUnter + "</text>";
+
+    // ---- Wo die Sachen stehen
+    var nx = schmal ? 40 : Math.max(70, W * 0.1), wx = W * 0.285, bx = schmal ? W - 42 : W * 0.715, px2 = W * 0.89;
+    var tief = G + (schmal ? 26 : 30), bezug = f.netz.richtung === "bezug";
+    var yz = G - (schmal ? 96 : 96);
+
+    // Netz: das Kabel läuft unter der Erde ins Haus.
+    var kabel = "M" + nx + "," + (G + 2) + " V" + (tief - 16) + " q0,16 16,16 H" + (cx - hb * (schmal ? 0.8 : 0.5) - 16) + " q16,0 16,-16 V" + (G + 2);
+    t += band(kabel, f.netz.kw, bezug ? "var(--grid-in)" : "var(--grid-out)", !bezug);
+    t += '<a class="fl-sache" href="#">' + treffer(nx, 80) + bild("grid", nx, schmal ? 1.9 : 2.2, bezug ? "var(--grid-in)" : "var(--grid-out)") +
+      schild(schmal ? 10 : nx, yz, de(f.netz.kw), "kW", bezug ? "Netzbezug" : "Einspeisung", schmal ? "start" : "middle") + "</a>";
+
+    // Speicher: eine Batterie neben dem Haus, gefüllt nach Ladestand.
+    var laedt = f.speicher.wort === "lädt";
+    t += band("M" + (cx + hb) + "," + (G - 26) + " H" + (bx - 20), f.speicher.wort === "hält" ? 0 : f.speicher.kw, "var(--battery)", !laedt);
+    t += '<a class="fl-sache" href="#">' + treffer(bx, 80) +
+      '<rect x="' + (bx - 7) + '" y="' + (G - 67) + '" width="14" height="6" rx="2" fill="var(--battery)"/>' +
+      '<rect x="' + (bx - 19) + '" y="' + (G - 62) + '" width="38" height="60" rx="8" fill="var(--surface-1)" stroke="var(--battery)" stroke-width="2"/>' +
+      '<rect x="' + (bx - 14) + '" y="' + (G - 7 - 50 * f.speicher.prozent / 100) + '" width="28" height="' + (50 * f.speicher.prozent / 100) + '" rx="4" fill="var(--battery)"/>' +
+      schild(schmal ? W - 10 : bx, yz, f.speicher.prozent, "%", "Speicher " + f.speicher.wort, schmal ? "end" : "middle") + "</a>";
+
+    if (!schmal) {
+      // Wallbox und Wärmepumpe stehen an der Wand links und rechts außen.
+      t += band("M" + (cx - hb) + "," + (G - 20) + " H" + (wx + 26), f.wallbox.kw, "var(--ev)");
+      t += '<a class="fl-sache" href="#">' + treffer(wx, 90) + bild("car", wx, 2.1, f.wallbox.kw >= 0.05 ? "var(--ev)" : "var(--text-3)") +
+        schild(wx, yz, de(f.wallbox.kw), "kW", "Wallbox " + f.wallbox.wort, "middle", null, f.wallbox.kw < 0.05) + "</a>";
+      var rohr = "M" + (cx + hb * 0.5) + "," + (G + 2) + " V" + (tief - 16) + " q0,16 16,16 H" + (px2 - 16) + " q16,0 16,-16 V" + (G + 2);
+      t += band(rohr, f.waermepumpe.kw, "var(--heat-pump)");
+      var an = f.waermepumpe.kw >= 0.05, wf = an ? "var(--heat-pump)" : "var(--text-3)";
+      t += '<a class="fl-sache' + (an ? " laeuft" : "") + '" href="#">' + treffer(px2, 96) +
+        '<rect x="' + (px2 - 31) + '" y="' + (G - 50) + '" width="62" height="48" rx="8" fill="var(--surface-1)" stroke="' + wf + '" stroke-width="2"/>' +
+        '<circle cx="' + (px2 - 9) + '" cy="' + (G - 26) + '" r="15" fill="none" stroke="' + wf + '" stroke-width="1.6"/>' +
+        '<g class="fl-luefter" stroke="' + wf + '" stroke-width="2.4" stroke-linecap="round"><line x1="' + (px2 - 9) + '" y1="' + (G - 37) + '" x2="' + (px2 - 9) + '" y2="' + (G - 15) + '"/><line x1="' + (px2 - 20) + '" y1="' + (G - 26) + '" x2="' + (px2 + 2) + '" y2="' + (G - 26) + '"/></g>' +
+        '<path d="M' + (px2 + 15) + "," + (G - 38) + " h9 M" + (px2 + 15) + "," + (G - 30) + " h9 M" + (px2 + 15) + "," + (G - 22) + " h9 M" + (px2 + 15) + "," + (G - 14) + ' h9" stroke="' + wf + '" stroke-width="1.6" stroke-linecap="round"/>' +
+        schild(px2, yz, de(f.waermepumpe.kw), "kW", "Wärmepumpe " + f.waermepumpe.wort, "middle", an ? "var(--heat-pump)" : null, !an) + "</a>";
+    } else {
+      // Am Handy hängen Wärmepumpe und Wallbox als zwei Kacheln unter dem Haus.
+      t += band("M" + (cx + 22) + "," + (G + 2) + " V" + (G + 16) + " q0,14 14,14 H" + (W * 0.75 - 14) + " q14,0 14,14 V" + H, f.waermepumpe.kw, "var(--heat-pump)");
+      t += band("M" + (cx - 22) + "," + (G + 2) + " V" + (G + 16) + " q0,14 -14,14 H" + (W * 0.25 + 14) + " q-14,0 -14,14 V" + H, f.wallbox.kw, "var(--ev)");
+    }
+
+    // ---- Das Haus in der Mitte, mit der Summe
+    var spitze = G - hh - dach, dx = hb + ueber, lang = Math.sqrt(dx * dx + dach * dach), ertrag = !S.nacht && f.sonne.kw >= 0.05;
+    var platte = function (seite) {
+      var nxv = seite * dach / lang * 5, nyv = -dx / lang * 5;
+      return '<line x1="' + (cx + seite * dx * 0.16 + nxv) + '" y1="' + (spitze + dach * 0.16 + nyv) + '" x2="' + (cx + seite * dx * 0.88 + nxv) + '" y2="' + (spitze + dach * 0.88 + nyv) + '" stroke="' + (ertrag ? "var(--amber)" : "var(--mist)") + '" stroke-opacity="' + (ertrag ? 1 : 0.55) + '" stroke-width="6" stroke-linecap="round"' + (ertrag ? ' style="filter:drop-shadow(0 0 8px var(--amber))"' : "") + "/>";
+    };
+    t += '<a class="fl-sache" href="#">' +
+      '<path d="M' + (cx - dx) + "," + (G - hh) + " L" + cx + "," + spitze + " L" + (cx + dx) + "," + (G - hh) + ' Z" fill="var(--surface-3)" stroke="var(--line-2)" stroke-width="1.5" stroke-linejoin="round"/>' +
+      '<rect x="' + (cx - hb) + '" y="' + (G - hh) + '" width="' + 2 * hb + '" height="' + hh + '" fill="var(--surface-2)" stroke="var(--line-2)" stroke-width="1.5"/>' +
+      platte(-1) + platte(1) +
+      '<circle cx="' + cx + '" cy="' + (spitze + dach * 0.6) + '" r="8" fill="' + (S.nacht ? "var(--amber-soft)" : "var(--surface-1)") + '" stroke="var(--line-2)"' + (S.nacht ? ' style="filter:drop-shadow(0 0 9px var(--amber-soft))"' : "") + "/>" +
+      '<text x="' + cx + '" y="' + (G - hh / 2 + 9) + '" text-anchor="middle" class="fl-zahl" font-size="' + (schmal ? 34 : 40) + '">' + de(f.haus.kw) + '<tspan font-size="13" dx="4" class="fl-einheit" style="font-family:var(--font-sans)">kW</tspan></text>' +
+      '<text x="' + cx + '" y="' + (G - 11) + '" text-anchor="middle" class="fl-name" font-size="12.5">braucht das Haus</text></a>';
+
+    el.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Das Haus unter seinem Himmel: woher der Strom gerade kommt und wohin er fließt">' + t + "</svg>" +
+      (S.verbindung.gestoert ? '<span class="buehne-von-eben">' + z("clock", 16) + "Das Bild ist von " + S.verbindung.wort.slice(-5) + ".</span>" : "");
+  }
+
+  zeichne();
+  B.tagEinrichten();
+  B.schalten();
+  window.addEventListener("resize", zeichne);
+})();
+</script>
+</body>
+</html>
