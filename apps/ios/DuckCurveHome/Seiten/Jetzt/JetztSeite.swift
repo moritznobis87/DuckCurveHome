@@ -75,8 +75,25 @@ struct JetztSeite: View {
         Task { await haus.ladeTag(haus.heute) }
     }
 
+    /// Ab dieser Breite trägt der Schirm die Wandfassung: zweimal 32 Punkte Rand, das Bild mit
+    /// mindestens 520 Punkten (darunter wird es schmal und lässt Wallbox und Wärmepumpe weg,
+    /// ``Startbuehne/mass(breite:hoehe:)``), 14 Punkte Abstand und die 404 Punkte der Karten.
+    private static let wandAb: CGFloat = 1002
+
+    /// **Nach der Breite, die da ist, nicht nach der Größenklasse.** Ein iPad im Hochformat hat
+    /// die breite Klasse, aber nur 820 Punkte: neben den Karten bliebe dem Bild ein schmaler
+    /// Streifen, es ließe Sachen weg, und was sie am Telefon ersetzt, stünde nur in der
+    /// Handfassung. Darum bekommt jeder Schirm unter ``wandAb`` die Handfassung, und die zeigt
+    /// die Kacheln oder die Liste genau dann, wenn ihr Bild schmal ist.
     @ViewBuilder private var gerippe: some View {
-        if schmal { hand } else { wand }
+        GeometryReader { raum in
+            if raum.size.width >= Self.wandAb {
+                wand
+            } else {
+                // ``Seite`` nimmt links und rechts je 16 Punkte.
+                hand(schmalesBild: raum.size.width - 32 < 520)
+            }
+        }
     }
 
     // MARK: - Die Wandanzeige
@@ -169,19 +186,21 @@ struct JetztSeite: View {
 
     // MARK: - Die Handfassung
 
-    private var hand: some View {
+    private func hand(schmalesBild: Bool) -> some View {
         Seite {
             satzblock
-            // **Am Telefon ist das Bild schmal** (`start.css`: 322 Punkte hoch für die Bühne,
-            // 380 für die Uhr). Was neben dem Haus oder dem Ring keinen Platz hat, steht
-            // darunter: Wallbox und Wärmepumpe als zwei Kacheln, bei der Uhr alle fünf Sachen
-            // als Liste.
+            // **Das Bild in fester Höhe** (`start.css`: 322 Punkte für die Bühne, 380 für die
+            // Uhr). Ist es schmal, steht darunter, was neben dem Haus oder dem Ring keinen Platz
+            // hat: Wallbox und Wärmepumpe als zwei Kacheln, bei der Uhr alle fünf Sachen als
+            // Liste. Ist es breit genug, zeigt es sie selbst, und darunter stünden sie doppelt.
             bild
                 .frame(height: startbild == .uhr ? 380 : 322)
-            if startbild == .uhr {
-                Startdingliste(nacht: nacht, sonneAb: sonneAb)
-            } else {
-                Startunterhaus()
+            if schmalesBild {
+                if startbild == .uhr {
+                    Startdingliste(nacht: nacht, sonneAb: sonneAb)
+                } else {
+                    Startunterhaus()
+                }
             }
             Startpufferkarte()
             nebenkarte

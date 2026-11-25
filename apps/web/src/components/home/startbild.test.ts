@@ -140,6 +140,20 @@ describe("Stundenring", () => {
     expect(st[0]!.stunde).toBe(18);
     expect(st[23]!.stunde).toBe(17);
   });
+  it("teilt die Stunden nach der Zeit des Hauses ein, nicht nach der des Geräts", () => {
+    const vorher = process.env.TZ;
+    // Indien liegt fünfeinhalb Stunden vor UTC: mit der Uhr des Geräts gerundet, begänne die Stunde um halb.
+    process.env.TZ = "Asia/Kolkata";
+    try {
+      const st = stunden24([zelle(um(13, 0), 30, 0), zelle(um(13, 45), 34, 0), zelle(um(14, 0), 40, 0)], null);
+      expect(st.map((s) => s.stunde)).toEqual([13, 14]);
+      expect(st[0]!.start).toBe(um(13, 0));
+      expect(st.map((s) => s.preis)).toEqual([32, 40]);
+    } finally {
+      if (vorher === undefined) delete process.env.TZ;
+      else process.env.TZ = vorher;
+    }
+  });
   it("stellt 00 Uhr nach oben und dreht im Uhrzeigersinn", () => {
     expect(stundenwinkel(0)).toBeCloseTo(-Math.PI / 2, 9);
     expect(stundenwinkel(6)).toBeCloseTo(0, 9);

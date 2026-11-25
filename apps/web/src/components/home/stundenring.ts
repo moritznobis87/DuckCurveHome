@@ -30,13 +30,14 @@ export function stunden24(zellen: Zelle[], guenstig: Fenster | null): Stunde[] {
   const out: Stunde[] = [];
   const summen: Array<{ preis: number; preise: number; sonne: number; zellen: number }> = [];
   for (const z of zellen) {
-    const d = new Date(z.ts);
-    d.setMinutes(0, 0, 0);
-    const start = d.getTime();
+    // Die Stunde beginnt an einer vollen UTC-Stunde: Das Haus rechnet in Europe/Berlin, und dort
+    // liegen volle Stunden auf vollen UTC-Stunden. Mit der Uhr des Geräts gerundet, verschob ein
+    // Gerät in einer Zeitzone mit halber Stunde (Indien) Preis, Sonne und Läufe gegen den Zeiger.
+    const start = Math.floor(z.ts / STUNDE_MS) * STUNDE_MS;
     if (!out.length || out[out.length - 1]!.start !== start) {
       if (out.length === 24) break;
-      // Die Stunde in der Zeit des Hauses, so wie jede Uhrzeit der Oberfläche, nicht in der des Geräts.
-      out.push({ start, stunde: Number(hhmm(d).slice(0, 2)), preis: null, sonneKw: 0, wp: false, ofen: false, tief: false });
+      // Die Stunde in der Zeit des Hauses, so wie jede Uhrzeit der Oberfläche.
+      out.push({ start, stunde: Number(hhmm(new Date(start)).slice(0, 2)), preis: null, sonneKw: 0, wp: false, ofen: false, tief: false });
       summen.push({ preis: 0, preise: 0, sonne: 0, zellen: 0 });
     }
     const s = summen[summen.length - 1]!;
