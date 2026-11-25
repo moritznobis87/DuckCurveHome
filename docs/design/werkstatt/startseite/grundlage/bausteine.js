@@ -56,9 +56,8 @@
   B.puffer = function () {
     var p = S.puffer;
     return '<section class="karte k-puffer">' +
-      '<div class="puffer-links"><div class="k-kopf"><span class="zeichenfeld">' + z("thermo", 20) + "</span><h2>Puffer</h2></div>" +
-      '<div class="grosszahl">' + p.prozent + "<small>%</small></div>" +
-      '<span class="marke' + (p.wort === "lädt" ? " marke-hinweis" : "") + '">' + p.wort + "</span></div>" +
+      '<div class="puffer-links"><div class="k-kopf"><span class="zeichenfeld">' + z("thermo", 20) + "</span><h2>Puffer</h2>" + '<span class="marke' + (p.wort === "lädt" ? " marke-hinweis" : "") + '">' + p.wort + "</span></div>" +
+      '<div class="grosszahl">' + p.prozent + "<small>%</small></div></div>" +
       '<div class="tank"><div class="tank-glas" style="background:' + B.pufferVerlauf() + '"></div>' +
       '<div class="tank-fuehler">' + p.fuehlerC.map(function (t) { return "<span>" + t + " °C</span>"; }).join("") + "</div></div>" +
       "</section>";
