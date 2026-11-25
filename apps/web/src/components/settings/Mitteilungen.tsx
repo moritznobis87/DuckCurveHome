@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
+import { Icon } from "@/components/ui/Icon";
+import { Systemkarte } from "@/components/ui/Systemkarte";
 import type { PushGeraet } from "@/lib/api/models";
 import { hhmm } from "@/lib/format";
 import { kurzDatum } from "@/components/waerme/wirkung";
@@ -70,10 +72,15 @@ function Geraet({ g }: { g: PushGeraet }) {
         : "Noch keine Mitteilung verschickt.";
   const schlecht = Boolean(g.letzter_fehler_de) || (!g.zuletzt_ok && (g.fehlversuche ?? 0) > 0);
   return (
-    <li className="geraet">
-      <span className="geraet-name">{g.label}</span>
-      <span className="geraet-seit">{g.seit ? `angemeldet seit ${kurzDatum(g.seit)}` : ""}</span>
-      <span className="geraet-stand" data-schlecht={schlecht}>{stand}</span>
+    <li className="konto-zeile">
+      <span className="konto-zeile-zeichen" aria-hidden="true">
+        <Icon name="device" size={17} />
+      </span>
+      <div className="konto-zeile-text">
+        <span className="konto-zeile-name">{g.label}</span>
+        {g.seit ? <span className="konto-zeile-dazu">angemeldet seit {kurzDatum(g.seit)}</span> : null}
+        <span className="geraet-stand" data-schlecht={schlecht}>{stand}</span>
+      </div>
     </li>
   );
 }
@@ -181,98 +188,74 @@ export function Mitteilungen() {
     }
   };
 
-  const knopf = "rounded-[3px] border border-line-2 px-4 py-2 text-[14px] transition-colors hover:border-amber disabled:opacity-50";
-
   return (
-    <div className="flex max-w-[760px] flex-col gap-4 rounded-[3px] border border-line-1 bg-surface-2 p-5">
-      <div className="flex flex-col gap-1">
-        <span className="kicker" style={{ fontSize: 11 }}>Mitteilungen</span>
-        <span className="text-[15px] leading-[1.6] text-text-2">
-          Wenn eine Quelle schweigt, meldet sich Duck Curve Home auf den angemeldeten Geräten, und
-          morgens kommt das Morning Briefing. Jedes Gerät meldet sich einzeln an, hier auf dieser Seite.
-        </span>
-      </div>
-
+    <Systemkarte zeichen="bell" titel={MITTEILUNGEN.titel} satz={MITTEILUNGEN.satz}>
       {lage === "ios-browser" ? (
-        <div className="flex flex-col gap-2 text-[14px] leading-[1.6] text-text-2">
-          <span>Auf dem iPhone und iPad gehen Mitteilungen nur in der App vom Home-Bildschirm, nicht im Browser:</span>
-          <ol className="m-0 flex flex-col gap-1 pl-5">
-            <li>Unten auf Teilen tippen, dann „Zum Home-Bildschirm".</li>
+        <div className="konto-codes">
+          <span className="text-[14px] text-text-1">Auf dem iPhone und iPad gehen Mitteilungen nur in der App vom Home-Bildschirm:</span>
+          <ol className="m-0 flex flex-col gap-1 pl-5 text-[14px] leading-[1.5] text-text-2">
+            <li>Unten auf Teilen tippen, dann „Zum Home-Bildschirm“.</li>
             <li>Duck Curve Home vom Home-Bildschirm öffnen.</li>
-            <li>Dort wieder hierher: das Zahnrad, Mitteilungen, „Auf diesem Gerät einschalten".</li>
+            <li>Dort wieder hierher: das Zahnrad, Mitteilungen, „Auf diesem Gerät einschalten“.</li>
           </ol>
         </div>
       ) : null}
 
-      {lage === "geht-nicht" ? (
-        <p className="m-0 text-[14px] leading-[1.6] text-text-3">
-          Dieser Browser kann keine Mitteilungen empfangen.
-        </p>
-      ) : null}
+      {lage === "geht-nicht" ? <p className="konto-leise">Dieser Browser kann keine Mitteilungen empfangen.</p> : null}
 
       {lage === "verboten" ? (
-        <p className="m-0 text-[14px] leading-[1.6]" style={{ color: "var(--amber-soft)" }}>
-          Mitteilungen sind für Duck Curve Home auf diesem Gerät abgelehnt. Das lässt sich nur in
-          den Einstellungen des Geräts zurücknehmen (auf dem iPhone: Einstellungen, Mitteilungen,
-          Duck Curve), nicht von hier aus.
+        <p className="m-0 text-[14px] leading-[1.5] text-amber-soft">
+          Mitteilungen sind auf diesem Gerät abgelehnt. Zurücknehmen lässt sich das nur in den Einstellungen des Geräts.
         </p>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-3">
+      {lage === "an" || lage === "aus" || lage === "prüfe" || (geraete && geraete.length > 0) ? (
+      <div className="konto-reihe">
+        {lage === "an" ? <span className="zustand-marke" data-an="">Dieses Gerät ist angemeldet.</span> : null}
         {lage === "aus" || lage === "prüfe" ? (
-          <button type="button" className={knopf} onClick={einschalten} disabled={laeuft || lage === "prüfe"}>
+          <button type="button" className="zugang-knopf zugang-knopf-an" onClick={einschalten} disabled={laeuft || lage === "prüfe"}>
             Auf diesem Gerät einschalten
           </button>
         ) : null}
         {lage === "an" ? (
           <>
-            <span className="text-[14px]" style={{ color: "var(--pv)" }}>Dieses Gerät ist angemeldet.</span>
-            <button type="button" className={knopf} onClick={probe} disabled={laeuft}>
+            <button type="button" className="zugang-knopf" onClick={probe} disabled={laeuft}>
               Probe senden
             </button>
-            <button type="button" className={knopf} onClick={ausschalten} disabled={laeuft}>
+            <button type="button" className="zugang-knopf zugang-knopf-leise" onClick={ausschalten} disabled={laeuft}>
               Ausschalten
             </button>
           </>
         ) : null}
         {lage !== "an" && geraete && geraete.length > 0 ? (
-          <button type="button" className={knopf} onClick={probe} disabled={laeuft}>
+          <button type="button" className="zugang-knopf" onClick={probe} disabled={laeuft}>
             Probe an die angemeldeten Geräte
           </button>
         ) : null}
       </div>
+      ) : null}
 
-      {meldung ? <p className="m-0 text-[14px] leading-[1.6] text-text-2">{meldung}</p> : null}
+      {meldung ? <p className="m-0 text-[14px] leading-[1.5] text-text-2">{meldung}</p> : null}
       {details.length > 0 ? (
-        <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[14px] leading-[1.6] text-text-2">
+        <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[14px] leading-[1.5] text-text-2">
           {details.map((d) => <li key={d}>{d}</li>)}
         </ul>
       ) : null}
 
       {geraete !== null ? (
-        <div className="flex flex-col gap-2">
-          <span className="kicker" style={{ fontSize: 11 }}>
-            {geraete.length === 0 ? "Kein Gerät angemeldet" : geraete.length === 1 ? "1 Gerät angemeldet" : `${geraete.length} Geräte angemeldet`}
-          </span>
-          {geraete.length === 0 ? (
-            <span className="text-[14px] leading-[1.6]" style={{ color: "var(--amber-soft)" }}>
-              Solange kein Gerät angemeldet ist, gehen weder Störungen noch das Morning Briefing an jemanden.
-            </span>
-          ) : (
-            <ul className="geraete">
-              {geraete.map((g, i) => <Geraet key={`${g.label}-${g.seit ?? i}`} g={g} />)}
-            </ul>
-          )}
-        </div>
+        geraete.length === 0 ? (
+          <p className="m-0 text-[14px] leading-[1.5] text-amber-soft">{KEIN_GERAET}</p>
+        ) : (
+          <ul className="konto-liste">
+            {geraete.map((g, i) => <Geraet key={`${g.label}-${g.seit ?? i}`} g={g} />)}
+          </ul>
+        )
       ) : null}
-
-      <p className="m-0 text-[13px] leading-[1.6] text-text-3">
-        Eine Probe lohnt sich nach jedem Einschalten. Sie schickt das aktuelle Morning Briefing, so
-        wie es unten steht. „Angenommen" heißt: Der Push-Dienst von
-        Apple oder Google hat die Mitteilung entgegengenommen. Kommt trotzdem nichts, liegt es am
-        Gerät selbst: Fokus oder „Nicht stören", oder die Mitteilungen der App sind in den
-        Einstellungen abgeschaltet.
-      </p>
-    </div>
+    </Systemkarte>
   );
 }
+
+/** Titel und Satz der Karte; dieselben in der App (`Mitteilungsstand.swift`). */
+export const MITTEILUNGEN = { titel: "Mitteilungen", satz: "Störungen und das Morning Briefing auf die angemeldeten Geräte." };
+/** Was ohne angemeldetes Gerät dasteht; derselbe Satz in der App. */
+export const KEIN_GERAET = "Kein Gerät angemeldet. Störungen und das Morning Briefing gehen an niemanden.";

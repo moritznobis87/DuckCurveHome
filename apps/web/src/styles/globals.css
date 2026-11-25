@@ -1476,3 +1476,9 @@ button.ansicht { cursor: pointer; }
 .zugang-wahl { appearance: none; padding: 10px 34px 10px 16px; border: 1px solid var(--line-2); border-radius: 999px; color: var(--text-1); font-size: 14px; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a9bcc6' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center; }
 .zugang-wahl.zugang-knopf-klein { padding: 6px 30px 6px 12px; font-size: 13px; background-position: right 11px center; }
 .zugang-wahl option { background: var(--deep); color: var(--text-1); }
+
+/* ---------- Systemseiten (25.11.2026): Zustand als Marke ---------- */
+.zustand-marke { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; background: color-mix(in srgb, var(--text-3) 18%, transparent); color: var(--text-2); font-size: 13px; font-weight: 600; }
+.zustand-marke[data-an] { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.text-amber-soft { color: var(--amber-soft); }
+.konto-zeile-text .geraet-stand { font-size: 13px; line-height: 1.45; }

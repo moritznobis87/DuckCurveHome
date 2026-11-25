@@ -3,26 +3,44 @@ import SwiftUI
 
 /// Eine Karte auf „Mein Zugang“: Zeichen in einer getönten Fläche, Titel und Satz, darunter der
 /// Inhalt (`globals.css`, `.konto-karte`). Dieselbe Bildsprache wie die Kacheln der Übersichten.
+///
+/// Seit dem 25.11.2026 tragen auch die Systemseiten diese Karte; dafür nimmt sie Zeichen, Titel
+/// und Satz auch direkt (`components/ui/Systemkarte.tsx` im Dashboard).
 struct Kontokarte<Inhalt: View>: View {
-    let art: Kontoworte.Kartenart
+    let zeichen: Zeichenart
+    let titel: String
+    let satz: String?
     @ViewBuilder let inhalt: () -> Inhalt
+
+    init(art: Kontoworte.Kartenart, @ViewBuilder inhalt: @escaping () -> Inhalt) {
+        self.init(zeichen: art.zeichen, titel: art.titel, satz: art.satz, inhalt: inhalt)
+    }
+
+    init(zeichen: Zeichenart, titel: String, satz: String?, @ViewBuilder inhalt: @escaping () -> Inhalt) {
+        self.zeichen = zeichen
+        self.titel = titel
+        self.satz = satz
+        self.inhalt = inhalt
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Zeichen(art.zeichen, groesse: 20, farbe: Farbe.mist)
+                Zeichen(zeichen, groesse: 20, farbe: Farbe.mist)
                     .frame(width: 36, height: 36)
                     .background(Farbe.mist.opacity(0.14))
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(art.titel)
+                    Text(titel)
                         .font(Schrift.sansHalbfett(16, relativeTo: .headline))
                         .foregroundStyle(Farbe.text1)
-                    Text(art.satz)
-                        .font(Schrift.sans(13, relativeTo: .footnote))
-                        .foregroundStyle(Farbe.text3)
-                        .fixedSize(horizontal: false, vertical: true)
+                    if let satz {
+                        Text(satz)
+                            .font(Schrift.sans(13, relativeTo: .footnote))
+                            .foregroundStyle(Farbe.text3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
             .accessibilityElement(children: .combine)
@@ -73,5 +91,21 @@ struct Zugangsknopf: View {
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Ein Zustand als Marke, grün, wenn etwas an ist (`globals.css`, `.zustand-marke`).
+struct Zustandsmarke: View {
+    let wort: String
+    let an: Bool
+
+    var body: some View {
+        Text(wort)
+            .font(Schrift.sansHalbfett(13))
+            .foregroundStyle(an ? Farbe.gut : Farbe.text2)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+            .background((an ? Farbe.gut : Farbe.text3).opacity(0.18))
+            .clipShape(Capsule())
     }
 }
