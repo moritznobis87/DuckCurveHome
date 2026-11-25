@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entwurf: Die Uhr</title>
+<link rel="stylesheet" href="../grundlage/grund.css">
+<link rel="stylesheet" href="../grundlage/bausteine.css">
+<style>
+  .seite { display: grid; gap: 14px; padding: 14px 22px 20px; }
+  .seite > * { min-width: 0; }
+  .satzzeile { display: flex; align-items: flex-end; gap: 28px; }
+  .satzzeile .satz { flex: 1; min-width: 0; }
+  .satzzeile .wache { max-width: 430px; }
+  .buehne { background: radial-gradient(60% 75% at 50% 50%, color-mix(in srgb, var(--mist) 16%, transparent), transparent 70%), linear-gradient(180deg, #0a2a3b, #0f3445); }
+  .buehne[data-nacht="false"] { background: radial-gradient(60% 75% at 50% 50%, color-mix(in srgb, var(--amber) 15%, transparent), transparent 70%), linear-gradient(180deg, #0c2f40, #113a4c); }
+  .k-dock { justify-content: center; }
+  .k-strom { --kartenfarbe: var(--mist); display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
+  .k-strom .grosszahl { font-size: 44px; }
+  .strom-zeile { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  .strom-zeile .marke { margin-bottom: 5px; }
+  .dinge { padding: 4px 16px; }
+  .ding { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
+  .ding + .ding { border-top: 1px solid var(--line-1); }
+  .ding .zeichenfeld { height: 32px; width: 32px; }
+  .ding-name { flex: 1; font-size: 14.5px; color: var(--text-1); }
+  .ding b { font-family: var(--font-mono); font-weight: 400; font-size: 21px; letter-spacing: -0.02em; }
+  .ding b small { font-family: var(--font-sans); font-size: 12px; color: var(--text-3); margin-left: 4px; }
+  .ding[data-an="false"] b, .ding[data-an="false"] .ding-name { color: var(--text-3); }
+  .ding[data-an="false"] .zeichenfeld { color: var(--text-3); background: color-mix(in srgb, var(--text-3) 12%, transparent); }
+
+  @media (min-width: 721px) {
+    html, body { height: 100%; overflow: hidden; }
+    .seite { height: 100dvh; grid-template-rows: auto auto minmax(0, 1fr) 212px; }
+    .oben, .unten { display: grid; grid-template-columns: minmax(0, 1fr) 404px; gap: 14px; min-height: 0; }
+    .rechts { display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; min-height: 0; }
+    .dinge { display: none; }
+    .ente { right: 58px; bottom: 50px; }
+  }
+  @media (max-width: 720px) {
+    .seite { padding: 10px 16px 112px; gap: 12px; }
+    .satzzeile { flex-direction: column; align-items: stretch; gap: 10px; }
+    .oben, .rechts, .unten { display: grid; gap: 12px; }
+    .buehne { height: 380px; }
+  }
+</style>
+</head>
+<body>
+<div class="seite" id="seite"></div>
+<script src="../grundlage/zeichen.js"></script>
+<script src="../grundlage/daten.js"></script>
+<script src="../grundlage/bausteine.js"></script>
+<script>
+(function () {
+  var S = window.SZENE, B = window.BAU, z = window.zeichen, de = window.de, f = S.fluss;
+  var bezug = f.netz.richtung === "bezug", laedt = f.speicher.wort === "lädt";
+
+  // Die fünf Sachen rund um den Ring: links, was liefert, rechts, was nimmt.
+  var dinge = [
+    { seite: -1, farbe: "var(--pv)", bild: S.nacht ? "moon" : "sun", zahl: de(f.sonne.kw), einheit: "kW", name: S.nacht ? "Sonne ab " + S.sonneAuf : "Sonne", kw: f.sonne.kw, zumRing: true },
+    { seite: -1, farbe: bezug ? "var(--grid-in)" : "var(--grid-out)", bild: "grid", zahl: de(f.netz.kw), einheit: "kW", name: bezug ? "Netzbezug" : "Einspeisung", kw: f.netz.kw, zumRing: bezug },
+    { seite: 1, farbe: "var(--battery)", bild: "battery", zahl: f.speicher.prozent, einheit: "%", name: "Speicher " + f.speicher.wort, kw: f.speicher.wort === "hält" ? 0 : f.speicher.kw, zumRing: !laedt },
+    { seite: 1, farbe: "var(--heat-pump)", bild: "pump", zahl: de(f.waermepumpe.kw), einheit: "kW", name: "Wärmepumpe " + f.waermepumpe.wort, kw: f.waermepumpe.kw, zumRing: false },
+    { seite: 1, farbe: "var(--ev)", bild: "car", zahl: de(f.wallbox.kw), einheit: "kW", name: "Wallbox " + f.wallbox.wort, kw: f.wallbox.kw, zumRing: false },
+  ];
+  var zeile = function (d) {
+    return '<a class="ding" href="#" data-an="' + (d.kw >= 0.05) + '" style="--kartenfarbe:' + d.farbe + '"><span class="zeichenfeld">' + z(d.bild, 20) + '</span><span class="ding-name">' + d.name + "</span><b>" + d.zahl + "<small>" + d.einheit + "</small></b></a>";
+  };
+
+  document.getElementById("seite").innerHTML =
+    B.kopf() +
+    '<div class="satzzeile">' + B.satz() + B.wache() + "</div>" +
+    '<div class="oben"><div class="buehne" id="buehne" data-nacht="' + S.nacht + '" data-gestoert="' + S.verbindung.gestoert + '"></div>' +
+    '<section class="karte dinge">' + dinge.map(zeile).join("") + "</section>" +
+    '<div class="rechts">' + B.puffer() +
+    '<section class="karte k-strom"><div class="k-kopf"><span class="zeichenfeld">' + z("euro", 20) + "</span><h2>Strom gerade</h2></div>" +
+    '<div class="strom-zeile"><div class="grosszahl">' + de(S.strom.preisCt) + "<small>ct je kWh</small></div>" + B.preismarke() + "</div>" + B.zeiten() + "</section>" +
+    "</div></div>" +
+    '<div class="unten">' + B.tag() + '<section class="karte k-dock">' + B.tasten() + "</section></div>" +
+    B.leiste() + B.ente();
+
+  function zeichne() {
+    var el = document.getElementById("buehne"), W = el.clientWidth, H = el.clientHeight, schmal = W < 520, t = "";
+    var cx = W / 2, cy = (H - 26) / 2 + 2, R = Math.min(schmal ? W / 2 - 30 : 152, (H - 26) / 2 - 16);
+    var st = S.naechste24.stunden, n = S.naechste24;
+    var std = function (s) { return parseInt(s.slice(0, 2), 10); };
+    var winkel = function (h) { return (h / 24) * 2 * Math.PI - Math.PI / 2; };  // 00 Uhr steht oben
+    var pol = function (r, a) { return (cx + r * Math.cos(a)).toFixed(1) + "," + (cy + r * Math.sin(a)).toFixed(1); };
+    var bogen = function (r, h1, h2) { return "M" + pol(r, winkel(h1)) + " A" + r + "," + r + " 0 " + (h2 - h1 > 12 ? 1 : 0) + " 1 " + pol(r, winkel(h2)); };
+    var tiefVon = std(n.preistief.von), tiefBis = std(n.preistief.bis);
+    var rPreis = R - 34, rSonne = R - 46, rPumpe = R - 58, rZahl = R - 74;
+
+    // ---- Der Ring: außen der Preis als Speichen, innen die erwartete Sonne und die Wärmepumpe
+    t += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (R + 8) + '" fill="var(--deep)" fill-opacity="0.42" stroke="var(--line-1)"/>';
+    t += '<circle cx="' + cx + '" cy="' + cy + '" r="' + rSonne + '" fill="none" stroke="var(--house)" stroke-opacity="0.07" stroke-width="9"/>';
+    st.forEach(function (s, i) {
+      var h = std(s.uhr), a = winkel(h + 0.5);
+      if (s.preisCt == null) {
+        t += '<path d="M' + pol(rPreis, a) + " L" + pol(rPreis + 14, a) + '" stroke="var(--mist)" stroke-opacity="0.5" stroke-width="2" stroke-dasharray="0.1 5" stroke-linecap="round"/>';
+      } else {
+        var tief = h >= tiefVon && h < tiefBis;
+        t += '<path d="M' + pol(rPreis, a) + " L" + pol(rPreis + 6 + (s.preisCt / 60) * 34, a) + '" stroke="var(--mist)" stroke-opacity="' + (tief ? 1 : 0.42) + '" stroke-width="' + (schmal ? 8 : 10) + '" stroke-linecap="round"/>';
+      }
+      if (s.sonneKw > 0.05) t += '<path d="' + bogen(rSonne, h - 0.02, h + 1.02) + '" fill="none" stroke="var(--pv)" stroke-opacity="' + Math.min(1, 0.15 + s.sonneKw / 4.5).toFixed(2) + '" stroke-width="9"/>';
+      if (s.waermepumpe) t += '<path d="' + bogen(rPumpe, h + 0.08, h + 0.92) + '" fill="none" stroke="var(--heat-pump)" stroke-width="5" stroke-linecap="round"/>';
+    });
+    // 00 Uhr oben und 12 Uhr unten als Zahl; links und rechts bleibt die Mitte dem Haus.
+    [0, 12].forEach(function (h) {
+      var a = winkel(h);
+      t += '<text x="' + (cx + rZahl * Math.cos(a)).toFixed(1) + '" y="' + (cy + rZahl * Math.sin(a) + 4).toFixed(1) + '" text-anchor="middle" font-size="11" class="fl-zahl fl-einheit">' + (h < 10 ? "0" : "") + h + " Uhr</text>";
+    });
+    // Der Zeiger für jetzt
+    var aj = winkel(S.jetztStunden);
+    t += '<path d="M' + pol(rPumpe - 8, aj) + " L" + pol(R + 8, aj) + '" stroke="var(--house)" stroke-width="2.5" stroke-linecap="round"/><circle cx="' + (cx + (R + 8) * Math.cos(aj)).toFixed(1) + '" cy="' + (cy + (R + 8) * Math.sin(aj)).toFixed(1) + '" r="5.5" fill="var(--house)" style="filter:drop-shadow(0 0 8px var(--house))"/>';
+
+    // ---- Die Mitte: was das Haus gerade braucht
+    t += '<a class="fl-sache" href="#"><text x="' + cx + '" y="' + (cy + 8) + '" text-anchor="middle" class="fl-zahl" font-size="' + (schmal ? 42 : 48) + '">' + de(f.haus.kw) + '<tspan font-size="14" dx="4" class="fl-einheit" style="font-family:var(--font-sans)">kW</tspan></text>' +
+      '<text x="' + cx + '" y="' + (cy + 30) + '" text-anchor="middle" class="fl-name" font-size="12.5">braucht das Haus</text></a>';
+
+    // ---- Die Sachen links und rechts, mit Bändern zum Ring
+    if (!schmal) {
+      var bw = 166, bh = 62;
+      var platz = { "-1": [0.3, 0.7], "1": [0.2, 0.5, 0.8] }, ziel = { "-1": [202, 158], "1": [-34, 0, 34] }, zaehler = { "-1": 0, "1": 0 };
+      dinge.forEach(function (d) {
+        var k = zaehler[d.seite]++, y = H * platz[d.seite][k], x = d.seite < 0 ? 20 : W - 20 - bw, an = d.kw >= 0.05;
+        var a = ziel[d.seite][k] * Math.PI / 180, zx = cx + (R + 12) * Math.cos(a), zy = cy + (R + 12) * Math.sin(a);
+        var kx = d.seite < 0 ? x + bw : x, mitte = (kx + zx) / 2;
+        var pfad = d.zumRing ? "M" + kx + "," + y + " C" + mitte + "," + y + " " + mitte + "," + zy + " " + zx.toFixed(1) + "," + zy.toFixed(1)
+                             : "M" + zx.toFixed(1) + "," + zy.toFixed(1) + " C" + mitte + "," + zy + " " + mitte + "," + y + " " + kx + "," + y;
+        if (!an) t += '<path d="' + pfad + '" fill="none" stroke="var(--house)" stroke-opacity="0.22" stroke-width="1.5" stroke-dasharray="3 6" stroke-linecap="round"/>';
+        else {
+          var w = 5 + d.kw * 4.5;
+          t += '<path d="' + pfad + '" fill="none" stroke="' + d.farbe + '" stroke-width="' + w + '" stroke-linecap="round" stroke-opacity="0.92" style="filter:drop-shadow(0 0 9px ' + d.farbe + ')"/>' +
+            '<path class="fl-fliessen" d="' + pfad + '" fill="none" stroke="var(--house)" stroke-opacity="0.85" stroke-width="' + Math.max(2, w * 0.28) + '" stroke-linecap="round" stroke-dasharray="8 30"/>';
+        }
+        t += '<a class="fl-sache" href="#"><rect x="' + x + '" y="' + (y - bh / 2) + '" width="' + bw + '" height="' + bh + '" rx="15" fill="' + (an ? "color-mix(in srgb, " + d.farbe + " 15%, var(--surface-1))" : "var(--surface-1)") + '" fill-opacity="' + (an ? 1 : 0.7) + '" stroke="' + (an ? "color-mix(in srgb, " + d.farbe + " 50%, transparent)" : "var(--line-1)") + '"/>' +
+          '<rect x="' + (x + 12) + '" y="' + (y - 17) + '" width="34" height="34" rx="10" fill="' + (an ? d.farbe : "var(--text-3)") + '" fill-opacity="0.16"/>' +
+          '<g transform="translate(' + (x + 19) + "," + (y - 10) + ') scale(0.84)" fill="none" stroke="' + (an ? d.farbe : "var(--text-3)") + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + window.ZEICHEN[d.bild] + "</g>" +
+          '<text x="' + (x + 58) + '" y="' + (y + 3) + '" class="fl-zahl" font-size="26"' + (an ? "" : ' fill-opacity="0.5"') + ">" + d.zahl + '<tspan font-size="12.5" dx="4" class="fl-einheit" style="font-family:var(--font-sans)">' + d.einheit + "</tspan></text>" +
+          '<text x="' + (x + 58) + '" y="' + (y + 20) + '" class="fl-name" font-size="12">' + d.name + "</text></a>";
+      });
+    }
+
+    var leg = [["var(--mist)", "Strompreis"], ["var(--pv)", "Sonne erwartet"], ["var(--heat-pump)", "Wärmepumpe"]], lx = schmal ? 14 : 22;
+    leg.forEach(function (l) {
+      t += '<rect x="' + lx + '" y="' + (H - 21) + '" width="12" height="5" rx="2.5" fill="' + l[0] + '"/><text x="' + (lx + 18) + '" y="' + (H - 14) + '" font-size="11.5" class="fl-name">' + l[1] + "</text>";
+      lx += 30 + l[1].length * 6.3;
+    });
+    el.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Ein Ring über 24 Stunden mit Strompreis, erwarteter Sonne und den Läufen der Wärmepumpe; in der Mitte der Verbrauch des Hauses">' + t + "</svg>" +
+      (S.verbindung.gestoert ? '<span class="buehne-von-eben">' + z("clock", 16) + "Das Bild ist von " + S.verbindung.wort.slice(-5) + ".</span>" : "");
+  }
+
+  zeichne();
+  B.tagEinrichten();
+  B.schalten();
+  window.addEventListener("resize", zeichne);
+})();
+</script>
+</body>
+</html>

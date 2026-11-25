@@ -11,10 +11,15 @@ Hausherr einen Entwurf freigegeben hat (CLAUDE.md: Gliederung und Bedienung ents
 |---|---|
 | Bestandsaufnahme: was die Seite heute zeigt | fertig, siehe „Pflichtinhalt“ und `bestand/` |
 | Grundlage für Entwürfe (`grundlage/`) | fertig |
-| Entwürfe, Los 1: `buehne/`, `kacheln/` | offen |
-| Entwürfe, Los 2: `uhr/`, `strom/` | offen |
-| Urteile, Los 3: `urteile/auge.md`, `urteile/bau.md` | offen |
-| Empfehlung und Vorlage an den Hausherrn | offen |
+| Entwurf `buehne/` | fertig, mit Bildern und Begründung |
+| Entwurf `kacheln/` | fertig, mit Bildern und Begründung |
+| Entwurf `uhr/` | fertig, mit Bildern und Begründung |
+| Entwurf `strom/` | nicht gebaut: die breiten Bänder sind in die „Bühne“ eingegangen |
+| Urteile in eigenen Prüfläufen | nicht gemacht: ein Lauf mit mehreren Agenten wurde abgelehnt |
+| Empfehlung und Vorlage an den Hausherrn | vorgelegt am 25.11.2026, Entscheidung steht aus |
+
+Die Entwürfe hat eine Sitzung allein gebaut, einen nach dem anderen, jeder mit eigenem Commit.
+Empfohlen ist die „Bühne“; die Gründe stehen in `empfehlung.md`.
 
 ## Der Bestand
 
@@ -114,8 +119,8 @@ aussieht wie die Seite von heute mit runderen Ecken, hat sein Ziel verfehlt.
 
 Im eigenen Ordner, und nur dort:
 
-- `entwurf.html`: eine Datei, CSS und Skript stehen darin. Sie lädt nur `../grundlage/grund.css`,
-  `../grundlage/zeichen.js` und `../grundlage/daten.js`. Sie liest `window.SZENE` und zeichnet
+- `entwurf.html`: eine Datei mit ihrer Aufteilung und ihrem Hauptbild. Sie lädt nur die Dateien
+  aus `../grundlage/`. Sie liest `window.SZENE` und zeichnet
   daraus; feste Zahlen im HTML sind nicht erlaubt. Über 900 Pixel Breite ist sie die Wand,
   unter 720 das Handy. Am Handy rollt das Dokument selbst.
 - `bilder/`: die Aufnahmen aus `node ../grundlage/aufnehmen.cjs entwurf.html`. Das Skript meldet,
@@ -135,4 +140,7 @@ Schrift, leere Flächen und zu kleine Zahlen sind Fehler, die man nur im Bild si
 - `grundlage/daten.js`: drei Szenen desselben Tages. `?szene=mittag` (Sonne, Wärmepumpe läuft,
   Speicher lädt, Einspeisung), `?szene=abend` (dunkel, Netzbezug, Speicher entlädt, Strom teuer;
   die Vorgabe) und `?szene=stoerung` (der Abend mit einem Befund und unterbrochener Verbindung).
+- `grundlage/bausteine.css` und `grundlage/bausteine.js`: was alle Entwürfe gemeinsam haben
+  (Kopf, Satz, Wache, Puffer, die nächsten 24 Stunden, Tageskurve, Schalter, Leiste, Alfred).
+  Ein Entwurf setzt diese Teile zusammen und zeichnet nur sein Hauptbild selbst.
 - `grundlage/aufnehmen.cjs`: nimmt Wand, iPad und Handy auf.
