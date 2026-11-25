@@ -21,6 +21,7 @@ import { Buehne } from "./Buehne";
 import { wpWort } from "./fluss";
 import { Ausblickkarte, Pufferkarte, Stromkarte } from "./Karten";
 import { Uhr } from "./Uhr";
+import { STARTBILD_VORGABE } from "./startbild";
 import { useStartbild } from "./useStartbild";
 import { WpMenue } from "./WpMenue";
 import { DayCurve } from "./DayCurve";
@@ -303,7 +304,7 @@ export function Home() {
       <Fussleiste />
 
       {ruhe && tag === "heute" ? (
-        <Ambiente state={state} plan={plan} zahlen={zahlen} morgenPvKwh={morgen.pvKwh} nowMs={minute} degraded={degraded} onWecken={wecken} />
+        <Ambiente state={state} plan={plan} zahlen={zahlen} morgenPvKwh={morgen.pvKwh} nowMs={minute} degraded={degraded} startbild={startbild ?? STARTBILD_VORGABE} blick={blick} lauf={lauf} nacht={nacht} stand={stand} sonneAb={sonneAb} vonEben={vonEben} onWecken={wecken} />
       ) : null}
     </main>
   );

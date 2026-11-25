@@ -293,10 +293,11 @@
 
 /* ----------------------------------------------------------------- Das Ambiente
 
-   Die Wandanzeige, wenn niemand sie beruehrt: eine Schicht ueber der Seite, vier Zeilen, alles
-   so gross, dass man es aus drei Metern liest. Ein Knopf, weil eine Beruehrung das Einzige ist,
-   was sie tut - so geht es auch mit der Tastatur und mit einer Vorleseanzeige. */
-.ambiente { position: fixed; inset: 0; z-index: 40; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); gap: clamp(14px, 2.4vh, 30px); padding: clamp(22px, 4.4vh, 56px) clamp(26px, 4.4vw, 64px) clamp(18px, 3.4vh, 48px); border: 0; border-radius: 0; margin: 0; text-align: left; font: inherit; color: var(--text-1); background: linear-gradient(130deg, #082431, #0f2e3d 62%, #153c4c); overflow: hidden; animation: dch-ambiente .8s ease both; }
+   Die Wandanzeige, wenn niemand sie berührt: eine Schicht über der Seite mit der Uhr, dem Bild
+   der Startseite und den Zahlen des Tages. Das Ganze verhält sich wie ein Knopf, weil eine
+   Berührung das Einzige ist, was es tut; so geht es auch mit der Tastatur und mit einer
+   Vorleseanzeige. */
+.ambiente { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; gap: clamp(12px, 2vh, 24px); padding: clamp(22px, 4.4vh, 56px) clamp(26px, 4.4vw, 64px) clamp(18px, 3.4vh, 48px); border: 0; border-radius: 0; margin: 0; text-align: left; font: inherit; color: var(--text-1); background: linear-gradient(130deg, #082431, #0f2e3d 62%, #153c4c); overflow: hidden; animation: dch-ambiente .8s ease both; }
 @keyframes dch-ambiente { from { opacity: 0; } to { opacity: 1; } }
 .ambiente-schein { position: absolute; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); }
 .ambiente-schein[data-bild="tag"] { left: 50%; top: 46%; width: min(760px, 70vw); aspect-ratio: 1; background: radial-gradient(circle, rgba(242,169,0,.20) 0%, rgba(242,169,0,0) 62%); }
@@ -311,48 +312,16 @@
 .ambiente-aussen-wort { font-family: var(--font-sans); font-size: clamp(12px, 1.4vw, 17px); color: var(--text-2); }
 .ambiente-live { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--text-2); }
 
-.ambiente-satz-zeile { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: clamp(24px, 4vw, 48px); }
-.ambiente-satz { margin: 0; font-size: clamp(22px, 3.2vw, 40px); font-weight: 500; letter-spacing: -.015em; line-height: 1.2; max-width: 22ch; }
-.ambiente-satz[data-schwere="alarm"] { color: var(--alert-text); }
-.ambiente-satz[data-schwere="warn"] { color: var(--amber-soft); }
+/* Unter dem Datum steht höchstens eine Marke: „Wärmepumpe läuft“. Der Befund der Wache steht nur
+   da, wenn eine Quelle schweigt. */
+.ambiente-marke { align-self: flex-start; margin-top: 6px; padding: 5px 14px; font-size: clamp(13px, 1.4vw, 17px); }
+.ambiente-befund { position: relative; margin: 0; font-size: clamp(18px, 2.2vw, 28px); font-weight: 500; line-height: 1.25; color: var(--amber-soft); }
+.ambiente-befund[data-schwere="alarm"] { color: var(--alert-text); }
 
-/* Die Aussicht neben dem Satz: was der Tag noch bringt. */
-.ambiente-vorschau { display: flex; flex-direction: column; gap: 8px; width: clamp(240px, 30vw, 360px); flex: none; padding-top: 4px; }
-.ambiente-vorschau-kopf { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.ambiente-vorschau-wort { font-size: 12px; color: var(--mist); }
-.ambiente-vorschau-zahl { font-size: clamp(20px, 2.2vw, 26px); letter-spacing: -.02em; color: var(--pv); white-space: nowrap; }
-.ambiente-bogen { display: block; width: 100%; height: auto; }
-.ambiente-vorschau-fuss { display: flex; align-items: baseline; justify-content: flex-end; gap: 12px; font-size: clamp(12px, 1.2vw, 15px); color: var(--text-2); }
-
-/* Sonne, Haus, Speicher. Die Leitungen ziehen in die Richtung, in die der Strom fliesst. */
-.ambiente-fluss { position: relative; display: flex; align-items: center; justify-content: space-between; gap: clamp(20px, 4vw, 48px); padding: 0 8px; min-height: 0; }
-/* Alle drei Knoten haben dieselbe Kopfzeile, so hoch wie der groesste Kreis. Sonst beginnt der
-   Text unter dem Haus tiefer als der unter der Sonne, und die drei Zahlen stehen auf drei
-   Hoehen. Der Kreis sitzt in dieser Zeile mittig. */
-.ambiente-fluss { --ring-gross: clamp(100px, 12.6vw, 148px); }
-.ambiente-knoten { display: grid; grid-template-rows: var(--ring-gross) auto auto; justify-items: center; gap: 10px; }
-.ambiente-ring { --r: clamp(74px, 9vw, 108px); width: var(--r); height: var(--r); align-self: center; border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-.ambiente-knoten-gross .ambiente-ring { --r: var(--ring-gross); box-shadow: 0 0 80px rgba(255,255,255,.07); }
-.ambiente-fuell { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(127,183,200,.26); }
-.ambiente-knoten-zahl { font-size: clamp(38px, 5.4vw, 68px); line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
-.ambiente-knoten-gross .ambiente-knoten-zahl { font-size: clamp(46px, 6.6vw, 84px); }
-.ambiente-knoten-wort { font-size: clamp(14px, 1.6vw, 19px); color: var(--text-2); }
-.ambiente-leitung { flex: 1; height: 2px; align-self: flex-start; margin-top: calc(var(--ring-gross) / 2); background: repeating-linear-gradient(90deg, var(--f) 0 14px, transparent 14px 30px); background-size: 30px 2px; animation: dch-ziehen 2.4s linear infinite; }
-.ambiente-leitung[data-rueck="ja"] { animation-direction: reverse; }
-@keyframes dch-ziehen { to { background-position: 30px 0; } }
-@media (prefers-reduced-motion: reduce) { .ambiente-leitung { animation: none; } .ambiente { animation: none; } }
-
-/* Am Abend: der Puffer links, Preis und Fahrplan rechts. */
-.ambiente-abend { position: relative; display: flex; align-items: stretch; gap: clamp(28px, 4.4vw, 56px); min-height: 0; padding: clamp(6px, 1.6vh, 18px) 4px; }
-.ambiente-puffer { display: flex; align-items: stretch; justify-content: center; gap: clamp(16px, 2vw, 26px); flex: 1; min-width: 0; }
-.ambiente-glas { align-self: stretch; height: auto; min-height: 0; max-height: 100%; }
-.ambiente-puffer-text { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; }
-.ambiente-abend-rechts { width: clamp(300px, 34vw, 404px); flex: none; display: flex; flex-direction: column; justify-content: center; gap: clamp(14px, 2.4vh, 22px); border-left: 1px solid var(--line-1); padding-left: clamp(24px, 3.4vw, 46px); }
-.ambiente-preis { display: flex; flex-direction: column; gap: 8px; }
-.ambiente-preis-zahl { font-size: clamp(40px, 5.4vw, 68px); line-height: 1; letter-spacing: -.03em; }
-.ambiente-plan { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--line-1); padding-top: clamp(12px, 2vh, 18px); font-size: clamp(14px, 1.6vw, 19px); }
-.ambiente-plan-zeile { display: flex; justify-content: space-between; gap: 16px; }
-.ambiente-plan-wort { color: var(--text-2); }
+/* Das Bild der Startseite mit seinen zwei Karten, hier nur zum Ansehen. Es bekommt die Höhe, die
+   Kopf und Fuß übrig lassen. */
+.ambiente-bild { position: relative; flex: 1; min-height: 0; }
+@media (prefers-reduced-motion: reduce) { .ambiente { animation: none; } }
 
 .ambiente-fuss { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; border-top: 1px solid var(--line-1); padding-top: clamp(14px, 2.4vh, 26px); }
 .ambiente-zahlen { display: flex; gap: clamp(24px, 4vw, 56px); }
@@ -360,6 +329,8 @@
 .ambiente-zahl-wert { font-size: clamp(26px, 3.2vw, 40px); line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
 .ambiente-zahl-wort { font-size: clamp(12px, 1.3vw, 16px); color: var(--text-2); }
 .ambiente-hinweis { font-size: clamp(11px, 1.1vw, 14px); letter-spacing: .08em; color: var(--text-3); padding-bottom: 6px; white-space: nowrap; }
+/* Unten rechts schwebt Alfreds Ente; der Hinweis rückt so weit ein, dass sie ihn nicht verdeckt. */
+.ambiente-fuss { padding-right: 76px; }
 
 /* ---------- Haus: das Modell ----------
    Die Chips haengen als DOM-Knoten am zweiten Renderer der Szene und werden Bild fuer Bild

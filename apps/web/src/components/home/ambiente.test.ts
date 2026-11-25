@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Plan } from "@/lib/api/models";
-import { aussicht, bild, bogen, sonnenlauf } from "./ambiente";
+import { aussicht, bild, sonnenlauf } from "./ambiente";
 
 const tag = new Date("2026-10-23T00:00:00").getTime();
 /** Ein Fahrplan mit einem Dreieck Sonne von 9 bis 17 Uhr, Viertelstundenraster. */
@@ -57,34 +57,5 @@ describe("aussicht", () => {
     expect(spaet.erwartetKwh).toBeCloseTo(ganz.erwartetKwh!, 6);
     expect(spaet.restKwh!).toBeLessThan(ganz.restKwh!);
     expect(new Date(ganz.bis!).getHours()).toBe(17);
-  });
-});
-
-describe("bogen", () => {
-  const lauf = sonnenlauf(planMitSonne(), uhr(12));
-  it("zeichnet die Linie über die ganze Breite", () => {
-    const b = bogen(lauf, uhr(12), 300, 60)!;
-    expect(b.linie.startsWith("M0.0 ")).toBe(true);
-    expect(b.linie).toContain("300.0 ");
-  });
-  it("füllt bis zur Marke jetzt", () => {
-    const b = bogen(lauf, uhr(12), 300, 60)!;
-    expect(b.jetztX).toBeGreaterThan(0);
-    expect(b.jetztX).toBeLessThan(300);
-    // Die Fläche endet an der Marke und läuft auf der Grundlinie zurück.
-    expect(b.flaeche).toContain(" 60 L");
-    expect(b.flaeche.endsWith("Z")).toBe(true);
-    // Die Linie bis jetzt ist ein eigener Pfad, ohne Grundlinie.
-    expect(b.bisJetzt.startsWith("M")).toBe(true);
-    expect(b.bisJetzt).not.toContain("Z");
-  });
-  it("hat vor Sonnenaufgang keine Marke und keine Fläche", () => {
-    const b = bogen(lauf, uhr(5), 300, 60)!;
-    expect(b.jetztX).toBeNull();
-    expect(b.flaeche).toBe("");
-    expect(b.bisJetzt).toBe("");
-  });
-  it("bleibt aus, solange kein Sonnenlauf da ist", () => {
-    expect(bogen(null, uhr(12))).toBeNull();
   });
 });

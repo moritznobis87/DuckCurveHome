@@ -1,44 +1,78 @@
 "use client";
 
-import { useMemo } from "react";
 import type { LiveState, Plan } from "@/lib/api/models";
-import { celsius, hhmm, kw, longDate } from "@/lib/format";
-import { Icon } from "@/components/ui/Icon";
-import { aussicht, bild, bogen, sonnenlauf } from "./ambiente";
-import { planZeilen } from "./fahrplan";
-import { PufferGlasBild } from "@/components/puffer/Glas";
-import { pufferZustand } from "./puffer";
-import type { Kennzahl } from "./tage";
+import { celsius, hhmm, longDate } from "@/lib/format";
+import { aussicht, type Sonnenlauf } from "./ambiente";
+import type { Ausblick } from "./ausblick";
+import { Buehne } from "./Buehne";
+import { Ausblickkarte, Pufferkarte, Stromkarte } from "./Karten";
+import type { Startbild } from "./startbild";
+import { de, type Kennzahl } from "./tage";
+import { Uhr } from "./Uhr";
 import { schwerster } from "./Wache";
 
 /**
  * Das Ambiente: dasselbe Haus, aus drei Metern gelesen.
  *
- * Kein Schalter, kein Reiter, kein Dock. Die Uhr, der Satz, drei grosse Zahlen und die vier
- * Tageszahlen am Fuss - und unten rechts der einzige Hinweis, den es braucht: dass eine
- * Beruehrung die Bedienung zurueckholt. Welches der beiden Bilder gilt, entscheidet der
- * Sonnenlauf; die Regel steht in `ambiente.ts`.
+ * Kein Schalter, kein Reiter, kein Dock. Oben die Uhr, darunter das Bild der Startseite mit
+ * seinen zwei Karten, am Fuß die Zahlen des Tages und der einzige Hinweis, den es braucht: dass
+ * eine Berührung die Bedienung zurückholt.
  *
- * **Die Seite darunter bleibt am Leben.** Das Ambiente liegt als Schicht darueber, es ersetzt
+ * **Dasselbe Bild wie die Startseite** (Hausherr am 25.11.2026: „es läuft noch der
+ * Bildschirmschoner auf dem alten Stand“). Bühne oder Uhr, wie das Gerät es gewählt hat; die
+ * Zeichnung ist dieselbe Komponente, hier nur ohne Bedienung. Vorher standen hier ein eigenes
+ * Flussbild aus drei Kreisen und am Abend eigene Zeilen zum Fahrplan.
+ *
+ * **Kein Satz mehr.** Der Hausherr hat den Begründungssatz der Regelung gestrichen: „Wenn dann
+ * nur ein ‚Wärmepumpe läuft‘.“ Das steht als Marke unter dem Datum. Was bleibt, ist der Befund
+ * der Wache, wenn eine Quelle schweigt: wer im Vorbeigehen auf die Wand sieht, soll den Ausfall
+ * sehen. Im Normalfall steht dort nichts.
+ *
+ * **Die Seite darunter bleibt am Leben.** Das Ambiente liegt als Schicht darüber, es ersetzt
  * `Home` nicht. Sonst riss bei jedem Wechsel die Verbindung ab, und nach dem Antippen stand die
- * Wand erst einmal auf „verbinde …".
+ * Wand erst einmal auf „verbinde …“.
  */
-const SCHWELLE_KW = 0.05;
-
-export function Ambiente({ state, plan, zahlen, morgenPvKwh, nowMs, degraded, onWecken }: { state: LiveState | null; plan: Plan | null; zahlen: Kennzahl[]; morgenPvKwh: number | null; nowMs: number; degraded: boolean; onWecken: () => void }) {
+export function Ambiente({ state, plan, zahlen, morgenPvKwh, nowMs, degraded, startbild, blick, lauf, nacht, stand, sonneAb, vonEben, onWecken }: {
+  state: LiveState | null;
+  plan: Plan | null;
+  zahlen: Kennzahl[];
+  morgenPvKwh: number | null;
+  nowMs: number;
+  degraded: boolean;
+  /** Das Bild, das dieses Gerät für die Startseite gewählt hat. */
+  startbild: Startbild;
+  blick: Ausblick;
+  lauf: Sonnenlauf | null;
+  nacht: boolean;
+  stand: number;
+  sonneAb: string | null;
+  vonEben: string | null;
+  onWecken: () => void;
+}) {
   const s = state?.snapshot;
-  const lauf = useMemo(() => sonnenlauf(plan, nowMs), [plan, nowMs]);
-  const welches = bild(lauf, nowMs, s?.pv_power_kw.value);
   const befund = schwerster(state?.system.watch);
+  const wpLaeuft = state?.heat_pump.running;
+  // Die fünfte Zahl am Fuß: am Tag, was die Sonne heute bringen soll, nachts, was sie morgen bringt.
+  const erwartet = nacht ? morgenPvKwh : aussicht(plan, nowMs, lauf).erwartetKwh;
+  const fuss: Kennzahl[] = erwartet == null ? zahlen : [...zahlen, { wert: de(erwartet, 1), einheit: "kWh", wort: nacht ? "Sonne morgen" : "Sonne heute erwartet" }];
+  const nichts = () => undefined;
 
   return (
-    <button type="button" className="ambiente" onClick={onWecken} aria-label="Bedienung zurückholen">
-      <div className="ambiente-schein" aria-hidden data-bild={welches} />
+    <div
+      className="ambiente"
+      role="button"
+      tabIndex={0}
+      onClick={onWecken}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onWecken(); }}
+      aria-label="Bedienung zurückholen"
+    >
+      <div className="ambiente-schein" aria-hidden data-bild={nacht ? "abend" : "tag"} />
 
       <div className="ambiente-kopf">
         <span className="ambiente-kopf-links">
           <span className="mono ambiente-zeit" suppressHydrationWarning>{hhmm(new Date(nowMs))}</span>
           <span className="ambiente-datum" suppressHydrationWarning>{longDate(new Date(nowMs))}</span>
+          {wpLaeuft ? <span className="start-marke ambiente-marke" data-art="laeuft">Wärmepumpe läuft</span> : null}
         </span>
         <span className="ambiente-kopf-rechts">
           <span className="mono ambiente-aussen">
@@ -51,23 +85,24 @@ export function Ambiente({ state, plan, zahlen, morgenPvKwh, nowMs, degraded, on
         </span>
       </div>
 
-      {/* Schweigt eine Quelle, steht das hier statt der Entscheidung. Wer im Vorbeigehen auf
-          die Wand sieht, soll den Ausfall sehen und nicht einen Satz über eine Wärmepumpe, der
-          auf zwei Tage alten Zahlen beruht. */}
-      <div className="ambiente-satz-zeile">
-        <p className="ambiente-satz" data-schwere={befund?.severity}>
-          {befund ? befund.text_de : (state?.decision?.explanation_de ?? "Verbinde mit dem Haus …")}
-        </p>
-        {welches === "tag" ? <Vorschau plan={plan} lauf={lauf} nowMs={nowMs} /> : null}
-      </div>
+      {befund ? <p className="ambiente-befund" data-schwere={befund.severity}>{befund.text_de}</p> : null}
 
-      {welches === "tag" ? <Fluss state={state} /> : <Abend state={state} plan={plan} morgenPvKwh={morgenPvKwh} nowMs={nowMs} />}
+      {/* Das Bild ist hier nur zum Ansehen: nichts darin nimmt eine Berührung an, sie weckt die Seite. */}
+      <div className="ambiente-bild start-oben" inert aria-hidden>
+        {startbild === "uhr" ? (
+          <Uhr snapshot={s ?? null} nowMs={nowMs} wpLaeuft={wpLaeuft} nacht={nacht} blick={blick} sonneAb={sonneAb} vonEben={vonEben} onPumpe={nichts} />
+        ) : (
+          <Buehne snapshot={s ?? null} nowMs={nowMs} wpLaeuft={wpLaeuft} nacht={nacht} stand={stand} lauf={lauf} sonneAb={sonneAb} vonEben={vonEben} onPumpe={nichts} />
+        )}
+        <div className="start-rechts">
+          <Pufferkarte state={state} nowMs={nowMs} />
+          {startbild === "uhr" ? <Stromkarte blick={blick} warnung={plan?.planner_warn_de} /> : <Ausblickkarte blick={blick} warnung={plan?.planner_warn_de} />}
+        </div>
+      </div>
 
       <div className="ambiente-fuss">
         <span className="ambiente-zahlen">
-          {/* Am Abend steht der Strompreis gross daneben; ein zweites Mal klein am Fuss waere
-              dieselbe Zahl zweimal auf einem Bild. */}
-          {(welches === "abend" ? zahlen.slice(0, 3) : zahlen).map((k) => (
+          {fuss.map((k) => (
             <span key={k.wort} className="ambiente-zahl">
               <span className="mono ambiente-zahl-wert" style={k.gelb ? { color: "var(--pv)" } : undefined}>
                 {k.wert} <span className="home-einheit">{k.einheit}</span>
@@ -77,136 +112,6 @@ export function Ambiente({ state, plan, zahlen, morgenPvKwh, nowMs, degraded, on
           ))}
         </span>
         <span className="mono ambiente-hinweis">BERÜHREN FÜR DIE BEDIENUNG</span>
-      </div>
-    </button>
-  );
-}
-
-/**
- * Die Aussicht: was der Tag noch bringt.
- *
- * Die Frage am Mittag ist nicht, wie viel die Anlage gerade liefert - das steht gross darunter -,
- * sondern ob noch etwas kommt. Der Bogen zeigt, wo im Tag man steht, gefuellt ist das, was hinter
- * einem liegt.
- */
-function Vorschau({ plan, lauf, nowMs }: { plan: Plan | null; lauf: ReturnType<typeof sonnenlauf>; nowMs: number }) {
-  const a = aussicht(plan, nowMs, lauf);
-  const b = bogen(lauf, nowMs, 340, 62);
-  if (a.erwartetKwh == null && !b) return null;
-  const eins = (n: number | null) => (n == null ? "-" : n.toFixed(1).replace(".", ","));
-  return (
-    <span className="ambiente-vorschau">
-      <span className="ambiente-vorschau-kopf">
-        <span className="kicker ambiente-vorschau-wort">HEUTE ERWARTET</span>
-        <span className="mono ambiente-vorschau-zahl">
-          {eins(a.erwartetKwh)} <span className="home-einheit">kWh</span>
-        </span>
-      </span>
-      {b ? (
-        <svg className="ambiente-bogen" viewBox={`0 0 ${b.breite} ${b.hoehe + 2}`} role="img" aria-label="Erwarteter Sonnenverlauf des Tages, der bisherige Teil gefüllt">
-          {b.flaeche ? <path d={b.flaeche} fill="rgba(242,169,0,.26)" /> : null}
-          <path d={b.linie} fill="none" stroke="var(--pv)" strokeWidth={2} strokeLinecap="round" strokeDasharray="6 6" strokeOpacity={0.55} />
-          {b.bisJetzt ? <path d={b.bisJetzt} fill="none" stroke="var(--pv)" strokeWidth={2.2} strokeLinecap="round" /> : null}
-          {b.jetztX != null ? <line x1={b.jetztX} y1={0} x2={b.jetztX} y2={b.hoehe} stroke="var(--amber-soft)" strokeWidth={1.2} strokeDasharray="4 4" /> : null}
-          <line x1={0} y1={b.hoehe} x2={b.breite} y2={b.hoehe} stroke="rgba(255,255,255,.2)" strokeWidth={1} />
-        </svg>
-      ) : null}
-      {/* Was geerntet ist, steht unten als Tageszahl. Hier steht nur, was noch kommt - sonst
-          stuende dieselbe Kilowattstunde zweimal auf einem Bild. */}
-      <span className="ambiente-vorschau-fuss">
-        {a.restKwh != null && a.bis != null ? `noch ${eins(a.restKwh)} kWh bis ${hhmm(new Date(a.bis))}` : ""}
-      </span>
-    </span>
-  );
-}
-
-/** Sonne, Haus, Speicher: drei Knoten, zwei Leitungen, nichts dazwischen. */
-function Fluss({ state }: { state: LiveState | null }) {
-  const s = state?.snapshot;
-  const bat = s?.battery_power_kw.value ?? 0;
-  const laedt = bat < -SCHWELLE_KW;
-  const gibt = bat > SCHWELLE_KW;
-  const soc = s?.battery_soc.value ?? null;
-  const pv = s?.pv_power_kw.value ?? null;
-  return (
-    <div className="ambiente-fluss">
-      <Knoten icon="sun" farbe="var(--pv)" wert={kw(pv)} einheit="kW" wort="Sonne" />
-      <span className="ambiente-leitung" aria-hidden style={{ ["--f" as string]: "rgba(242,169,0,.9)", opacity: (pv ?? 0) > SCHWELLE_KW ? 1 : 0.25 }} />
-      <Knoten icon="home" farbe="rgba(255,255,255,.92)" wert={kw(s?.house_power_kw.value)} einheit="kW" wort="Haus" gross />
-      <span className="ambiente-leitung" aria-hidden data-rueck={gibt ? "ja" : "nein"} style={{ ["--f" as string]: "rgba(127,183,200,.9)", opacity: laedt || gibt ? 1 : 0.25 }} />
-      <Knoten
-        icon="battery"
-        farbe="var(--battery)"
-        wert={soc != null ? String(Math.round(soc * 100)) : "-"}
-        einheit="%"
-        wort={laedt ? "Speicher lädt" : gibt ? "Speicher gibt ab" : "Speicher hält"}
-        fuell={soc}
-      />
-    </div>
-  );
-}
-
-function Knoten({ icon, farbe, wert, einheit, wort, gross = false, fuell }: { icon: "sun" | "home" | "battery"; farbe: string; wert: string; einheit: string; wort: string; gross?: boolean; fuell?: number | null }) {
-  return (
-    <span className={`ambiente-knoten ${gross ? "ambiente-knoten-gross" : ""}`}>
-      <span className="ambiente-ring" style={{ borderColor: farbe, background: `linear-gradient(color-mix(in srgb, ${farbe} 12%, transparent), color-mix(in srgb, ${farbe} 12%, transparent)), var(--petrol)` }} aria-hidden>
-        {typeof fuell === "number" ? <span className="ambiente-fuell" style={{ height: `${Math.round(fuell * 100)}%` }} /> : null}
-        <Icon name={icon} size={gross ? 64 : 48} color={farbe} />
-      </span>
-      <span className="mono ambiente-knoten-zahl" style={icon === "sun" ? { color: "var(--pv)" } : undefined}>
-        {wert} <span className="home-einheit">{einheit}</span>
-      </span>
-      <span className="ambiente-knoten-wort">{wort}</span>
-    </span>
-  );
-}
-
-/**
- * Am Abend: der Puffer und der Preis.
- *
- * Die Sonne ist gelaufen, also ist sie keine Nachricht mehr. Jetzt zaehlt, was im Speicher steht,
- * was die Kilowattstunde kostet und was das Haus in der Nacht vorhat.
- */
-function Abend({ state, plan, morgenPvKwh, nowMs }: { state: LiveState | null; plan: Plan | null; morgenPvKwh: number | null; nowMs: number }) {
-  const s = state?.snapshot;
-  const temps = s ? [s.buffer_temps_c.top, s.buffer_temps_c.mid_top, s.buffer_temps_c.mid_bottom, s.buffer_temps_c.bottom] : [];
-  const { vollstaendig, veraltet, wort } = pufferZustand(temps, nowMs, !!state?.heat_pump.running, state?.buffer.status);
-  const soc = state?.buffer.soc ?? null;
-  const zeilen = planZeilen(plan, nowMs);
-  const preis = s?.electricity_price_ct_kwh.value ?? null;
-  return (
-    <div className="ambiente-abend">
-      <div className="ambiente-puffer">
-        <PufferGlasBild className="ambiente-glas" temps={temps.map((m) => m.value)} breite={72} hoehe={300} schrift={17} gedimmt={!vollstaendig || veraltet} />
-        <span className="ambiente-puffer-text">
-          <span className="kicker ambiente-vorschau-wort">PUFFER</span>
-          <span className="mono ambiente-knoten-zahl">
-            {soc != null ? String(Math.round(soc * 100)) : "-"} <span className="home-einheit">%</span>
-          </span>
-          <span className="ambiente-knoten-wort">{wort}</span>
-        </span>
-      </div>
-      <div className="ambiente-abend-rechts">
-        <span className="ambiente-preis">
-          <span className="kicker ambiente-vorschau-wort">STROM GERADE</span>
-          <span className="mono ambiente-preis-zahl" style={preis != null && preis < 0 ? { color: "var(--pv)" } : undefined}>
-            {preis == null ? "-" : preis.toFixed(1).replace(".", ",")} <span className="home-einheit">ct</span>
-          </span>
-        </span>
-        <span className="ambiente-plan">
-          {zeilen.map(([k, v]) => (
-            <span key={k} className="ambiente-plan-zeile">
-              <span className="ambiente-plan-wort">{k}</span>
-              <span className="mono">{v}</span>
-            </span>
-          ))}
-          {morgenPvKwh != null ? (
-            <span className="ambiente-plan-zeile">
-              <span className="ambiente-plan-wort">Morgen Sonne</span>
-              <span className="mono">{morgenPvKwh.toFixed(1).replace(".", ",")} kWh</span>
-            </span>
-          ) : null}
-        </span>
       </div>
     </div>
   );
