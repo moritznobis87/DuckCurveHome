@@ -22,7 +22,7 @@ unterwegs (optional) ── home.duckcurve.de ── Cloudflare Tunnel ──▶
 
 | Dienst | Aufgabe |
 |---|---|
-| `postgres` | die eigene Datenbank (PostgreSQL 17) |
+| `postgres` | die eigene Datenbank (PostgreSQL 18, wie auf Railway) |
 | `api` | Regelung, Live-Zustand, Auswertungen, Alfred; spielt beim Start die Migrationen ein |
 | `web` | die Oberfläche |
 | `caddy` | HTTPS im Heimnetz, Stammzertifikat zum Herunterladen, Port 8001 nur für die Bridge |
@@ -125,7 +125,15 @@ In Railway beim Dienst **Postgres** unter „Connect“ die öffentliche Adresse
 sudo dch uebernehmen 'postgresql://…'
 ```
 
-Das lädt die Datenbank herunter, sichert vorher den Stand auf dem Gerät und spielt sie ein. Die API
+Das lädt die Datenbank herunter, sichert vorher den Stand auf dem Gerät und spielt sie ein.
+Dafür muss das Gerät dieselbe Hauptversion von PostgreSQL haben wie Railway oder eine neuere
+(`pg_dump` liest von keinem neueren Server). Seit November 2026 sind das beide 18.
+
+**Ein Gerät, das noch mit PostgreSQL 17 eingerichtet wurde**, hebt man so: Datenbank sichern
+(`sudo dch sichern`), Dienste anhalten (`sudo dch stoppen`), das alte Volume löschen
+(`sudo docker volume rm duckcurve_postgres`), dann `sudo dch selbst-aktualisieren` und die Sicherung
+mit `sudo dch wiederherstellen <datei>` einspielen. Eine 17er-Sicherung lässt sich in 18 einspielen,
+umgekehrt nicht. Ist die Datenbank noch leer, entfallen Sichern und Wiederherstellen. Die API
 startet danach neu und bringt das Schema auf den Stand ihres Codes. Die Übernahme lässt sich
 wiederholen, etwa unmittelbar vor dem Umstellen der Bridge, damit möglichst wenig fehlt.
 

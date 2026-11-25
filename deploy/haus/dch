@@ -821,8 +821,11 @@ uebernehmen)
 	ziel="$SICHERUNG/uebernahme-$(date +%Y%m%d-%H%M%S).dump"
 	hinweis "Lade die Datenbank herunter ..."
 	# Mit dem pg_dump aus dem Postgres-Image dieses Stacks: Er muss mindestens so neu sein wie der
-	# Server, von dem er liest.
-	docker run --rm -e QUELLE="$quelle_url" postgres:17 \
+	# Server, von dem er liest. Das Image steht nur in compose.yaml, damit es nicht zweimal
+	# gepflegt wird und auseinanderlaeuft (hier stand bis November 2026 ein festes postgres:17,
+	# und Railway war schon auf 18).
+	pg_bild=$(compose config --images 2>/dev/null | grep -m1 '^postgres:' || echo postgres:18)
+	docker run --rm -e QUELLE="$quelle_url" "$pg_bild" \
 		sh -c 'pg_dump "$QUELLE" -Fc --no-owner --no-acl' >"$ziel.teil"
 	mv "$ziel.teil" "$ziel"
 	hinweis "Heruntergeladen: $ziel ($(du -h "$ziel" | cut -f1))"
