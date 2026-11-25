@@ -11,7 +11,8 @@ public enum Kontoworte {
         switch rolle {
         case "hausherr": return ("Hausherr", "Sieht alles und darf alles einstellen.")
         case "bewohner": return ("Bewohner", "Sieht das Haus und darf dort stellen.")
-        case "service": return ("Beratung", "Sieht zu und stellt nichts.")
+        // `rechte.py`: alles außer den Akten sehen, schreiben nur am Gerät.
+        case "service": return ("Beratung", "Sieht alles außer den Akten und darf am Hausgerät arbeiten.")
         case "gast": return ("Gast", "Sieht zu und stellt nichts.")
         default: return (rolle, "")
         }

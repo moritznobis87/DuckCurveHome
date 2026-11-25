@@ -9,7 +9,8 @@ import type { IconName } from "@/components/ui/Icon";
 export const ROLLE: Record<string, { name: string; satz: string }> = {
   hausherr: { name: "Hausherr", satz: "Sieht alles und darf alles einstellen." },
   bewohner: { name: "Bewohner", satz: "Sieht das Haus und darf dort stellen." },
-  service: { name: "Beratung", satz: "Sieht zu und stellt nichts." },
+  // `rechte.py`: alles außer den Akten sehen, schreiben nur am Gerät (Update, Neustart, Dienste).
+  service: { name: "Beratung", satz: "Sieht alles außer den Akten und darf am Hausgerät arbeiten." },
   gast: { name: "Gast", satz: "Sieht zu und stellt nichts." },
 };
 

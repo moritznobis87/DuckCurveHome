@@ -6,7 +6,7 @@ describe("Mein Zugang", () => {
   it("nennt die Rollen wie die App", () => {
     expect(ROLLE.hausherr).toEqual({ name: "Hausherr", satz: "Sieht alles und darf alles einstellen." });
     expect(ROLLE.bewohner!.satz).toBe("Sieht das Haus und darf dort stellen.");
-    expect(ROLLE.service!.name).toBe("Beratung");
+    expect(ROLLE.service).toEqual({ name: "Beratung", satz: "Sieht alles außer den Akten und darf am Hausgerät arbeiten." });
     expect(ROLLE.gast!.satz).toBe("Sieht zu und stellt nichts.");
   });
 

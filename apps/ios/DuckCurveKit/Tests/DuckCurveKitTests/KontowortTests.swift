@@ -9,6 +9,8 @@ final class KontowortTests: XCTestCase {
         XCTAssertEqual(Kontoworte.rolle("hausherr").satz, "Sieht alles und darf alles einstellen.")
         XCTAssertEqual(Kontoworte.rolle("bewohner").satz, "Sieht das Haus und darf dort stellen.")
         XCTAssertEqual(Kontoworte.rolle("service").name, "Beratung")
+        // Die Beratung darf am Gerät schreiben (`rechte.py`, `_GERAET`); „stellt nichts“ wäre falsch.
+        XCTAssertEqual(Kontoworte.rolle("service").satz, "Sieht alles außer den Akten und darf am Hausgerät arbeiten.")
         XCTAssertEqual(Kontoworte.rolle("gast").satz, "Sieht zu und stellt nichts.")
     }
 
