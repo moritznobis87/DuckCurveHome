@@ -19,7 +19,9 @@ import { bild as himmel, sonnenlauf } from "./ambiente";
 import { sonnenanteil } from "./buehne";
 import { Buehne } from "./Buehne";
 import { wpWort } from "./fluss";
-import { Ausblickkarte, Pufferkarte } from "./Karten";
+import { Ausblickkarte, Pufferkarte, Stromkarte } from "./Karten";
+import { Uhr } from "./Uhr";
+import { useStartbild } from "./useStartbild";
 import { WpMenue } from "./WpMenue";
 import { DayCurve } from "./DayCurve";
 import { Dock } from "./Dock";
@@ -207,6 +209,7 @@ export function Home() {
   const stand = sonnenanteil(lauf, minute) ?? (lauf ? (minute < lauf.von ? 0 : 1) : 0.5);
   const vonEben = degraded && lastFrameAt ? hhmm(new Date(lastFrameAt + offset)) : null;
   const [wpMenue, setWpMenue] = useState(false);
+  const [startbild] = useStartbild();
   const wpLaeuft = state?.heat_pump.running;
 
   return (
@@ -252,10 +255,18 @@ export function Home() {
       </div>
 
       <div className="start-oben">
-        <Buehne snapshot={s ?? null} nowMs={now} wpLaeuft={wpLaeuft} nacht={nacht} stand={stand} lauf={lauf} sonneAb={sonneAb} vonEben={vonEben} onPumpe={() => setWpMenue(true)} />
+        {/* Solange die Wahl des Geräts noch nicht gelesen ist, steht nur der Rahmen da: eine Wand,
+            die erst die Bühne zeigt und dann zur Uhr springt, wäre ein Flackern bei jedem Laden. */}
+        {startbild === "uhr" ? (
+          <Uhr snapshot={s ?? null} nowMs={minute} wpLaeuft={wpLaeuft} nacht={nacht} blick={blick} sonneAb={sonneAb} vonEben={vonEben} onPumpe={() => setWpMenue(true)} />
+        ) : startbild === "buehne" ? (
+          <Buehne snapshot={s ?? null} nowMs={now} wpLaeuft={wpLaeuft} nacht={nacht} stand={stand} lauf={lauf} sonneAb={sonneAb} vonEben={vonEben} onPumpe={() => setWpMenue(true)} />
+        ) : (
+          <div className="start-mitte"><div className="start-buehne" data-nacht={nacht} /></div>
+        )}
         <div className="start-rechts">
           <Pufferkarte state={state} nowMs={now} />
-          <Ausblickkarte blick={blick} warnung={plan?.planner_warn_de} />
+          {startbild === "uhr" ? <Stromkarte blick={blick} warnung={plan?.planner_warn_de} /> : startbild === "buehne" ? <Ausblickkarte blick={blick} warnung={plan?.planner_warn_de} /> : <div className="start-karte" aria-hidden />}
         </div>
       </div>
 

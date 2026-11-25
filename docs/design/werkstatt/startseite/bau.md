@@ -28,9 +28,9 @@ dasselbe zeigen.
 |---|---|---|
 | 1 | Kern: Rechnung für Bühne und Ring (`buehne.ts`, `stundenring.ts`, `startbild.ts`; im Kit `Startbuehne.swift`, `Stundenring.swift`, `Startbild.swift`) mit denselben Prüfwerten | fertig |
 | 2 | Dashboard: neue Startseite mit der Bühne, an Wand, iPad und Handy angesehen | fertig |
-| 3 | Dashboard: die Uhr und die Umschaltung auf „Einstellen“ | offen |
+| 3 | Dashboard: die Uhr und die Umschaltung auf „Einstellen“ (Karte „Startseite“ unter der Zustandskarte) | fertig |
 | 4 | App: beide Bilder und die Umschaltung | offen |
-| 5 | Altes entfernen (`FlowHero`, `FlowHandy`, `Rail`, `Ausblick` als Sätze, alte `.home-*`-Regeln), Gleichstand prüfen, Pull Request | offen |
+| 5 | Altes entfernen, Gleichstand prüfen, Pull Request | im Dashboard fertig: `FlowHero`, `FlowHandy`, `Rail`, `Ausblick` und 105 Stilregeln ohne Verwendung sind weg; App und Pull Request offen |
 
 ## Für die App mitzunehmen
 
