@@ -58,6 +58,22 @@ nur ein ‚Wärmepumpe läuft‘.“
 - Weg sind das Flussbild aus drei Kreisen, der kleine Sonnenbogen und die Abendzeilen zum
   Fahrplan, im Dashboard auch `fahrplan.ts` und `bogen` in `ambiente.ts`.
 
+## Schlankere Bänder (25.11.2026, nach dem ersten Bild vom iPhone)
+
+Der Hausherr mit einem Bild der App bei 8,1 kW Netzbezug und 8,6 kW Wärmepumpe: „Die lilane und
+die orangene Linie sind etwas sehr dick, und vor allem überlappt die lilane das Piktogramm des
+Masts.“
+
+- Die Breite eines Bandes wächst jetzt mit der Wurzel der Leistung und endet bei 16 statt 30
+  Pixeln (`bandbreite`, in Dashboard und Kit mit denselben Prüfwerten).
+- Das Kabel setzt unter dem Mast um die halbe Bandbreite tiefer an (`bandkappe`), damit seine
+  runde Kappe an der Erdkante endet.
+- Zahl und Name von Netz und Speicher tragen in jeder Breite einen dunklen Hof, weil der
+  Sonnenbogen durch sie läuft; in der App fehlte er ganz.
+- In der App stehen die Marken unter dem Satz am Telefon in einer Reihe statt untereinander.
+- `gebaut/buehne-handy-8kw.png` und `gebaut/buehne-wand-8kw.png` zeigen das Dashboard mit den
+  Werten aus dem Bild des Hausherrn.
+
 ## Bilder der gebauten Seite
 
 `gebaut/` zeigt die Startseite des Dashboards im Demo-Betrieb am 25.11.2026: Bühne und Uhr, je an

@@ -168,7 +168,9 @@ struct Buehnenbild: View {
         let boden: Double = m.boden
         let hausEin: Double = m.mitte - m.hausHalb * (m.schmal ? 0.8 : 0.5)
         Startband(
-            pfad: Startbildform.unterirdisch(von: m.netzX, nach: hausEin, boden: boden, tief: m.tief),
+            pfad: Startbildform.unterirdisch(
+                von: m.netzX, nach: hausEin, boden: boden, tief: m.tief,
+                kappe: Startbuehne.bandkappe(f.netz)),
             kw: f.netz, farbe: f.einspeisung ? Farbe.netzEinspeisung : Farbe.netzBezug,
             versatz: f.einspeisung ? -versatz : versatz)
         Startband(
@@ -328,14 +330,14 @@ struct Buehnenbild: View {
         Startschild(
             zahl: Formate.kw(f.netz), einheit: "kW", name: f.netzName,
             anker: m.schmal ? .leading : .center, gross: gross,
-            leise: s?.gridPowerKw.belastbar == nil
+            leise: s?.gridPowerKw.belastbar == nil, hof: true
         )
         .position(x: m.schmal ? 10 + Startschild.breite / 2 : m.netzX, y: m.schildY - 4)
 
         Startschild(
             zahl: f.socText, einheit: "%", name: f.speicherName,
             anker: m.schmal ? .trailing : .center, gross: gross,
-            leise: s?.batterySoc.belastbar == nil
+            leise: s?.batterySoc.belastbar == nil, hof: true
         )
         .position(
             x: m.schmal ? groesse.width - 10 - Startschild.breite / 2 : m.speicherX, y: m.schildY - 4)
@@ -496,8 +498,12 @@ struct Startschild: View {
     var gross: CGFloat = 30
     var farbe: Color = Farbe.text1
     var leise = false
+    /// Ein dunkler Hof um die Schrift. Der Sonnenbogen läuft durch die Zahlen von Netz und
+    /// Speicher; mit dem Hof bleibt die Schrift lesbar (`start.css`, `.bild-hof`).
+    var hof = false
 
     var body: some View {
+        let schatten: Color = hof ? Farbe.petrol.opacity(0.9) : .clear
         VStack(alignment: anker, spacing: 0) {
             Zahl(
                 wert: zahl, einheit: einheit, schrift: Schrift.mono(gross),
@@ -507,6 +513,9 @@ struct Startschild: View {
                 .foregroundStyle(Farbe.text2)
                 .lineLimit(1)
         }
+        .shadow(color: schatten, radius: 2)
+        .shadow(color: schatten, radius: 2)
+        .shadow(color: schatten, radius: 2)
         .fixedSize()
         .frame(width: Self.breite, alignment: Alignment(horizontal: anker, vertical: .center))
         .allowsHitTesting(false)
@@ -549,9 +558,15 @@ enum Startbildform {
     }
 
     /// Eine Leitung unter der Erde: hinunter, mit runden Ecken hinüber und wieder hinauf.
-    static func unterirdisch(von: Double, nach: Double, boden: Double, tief: Double) -> Path {
+    ///
+    /// `kappe` ist die halbe Breite des Bandes am Anfang: um so viel tiefer setzt die Leitung
+    /// an, damit ihre runde Kappe an der Erdkante endet und nicht in die Sache ragt, die dort
+    /// steht. Am Mast war das zu sehen (Bild des Hausherrn vom 25.11.2026).
+    static func unterirdisch(
+        von: Double, nach: Double, boden: Double, tief: Double, kappe: Double = 0
+    ) -> Path {
         var p = Path()
-        p.move(to: CGPoint(x: von, y: boden + 2))
+        p.move(to: CGPoint(x: von, y: min(tief - 16, boden + 2 + kappe)))
         p.addLine(to: CGPoint(x: von, y: tief - 16))
         p.addQuadCurve(to: CGPoint(x: von + 16, y: tief), control: CGPoint(x: von, y: tief))
         p.addLine(to: CGPoint(x: nach - 16, y: tief))

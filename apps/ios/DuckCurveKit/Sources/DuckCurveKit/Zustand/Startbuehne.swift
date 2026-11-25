@@ -10,8 +10,21 @@ public enum Startbuehne {
     public static let flussAbKw = 0.05
 
     /// Wie breit ein Band bei dieser Leistung ist, in Punkten.
+    ///
+    /// **Mit der Wurzel, nicht geradeaus, und höchstens 16 Punkte.** Bis zum 25.11.2026 wuchs das
+    /// Band mit 4,5 Punkten je Kilowatt bis 30 Punkte. Im Haus zieht die Wärmepumpe über 8 kW:
+    /// Kabel und Rohr füllten den ganzen Boden unter dem Haus, und das Kabel ragte in den Mast
+    /// (Bild des Hausherrn vom 25.11.2026). Mit der Wurzel bleibt ein Kilowatt gut von vier zu
+    /// unterscheiden, und neun sind immer noch ein Band und kein Balken.
     public static func bandbreite(_ kw: Double) -> Double {
-        min(30, 5 + 4.5 * max(0, kw))
+        min(16, 4 + 4 * max(0, kw).squareRoot())
+    }
+
+    /// Wie weit die runde Kappe eines Bandes über sein Ende hinausragt: die halbe Breite. Ein
+    /// Kabel, das an einer Sache beginnt, setzt um so viel tiefer an, damit die Kappe sie nicht
+    /// überdeckt.
+    public static func bandkappe(_ kw: Double) -> Double {
+        kw < flussAbKw ? 1 : bandbreite(kw) / 2
     }
 
     /// Wie weit die Sonne auf ihrem Bogen ist: 0 beim Aufgang, 1 beim Untergang. `nil` heißt: sie
