@@ -1,0 +1,147 @@
+/* Die Startseite (components/home), seit dem 25.11.2026 mit zwei Bildern für ihre Mitte: der
+   Bühne und der Uhr. Hier stehen die Aufteilung der Seite, die Karten und die beiden Bilder.
+   Was Kopf, Tageskurve, Schalter und Wache schon mitbringen (.home-*), steht weiter in
+   globals.css und handy.css; diese Datei wird nach beiden geladen und passt es der Seite an. */
+
+/* ---------- Aufteilung an der Wand: Kopf, Satz, Bild mit zwei Karten, Tag mit Schaltern ---------- */
+.home.start { grid-template-rows: auto auto minmax(0, 1fr) clamp(204px, 27.5vh, 240px); gap: 14px; padding: max(14px, env(safe-area-inset-top)) 22px max(18px, env(safe-area-inset-bottom)); }
+.home.start > * { min-width: 0; }
+.start-uhr { align-items: center; gap: 18px; }
+.start-daten { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.start-daten .home-datum { font-size: 14px; line-height: 1; }
+.start-zeile { display: flex; align-items: baseline; gap: 12px; }
+.start-zeile .home-aussen { font-size: 15px; line-height: 1; color: var(--text-1); }
+
+.start-satzzeile { display: flex; align-items: flex-end; gap: 28px; }
+.start-satz { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.start-satz .home-satz { font-size: clamp(21px, 2.1vw, 27px); font-weight: 600; line-height: 1.22; text-wrap: balance; }
+.start-marken { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; color: var(--text-3); }
+.start-hinweise { display: flex; flex-direction: column; gap: 8px; max-width: 440px; min-width: 0; }
+.start-hinweise:empty { display: none; }
+
+.start-oben, .start-unten { display: grid; grid-template-columns: minmax(0, 1fr) 404px; gap: 14px; min-height: 0; }
+.start-mitte { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 0; }
+.start-rechts { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 14px; min-height: 0; min-width: 0; }
+
+/* ---------- Karte, Zeichenfeld, Marke: die Sprache der übrigen Seiten, mit weicherem Radius ---------- */
+.start-karte { --kartenfarbe: var(--mist); position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; padding: 16px 18px; overflow: hidden; border: 1px solid var(--line-1); border-radius: 16px; background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--kartenfarbe) 13%, transparent), transparent 62%), var(--surface-1); color: var(--text-1); text-align: left; text-decoration: none; }
+.start-karte-kopf { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.start-karte-titel { font-size: 15px; font-weight: 600; white-space: nowrap; }
+.start-karte-rechts { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.start-zeichen { border-radius: 11px; color: var(--kartenfarbe); background: color-mix(in srgb, var(--kartenfarbe) 14%, transparent); }
+.start-marke { display: inline-flex; align-items: center; gap: 7px; padding: 3px 11px; border-radius: 999px; background: color-mix(in srgb, var(--text-3) 18%, transparent); color: var(--text-2); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.start-marke[data-art="an"], .start-marke[data-art="teuer"] { background: color-mix(in srgb, var(--amber) 18%, transparent); color: var(--amber-soft); }
+.start-marke[data-art="guenstig"] { background: color-mix(in srgb, var(--mist) 26%, transparent); color: #cfe3ea; }
+.start-marke[data-art="laeuft"] { background: color-mix(in srgb, var(--heat-pump) 22%, transparent); color: #f3b392; }
+.start-marke[data-art="laeuft"]::before { content: ""; height: 7px; width: 7px; border-radius: 50%; background: var(--heat-pump); animation: start-pulsen 1.8s ease-in-out infinite; }
+@keyframes start-pulsen { 50% { opacity: 0.35; transform: scale(0.8); } }
+.start-grosszahl { font-size: 52px; line-height: 1; letter-spacing: -0.03em; white-space: nowrap; }
+.start-grosszahl small { margin-left: 0.25em; font-family: var(--font-sans); font-size: 0.34em; letter-spacing: 0; color: var(--text-3); }
+
+/* ---------- Puffer ---------- */
+.start-puffer { --kartenfarbe: var(--amber); flex-direction: row; align-items: stretch; justify-content: space-between; gap: 16px; }
+.start-puffer-links { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 10px; min-width: 0; }
+.start-tank { display: flex; align-items: stretch; gap: 10px; min-height: 92px; }
+.start-tank-glas { position: relative; width: 46px; overflow: hidden; border-radius: 23px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 0 26px rgba(242, 169, 0, 0.16); }
+.start-tank-glas::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255, 255, 255, 0.28), transparent 38%, rgba(0, 0, 0, 0.18)); }
+.start-tank-fuehler { display: flex; flex-direction: column; justify-content: space-between; padding: 5px 0; font-size: 13px; color: var(--text-2); white-space: nowrap; }
+
+/* ---------- Die nächsten 24 Stunden und der Strompreis ---------- */
+.start-preis { font-size: 22px; letter-spacing: -0.02em; white-space: nowrap; }
+.start-preis small { margin-left: 3px; font-family: var(--font-sans); font-size: 12px; color: var(--text-3); }
+.start-stundenbild { display: block; flex: none; }
+.start-stundenbild svg { display: block; }
+.start-achse { font-family: var(--font-mono); font-size: 10px; fill: var(--text-3); }
+.start-zeiten { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.start-zeit { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 7px 10px; border-radius: 11px; background: rgba(8, 36, 49, 0.5); }
+.start-zeit-wort { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.start-zeit-uhr { font-size: 12.5px; white-space: nowrap; }
+.start-warnung { font-size: 12px; line-height: 1.35; color: var(--amber-soft); }
+.start-ausblick { justify-content: space-between; }
+.start-strom { justify-content: space-between; gap: 12px; }
+.start-strom .start-grosszahl { font-size: 44px; }
+.start-strom-zeile { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.start-strom-zeile .start-marke { margin-bottom: 5px; }
+
+/* ---------- Die Tageskarte: Schalter der Tage und vier Zahlen im Kopf, die Kurve, die Legende ---------- */
+.start-tag { --kartenfarbe: var(--amber); padding: 14px 16px 12px; }
+.start .home-kurve { flex: 1; gap: 8px; min-height: 0; padding: 0; border-radius: 0; background: none; }
+.home-kurve-kopf { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.start .home-tage { padding: 3px; border-color: var(--line-1); border-radius: 999px; background: rgba(8, 36, 49, 0.6); }
+.start .home-tag { min-height: 32px; padding: 0 16px; border-radius: 999px; font-size: 13.5px; }
+.start .home-tag[aria-selected="true"] { font-weight: 600; }
+.start .home-kurve-legende-unten { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.start-zahlen { display: flex; gap: 26px; }
+.start-zahl { display: flex; flex-direction: column; gap: 3px; }
+.start-zahl-wert { font-size: 24px; line-height: 1; letter-spacing: -0.02em; white-space: nowrap; }
+.start-zahl-wert[data-gelb] { color: var(--pv); }
+.start-zahl-wert small { margin-left: 4px; font-family: var(--font-sans); font-size: 12px; letter-spacing: 0; color: var(--text-3); }
+.start-zahl-wort { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+
+/* ---------- Die Schalter: sieben runde Knöpfe in zwei Reihen. Das achte Feld bleibt für Alfred frei. ---------- */
+.start-schalter { --kartenfarbe: var(--mist); justify-content: center; overflow: visible; }
+.start .home-dock { align-items: stretch; }
+.start .home-dock-reihe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 6px; }
+.start .home-dock-trenner { display: none; }
+.start .home-dock-item { width: auto; gap: 6px; }
+.start .home-dock-knopf { height: 56px; width: 56px; border-radius: 50%; background: rgba(8, 36, 49, 0.45); }
+.start .home-dock-wort { font-size: 11.5px; letter-spacing: 0; text-transform: none; }
+.start .home-dock-item[data-an="true"] .home-dock-wort { color: var(--text-1); }
+.home-dock-dazu { margin-top: -3px; font-size: 10.5px; line-height: 1; color: var(--text-3); white-space: nowrap; }
+
+/* ---------- Das Bild der Mitte: Rahmen, Schrift und Bewegung für Bühne und Uhr ---------- */
+.start-buehne { position: relative; flex: 1; min-height: 0; overflow: hidden; border: 1px solid var(--line-1); border-radius: 20px; background: linear-gradient(180deg, #0a2a3b 0%, #0d3142 55%, #113a4c 100%); }
+.start-buehne[data-nacht="false"] { background: radial-gradient(90% 120% at 12% 8%, color-mix(in srgb, var(--amber) 22%, transparent), transparent 58%), linear-gradient(180deg, #0f3446 0%, #113a4c 100%); }
+.buehne-flaeche { position: absolute; inset: 0; transition: opacity 0.4s, filter 0.4s; }
+.buehne-flaeche svg { display: block; }
+.start-buehne[data-gestoert="true"] .buehne-flaeche { opacity: 0.5; filter: saturate(0.55); }
+.start-von-eben { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid var(--line-2); border-radius: 999px; background: rgba(8, 36, 49, 0.85); font-size: 13.5px; white-space: nowrap; }
+.buehne-flaeche text { font-family: var(--font-sans); fill: var(--text-1); }
+.buehne-flaeche .bild-zahl { font-family: var(--font-mono); letter-spacing: -0.02em; }
+.buehne-flaeche .bild-einheit { fill: var(--text-3); }
+.buehne-flaeche tspan.bild-einheit { font-family: var(--font-sans); letter-spacing: 0; }
+.buehne-flaeche .bild-name { fill: var(--text-2); }
+.bild-hof { paint-order: stroke; stroke: color-mix(in srgb, var(--petrol) 88%, transparent); stroke-width: 6px; stroke-linejoin: round; }
+.bild-fliessen { animation: bild-fliessen 1.5s linear infinite; }
+.bild-fliessen.bild-rueck { animation-direction: reverse; }
+@keyframes bild-fliessen { to { stroke-dashoffset: -38; } }
+.bild-luefter { transform-box: fill-box; transform-origin: center; }
+.bild-laeuft .bild-luefter { animation: bild-drehen 2.4s linear infinite; }
+@keyframes bild-drehen { to { transform: rotate(360deg); } }
+.bild-stern { animation: bild-blinken 4s ease-in-out infinite; }
+@keyframes bild-blinken { 50% { opacity: 0.15; } }
+
+/* Am Telefon stehen Wallbox und Wärmepumpe als zwei Kacheln unter der Bühne. */
+.start-unterhaus { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.start-ding { flex-direction: row; align-items: center; gap: 10px; padding: 12px; font: inherit; cursor: pointer; }
+.start-ding .start-zeichen { height: 32px; width: 32px; }
+.start-ding-text { display: flex; flex-direction: column; min-width: 0; }
+.start-ding-zahl { font-size: 22px; line-height: 1.1; letter-spacing: -0.02em; }
+.start-ding-zahl small { margin-left: 4px; font-family: var(--font-sans); font-size: 12px; color: var(--text-3); }
+.start-ding-name { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.start-ding[data-an="false"] .start-ding-zahl { color: var(--text-3); }
+.start-ding[data-an="false"] .start-zeichen { color: var(--text-3); background: color-mix(in srgb, var(--text-3) 12%, transparent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bild-fliessen, .bild-laeuft .bild-luefter, .bild-stern, .start-marke[data-art="laeuft"]::before { animation: none; }
+}
+
+/* ---------- Telefon: eine Spalte, die Seite rollt ---------- */
+@media (max-width: 720px) {
+  .home.start { display: flex; flex-direction: column; gap: 12px; padding: 10px 16px calc(96px + env(safe-area-inset-bottom)); }
+  .home.start > * { order: 0; flex: none; }
+  .start-daten .home-datum { display: none; }
+  .start-satzzeile { flex-direction: column; align-items: stretch; gap: 10px; }
+  .start-satz .home-satz { font-size: 22px; }
+  .start-hinweise { max-width: none; }
+  .start-oben, .start-unten, .start-rechts { display: flex; flex-direction: column; gap: 12px; }
+  .start-buehne { flex: none; height: 322px; }
+  .home-kurve-kopf { flex-wrap: wrap; gap: 12px; }
+  .start .home-tage { width: 100%; }
+  .start .home-tag { flex: 1; min-height: 36px; }
+  .start-zahlen { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .start .home-kurve-bild { height: 262px; }
+  .start .home-dock { padding: 0; border-radius: 0; background: none; }
+  .start .home-dock-item { width: auto; }
+  .start .home-dock-knopf { height: 52px; width: 52px; border-radius: 50%; }
+}

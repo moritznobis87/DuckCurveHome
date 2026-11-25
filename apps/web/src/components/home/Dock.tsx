@@ -34,7 +34,7 @@ const HP_DAUERN = [30, 120, 360];
 // Pellets im Zuenden und Ausbrennen, als er nutzbar in den Puffer bringt.
 const OFEN_DAUERN = [120, 240, 480];
 
-function Knopf({ label, kurz, icon, an, farbe, busy, fehler, onClick, offen }: { label: string; kurz: string; icon: IconName; an: boolean | null; farbe: string; busy?: boolean; fehler?: boolean; onClick: () => void; offen?: boolean }) {
+function Knopf({ label, kurz, dazu, icon, an, farbe, busy, fehler, onClick, offen }: { label: string; kurz: string; /** Der Zustand als Wort, bei Schaltern, die eine Auswahl öffnen. */ dazu?: string; icon: IconName; an: boolean | null; farbe: string; busy?: boolean; fehler?: boolean; onClick: () => void; offen?: boolean }) {
   const leuchtet = an === true;
   return (
     <span className="home-dock-item" data-an={leuchtet}>
@@ -56,6 +56,7 @@ function Knopf({ label, kurz, icon, an, farbe, busy, fehler, onClick, offen }: {
         <Icon name={icon} size={26} />
       </button>
       <span className="home-dock-wort" aria-hidden>{kurz}</span>
+      {dazu ? <span className="home-dock-dazu" aria-hidden>{dazu}</span> : null}
     </span>
   );
 }
@@ -236,13 +237,14 @@ export function Dock({ state, readOnly }: { state: LiveState | null; readOnly: b
           return <Knopf key={k.key} label={`${k.label}${an == null ? "" : an ? " · an" : " · aus"}${age ? ` · ${age}` : ""}`} kurz={k.kurz} icon={k.icon} an={an} farbe="var(--amber)" busy={busy === k.key} fehler={fehlerKey === k.key} onClick={() => void schalte(k.key, k.label, k.durationMin)} />;
         })}
         <span className="home-dock-trenner" aria-hidden />
-        <Knopf label={`Wärmepumpe · ${hpStatus}`} kurz="Wärmepumpe" icon="pump" an={hp?.running ?? null} farbe="var(--heat-pump)" offen={offen === "hp"} onClick={() => setOffen(offen === "hp" ? null : "hp")} />
-        {stove?.present ? <Knopf label={`Pelletofen · ${ofenStatus}`} kurz="Ofen" icon="stove" an={stove.running ?? null} farbe="var(--stove)" offen={offen === "stove"} onClick={() => setOffen(offen === "stove" ? null : "stove")} /> : null}
+        <Knopf label={`Wärmepumpe · ${hpStatus}`} kurz="Wärmepumpe" dazu={hp?.running ? "läuft" : "aus"} icon="pump" an={hp?.running ?? null} farbe="var(--heat-pump)" offen={offen === "hp"} onClick={() => setOffen(offen === "hp" ? null : "hp")} />
+        {stove?.present ? <Knopf label={`Pelletofen · ${ofenStatus}`} kurz="Ofen" dazu={stove.running ? "brennt" : "aus"} icon="stove" an={stove.running ?? null} farbe="var(--stove)" offen={offen === "stove"} onClick={() => setOffen(offen === "stove" ? null : "stove")} /> : null}
         {/* Die Alarmanlage leuchtet, wenn sie scharf ist - rot nur, wenn sie ausgelöst hat. */}
         {alarm?.present ? (
           <Knopf
             label={`Alarmanlage · ${alarm.state_de}`}
             kurz="Alarm"
+            dazu={alarm.state_de}
             icon="shield"
             an={alarm.state != null && alarm.state > 0}
             farbe={alarm.state === 4 ? "var(--alert)" : "var(--mist)"}

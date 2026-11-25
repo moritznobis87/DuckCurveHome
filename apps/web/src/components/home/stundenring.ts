@@ -1,3 +1,4 @@
+import { hhmm } from "@/lib/format";
 import type { Fenster, Zelle } from "./ausblick";
 
 /**
@@ -18,6 +19,8 @@ export interface Stunde {
   sonneKw: number;
   /** In dieser Stunde ist ein Lauf der Wärmepumpe geplant. */
   wp: boolean;
+  /** In dieser Stunde soll der Pelletofen brennen. */
+  ofen: boolean;
   /** Die Stunde liegt im Preistief. */
   tief: boolean;
 }
@@ -32,7 +35,8 @@ export function stunden24(zellen: Zelle[], guenstig: Fenster | null): Stunde[] {
     const start = d.getTime();
     if (!out.length || out[out.length - 1]!.start !== start) {
       if (out.length === 24) break;
-      out.push({ start, stunde: d.getHours(), preis: null, sonneKw: 0, wp: false, tief: false });
+      // Die Stunde in der Zeit des Hauses, so wie jede Uhrzeit der Oberfläche, nicht in der des Geräts.
+      out.push({ start, stunde: Number(hhmm(d).slice(0, 2)), preis: null, sonneKw: 0, wp: false, ofen: false, tief: false });
       summen.push({ preis: 0, preise: 0, sonne: 0, zellen: 0 });
     }
     const s = summen[summen.length - 1]!;
@@ -43,6 +47,7 @@ export function stunden24(zellen: Zelle[], guenstig: Fenster | null): Stunde[] {
     s.sonne += z.pv;
     s.zellen += 1;
     if (z.wp) out[out.length - 1]!.wp = true;
+    if (z.ofen) out[out.length - 1]!.ofen = true;
   }
   out.forEach((st, i) => {
     const s = summen[i]!;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { EChartsCoreOption } from "echarts/core";
 import type { HeatReport, Plan } from "@/lib/api/models";
 import type { HistoryPoint } from "@/lib/live/store";
@@ -33,7 +33,7 @@ import { TAGE, TAG_WORT, type Schatten, type Tag } from "./tage";
  * und allem; die Wandanzeige soll nicht an einem Tag von vorgestern haengen bleiben, wie es der
  * alten passiert ist.
  */
-export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, start, end }: { tag: Tag; onTag: (t: Tag) => void; history: HistoryPoint[]; plan: Plan | null; heat: HeatReport | null; schatten: Schatten | null; nowMs: number; start: number; end: number }) {
+export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, start, end, zahlen }: { zahlen?: ReactNode; tag: Tag; onTag: (t: Tag) => void; history: HistoryPoint[]; plan: Plan | null; heat: HeatReport | null; schatten: Schatten | null; nowMs: number; start: number; end: number }) {
   // **Am Handy zwei Flächen.** Auf 390 Punkten lagen Leistung und Preis an zwei Achsen
   // übereinander, die Preisstufen kreuzten Sonne und Haus, und über allem standen vier Mal
   // „PREISTIEF" ineinander (gesehen am 10.11.2026). Dort steht die Leistung jetzt oben, der Preis
@@ -151,7 +151,7 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
   );
   return (
     <div className="home-kurve">
-      <div className="flex items-center justify-between gap-4">
+      <div className="home-kurve-kopf">
         <div className="home-tage" role="tablist" aria-label="Tag">
           {TAGE.map((t) => (
             <button key={t} role="tab" aria-selected={t === tag} onClick={() => onTag(t)} className="home-tag" style={{ background: t === tag ? "var(--amber)" : "transparent", color: t === tag ? "var(--petrol)" : "var(--text-2)" }}>
@@ -159,12 +159,12 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
             </button>
           ))}
         </div>
-        <div className="home-kurve-legende flex flex-wrap items-center justify-end gap-x-4 gap-y-1">{legende}</div>
+        {/* Die vier Zahlen des Tages stehen im Kopf der Karte und wechseln mit dem Tag. */}
+        {zahlen}
       </div>
       <div className="home-kurve-bild min-h-0 flex-1">
         <EChart option={option} />
       </div>
-      {/* Am Handy steht die Legende unter dem Bild; neben dem Tagesschalter ist kein Platz. */}
       <div className="home-kurve-legende-unten">{legende}</div>
     </div>
   );

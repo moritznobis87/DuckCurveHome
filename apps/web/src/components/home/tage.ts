@@ -42,7 +42,7 @@ export interface Kennzahl {
 type PlanInterval = Plan["intervals"][number];
 type HeatPoint = HeatReport["forecast"][number];
 
-const de = (n: number | null | undefined, stellen: number): string =>
+export const de = (n: number | null | undefined, stellen: number): string =>
   n == null || !Number.isFinite(n) ? "-" : n.toFixed(stellen).replace(".", ",");
 
 const uhr = (ms: number): string => {

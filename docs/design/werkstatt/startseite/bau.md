@@ -27,10 +27,21 @@ dasselbe zeigen.
 | Nr. | Schritt | Stand |
 |---|---|---|
 | 1 | Kern: Rechnung für Bühne und Ring (`buehne.ts`, `stundenring.ts`, `startbild.ts`; im Kit `Startbuehne.swift`, `Stundenring.swift`, `Startbild.swift`) mit denselben Prüfwerten | fertig |
-| 2 | Dashboard: neue Startseite mit der Bühne, an Wand, iPad und Handy angesehen | offen |
+| 2 | Dashboard: neue Startseite mit der Bühne, an Wand, iPad und Handy angesehen | fertig |
 | 3 | Dashboard: die Uhr und die Umschaltung auf „Einstellen“ | offen |
 | 4 | App: beide Bilder und die Umschaltung | offen |
 | 5 | Altes entfernen (`FlowHero`, `FlowHandy`, `Rail`, `Ausblick` als Sätze, alte `.home-*`-Regeln), Gleichstand prüfen, Pull Request | offen |
+
+## Für die App mitzunehmen
+
+- Die Zeile unter dem Satz ist jetzt ausformuliert: „Der nächste Lauf ist für 13:30 geplant.“ und
+  „Entschieden um 12:38.“ (`JetztSeite.swift`, bisher „nächster geplanter Lauf um“ und „Stand“).
+- Wer entscheidet, steht als Marke vor dieser Zeile; läuft die Wärmepumpe, steht eine zweite
+  Marke „Wärmepumpe läuft“ daneben.
+- Die Schalter, die eine Auswahl öffnen, tragen ihren Zustand als Wort: „läuft“ oder „aus“,
+  „brennt“ oder „aus“, und der Zustand der Alarmanlage.
+- „Nächste 24 Stunden“ zeigt auch die Brennzeiten des Pelletofens, als zweite Reihe Striche und
+  als vierte Zeitspanne.
 
 ## Was offen bleibt
 

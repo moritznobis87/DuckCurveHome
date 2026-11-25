@@ -78,8 +78,9 @@ describe("Bühne", () => {
 });
 
 describe("Stundenring", () => {
-  const um = (stunde: number, minute: number, tag = 25) => new Date(2026, 10, tag, stunde, minute).getTime();
-  const zelle = (ts: number, preis: number | null, pv: number, wp = false): Zelle => ({ ts, preis, pv, wp, ofen: false });
+  // In der Zeit des Hauses (Winterzeit, eine Stunde vor UTC), gleich wo der Test läuft.
+  const um = (stunde: number, minute: number) => new Date(`2026-11-25T${String(stunde).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00+01:00`).getTime();
+  const zelle = (ts: number, preis: number | null, pv: number, wp = false, ofen = false): Zelle => ({ ts, preis, pv, wp, ofen });
 
   it("fasst Viertelstunden zu Stunden zusammen", () => {
     const zellen = [
@@ -89,13 +90,14 @@ describe("Stundenring", () => {
       zelle(um(19, 15), 44, 0.4),
       zelle(um(19, 30), null, 0.6),
       zelle(um(19, 45), null, 0.8),
-      zelle(um(20, 0), null, 1),
+      zelle(um(20, 0), null, 1, false, true),
     ];
     const st = stunden24(zellen, { start: um(19, 30), end: um(21, 30), mittel: 20 });
     expect(st.map((s) => s.stunde)).toEqual([18, 19, 20]);
     expect(st.map((s) => s.preis)).toEqual([52, 42, null]);
     expect(st[1]!.sonneKw).toBeCloseTo(0.5, 6);
     expect(st.map((s) => s.wp)).toEqual([false, true, false]);
+    expect(st.map((s) => s.ofen)).toEqual([false, false, true]);
     expect(st.map((s) => s.tief)).toEqual([false, true, true]);
   });
   it("hört nach 24 Stunden auf, auch wenn die laufende Stunde morgen wiederkommt", () => {
