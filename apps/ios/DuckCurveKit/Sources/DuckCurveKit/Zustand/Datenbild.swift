@@ -503,42 +503,19 @@ public struct Pruefkurve: Sendable, Hashable {
 //  Die Worte der Seite
 // =====================================================================================
 
-/// Was unter „Daten prüfen“ steht: die drei Absätze der Vorlage (`DataCheck.tsx:119-147`).
+/// Die Sätze der Karten auf „Daten prüfen“, wie im Dashboard (`DataCheck.tsx`, `PRUEFSAETZE`).
 ///
-/// **Warum die Texte im Kern stehen und nicht in der Ansicht.** Sie erklären, wie die Bilder
-/// darüber zu lesen sind - und wenn sich ein Bild ändert, muss der Text mitgehen. Hier stehen
-/// sie an einer Stelle und unter Test, statt in einem `ViewBuilder` verteilt.
+/// Bis zum 25.11.2026 standen hier drei lange Absätze über die Fläche, den Ladestand und den
+/// Zähler, dazu ein Satz zur Abdeckung. Der Hausherr wollte auf den Systemseiten keine langen
+/// Erklärtexte mehr; geblieben ist je Karte ein Satz.
 public enum Pruefworte {
-    /// Die obere Fläche und das Zeitfenster.
-    ///
-    /// **Hier steht die Abweichung ausdrücklich drin.** Der Browser hat drei Wege zum
-    /// Zeitfenster: ein Werkzeug oben rechts, einen Regler unter dem Diagramm und Zoomen am
-    /// Zeiger (`charts.ts:637-672`). Swift Charts bringt dafür kein Gegenstück mit; es hat für
-    /// das Fenster und für die Werteauskunft dieselbe eine Wischgeste, und die beiden nehmen
-    /// sie einander weg. Die Geste bekommt deshalb die Auskunft - die ist nur so zu haben -,
-    /// das Fenster bekommt Knöpfe (``Pruefkurve/fensterbreiten``). Das in den Text zu
-    /// schreiben ist besser, als einen Regler zu versprechen, den es nicht gibt.
-    ///
-    /// **Dieser Satz muss mitgehen, wenn sich die Geste ändert.** Er stand bis zum 21.11.2026
-    /// auf „ein Ziehen über das Bild wählt ein Zeitfenster", und genau das tut es seitdem
-    /// nicht mehr.
-    public static let flaeche =
-        "Die obere Fläche zeigt die Messreihen, wie sie gespeichert sind: auf einer gemeinsamen Kilowattachse, mit hervorgehobener Nulllinie. Über ihr ist Bezug, unter ihr Einspeisung. Ein Fahren über das Bild nennt die Werte der berührten Minute, jede Reihe in ihrer Farbe. Daran vergleicht man die beiden Gegenproben. Die Strecke, um die es geht, ist oft nur eine Viertelstunde lang und über den ganzen Tag gezeichnet damit wenige Bildpunkte: die Knöpfe unter dem Bild legen darum ein Zeitfenster von einer, drei oder sechs Stunden um die berührte Stelle, und „Ganzer Tag“ kommt zurück. Die Kilowattachse geht mit, damit auch kleine Leistungen im Ausschnitt lesbar bleiben. Über den ganzen Tag wird jede fünfte Minute gezeichnet, im Ausschnitt jede."
-
-    /// Der Ladestand als Gegenprobe zur Ladeleistung.
-    public static let ladestand =
-        "Die gestrichelte Linie ist der Ladestand auf der rechten Achse. Sie steht hier als Gegenprobe: Ladeleistung und Ladestand sind zwei unabhängige Messwerte desselben Geräts und müssen zueinander passen. 2,8 kW über anderthalb Stunden sind 4,2 kWh und damit über 80 Prozentpunkte in einem 5,1-kWh-Speicher. Bewegt sich der Ladestand dabei nicht, stimmt eine der beiden Reihen nicht. Steigt er wie erwartet, hat der Speicher wirklich geladen, und die Frage ist nicht mehr, ob die Daten stimmen, sondern warum er es tat."
-
-    /// Der amtliche Zähler, die Bilanz des Hauses und die Lücke in der Erzeugung.
-    public static let zaehler =
-        "Die zweite gestrichelte Linie, in der Farbe des Netzbezugs, ist der amtliche Zähler. Er misst dieselbe Größe wie der Stromwandler und läuft vorerst nur mit: führend bleibt der Wandler. Wo die beiden Linien übereinanderliegen, sind sich die Geräte einig; wo nicht, ist erst zu prüfen, ob es eine echte Abweichung ist oder nur ein Versatz von Sekunden. Dafür ist das Zeitfenster da. Der Hausverbrauch ist dabei keine eigene Messung, sondern folgt aus der Bilanz Haus = PV + Netz + Speicher. Läuft die PV und zeigt das Netz trotzdem Bezug, sieht man hier unmittelbar, ob der Hausverbrauch über der Erzeugung lag oder ob die Erzeugungsreihe selbst eine Lücke hat. Die Stundenbilanz darunter nimmt diese zweite Frage noch einmal auf: zwischen der ersten und der letzten Minute mit Erzeugung zählt sie die Minuten auf genau 0,00 kW und meldet es, wenn sich der Netzwert in derselben Strecke weiterbewegt. Dann liefert der Zähler, die Erzeugungsmessung aber nicht, und die ausgewiesene Netzladung ist eine Folge der Lücke, kein Verhalten des Speichers."
-
-    /// Die drei Absätze in der Reihenfolge der Vorlage.
-    public static let methode: [String] = [flaeche, ladestand, zaehler]
-
-    /// Was eine Abdeckung von 100 Prozent heißt - der eigene Satz der App.
-    public static let abdeckungssatz =
-        "Eine Reihe mit 100 Prozent hat in jeder Minute des Zeitraums einen Wert. Alles darunter heißt: die Berichte rechnen mit weniger."
+    public static let leistungen =
+        "Bezug und Entladen zählen positiv, Einspeisung und Laden negativ; der Ladestand steht rechts in Prozent."
+    public static let quellen = "Was gerade liefert und was ausbleibt."
+    /// Der Satz der Verfügbarkeitskarte, mit der Zahl der Tage.
+    public static func abdeckung(tage: Int) -> String {
+        "Minuten je Stunde über \(tage) Tage, von 0 bis 60."
+    }
 }
 
 // =====================================================================================
@@ -739,7 +716,7 @@ public struct Abdeckungsraster: Sendable, Hashable, Identifiable {
     public static let feinAb = 0.999
     /// Was unter der Karte steht, zusätzlich zu `note_de` (`CoverageMap.tsx:146-152`).
     public static let lesehilfe =
-        "Eine Zelle ohne Farbe heißt, dass für diese Stunde gar keine Minutenzeile existiert. Dann stand der Dienst still, und der Ausfall ist unserer. Eine rote Zelle heißt, dass Minutenzeilen da sind und diese eine Reihe darin fehlt: dann hat das Gerät nichts geliefert."
+        "Ohne Farbe stand der Dienst still. Rot heißt, das Gerät hat in dieser Stunde nichts geliefert."
     /// Der Satz, wenn die Abfrage scheitert (`CoverageMap.tsx:92`).
     public static let nichtAbrufbar = "Die Verfügbarkeit konnte nicht abgefragt werden."
 

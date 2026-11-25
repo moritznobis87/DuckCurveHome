@@ -170,19 +170,6 @@ extension Pruefworte {
     /// zeigt nach rechts wie in der Vorlage: dort führt er aus der App hinaus, hier auch.
     public static let csvVerweis = "Minutenwerte dieses Tages als CSV ›"
 
-    /// Der Vorbehalt zum CSV-Verweis - kein Gegenstück in der Vorlage.
-    ///
-    /// **Warum er nötig ist.** Im Browser ist der Verweis ein `<a href download>`, und das
-    /// Sitzungscookie reist mit; die Datei kommt an. In der App führt der Weg über
-    /// ``Zugang/export(art:von:bis:)`` an den Browser des Geräts, und dort fehlt die
-    /// `Authorization`-Kopfzeile, die nur diese App aus dem Schlüsselbund setzt
-    /// (``Zugang/kopfzeilen``). Das ist kein Fehler, sondern die Folge davon, dass das Token
-    /// das Gerät nicht verlässt - es muss aber dastehen, sonst hält der Benutzer die
-    /// Anmeldeseite, die ihn dann empfängt, für einen Absturz. Derselbe Vorbehalt steht auf
-    /// `/system/zugang` an der Jahressicherung (``Zugangsworte/herunterladen``); dieser hier
-    /// ist der kurze, weil er unter einer Karte steht und nicht über einem Abschnitt.
-    public static let csvVorbehalt =
-        "Der CSV-Verweis gibt die Adresse an den Browser dieses Geräts. Das Token bleibt im Schlüsselbund und reist nicht mit: verlangt der Dienst eines, antwortet er dem Browser mit 401, solange dort keine eigene Sitzung besteht. Dann holt man die Datei im Dashboard, das die Anmeldung schon hat."
 
     /// Der Weg zurück zum ganzen Tag (`charts.ts:645`, `restore: { title: "Ganzer Tag" }`).
     public static let ganzerTag = "Ganzer Tag"
@@ -227,15 +214,6 @@ extension Pruefworte {
         }
     }
 
-    /// Die Absätze am Fuß der Seite, in der Reihenfolge der Vorlage.
-    ///
-    /// **Immer sichtbar, und das ist der Unterschied zum Deckel.** Die Vorlage setzt sie als
-    /// `<Note>` ohne `<details>` unter die Karten (`DataCheck.tsx:119-147`); sie erklären die
-    /// Geste, mit der man die Reihen vergleicht, und eine Geste, die man erst aufklappen muss,
-    /// findet niemand. ``abdeckungssatz`` steht am Ende, weil die Abdeckung ihre eigene
-    /// Auskunft inzwischen in ihrer Karte trägt und hier nur noch die Lesart der Prozentzahl
-    /// gesagt wird; ``csvVorbehalt`` zuletzt, weil er zur Karte unmittelbar darüber gehört.
-    public static var fuss: [String] { methode + [abdeckungssatz, csvVorbehalt] }
 }
 
 // =====================================================================================
