@@ -10,9 +10,25 @@ import type { Sonnenlauf } from "./ambiente";
 /** Ab dieser Leistung fließt etwas; darunter ist ein Band nur eine gestrichelte Linie. */
 export const FLUSS_AB_KW = 0.05;
 
-/** Wie breit ein Band bei dieser Leistung ist, in Pixeln. */
+/**
+ * Wie breit ein Band bei dieser Leistung ist, in Pixeln.
+ *
+ * **Mit der Wurzel, nicht geradeaus, und höchstens 16 Pixel.** Bis zum 25.11.2026 wuchs das Band
+ * mit 4,5 Pixeln je Kilowatt bis 30 Pixel. Im Haus zieht die Wärmepumpe über 8 kW: Kabel und Rohr
+ * füllten den ganzen Boden unter dem Haus, und das Kabel ragte in den Mast (Bild des Hausherrn vom
+ * 25.11.2026). Mit der Wurzel bleibt ein Kilowatt gut von vier zu unterscheiden, und neun sind
+ * immer noch ein Band und kein Balken.
+ */
 export function bandbreite(kw: number): number {
-  return Math.min(30, 5 + 4.5 * Math.max(0, kw));
+  return Math.min(16, 4 + 4 * Math.sqrt(Math.max(0, kw)));
+}
+
+/**
+ * Wie weit die runde Kappe eines Bandes über sein Ende hinausragt: die halbe Breite. Ein Kabel,
+ * das an einer Sache beginnt, setzt um so viel tiefer an, damit die Kappe sie nicht überdeckt.
+ */
+export function bandkappe(kw: number): number {
+  return kw < FLUSS_AB_KW ? 1 : bandbreite(kw) / 2;
 }
 
 /**

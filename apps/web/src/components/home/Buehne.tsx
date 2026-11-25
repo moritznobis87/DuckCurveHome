@@ -7,7 +7,7 @@ import { ageLabel, hhmm, kw } from "@/lib/format";
 import { useGroesse } from "@/lib/useGroesse";
 import { Icon } from "@/components/ui/Icon";
 import type { Sonnenlauf } from "./ambiente";
-import { FLUSS_AB_KW, bandbreite, buehnenmass, sonnenort } from "./buehne";
+import { FLUSS_AB_KW, bandbreite, bandkappe, buehnenmass, sonnenort } from "./buehne";
 import { flusswerte, frisch, grundlast, wpWort } from "./fluss";
 
 /**
@@ -91,7 +91,8 @@ function alter(m: Measurement | null | undefined, nowMs: number): string | undef
 
 /** Zahl und Name über einer Sache. Was ruht oder nicht gemessen ist, steht leiser da. */
 function Schild({ x, y, zahl, einheit, name, anker, farbe, leise, schmal }: { x: number; y: number; zahl: string; einheit: string; name: string; anker: "start" | "middle" | "end"; farbe?: string; leise?: boolean; schmal: boolean }) {
-  const hof = schmal ? " bild-hof" : "";
+  // Ein dunkler Hof um die Schrift: der Sonnenbogen läuft links und rechts durch die Zahlen.
+  const hof = " bild-hof";
   return (
     <>
       <text x={x} y={y} textAnchor={anker} className={`bild-zahl${hof}`} fontSize={schmal ? 26 : 30} fillOpacity={leise ? 0.5 : 1} style={farbe && !leise ? { fill: farbe } : undefined}>
@@ -120,7 +121,8 @@ function Szene({ W, H, s, nowMs, wpLaeuft, nacht, stand, lauf, sonneAb, onPumpe 
   const an = !!wpLaeuft || v.hp >= FLUSS_AB_KW;
   const pumpenfarbe = wpLaeuft ? "var(--heat-pump)" : "var(--text-3)";
   const soc = v.soc != null ? Math.max(0, Math.min(1, v.soc)) : 0;
-  const kabel = `M${m.netzX},${G + 2} V${m.tief - 16} q0,16 16,16 H${cx - hb * (schmal ? 0.8 : 0.5) - 16} q16,0 16,-16 V${G + 2}`;
+  // Das Kabel setzt unter dem Mast erst so tief an, dass seine runde Kappe an der Erdkante endet.
+  const kabel = `M${m.netzX},${Math.min(m.tief - 16, G + 2 + bandkappe(v.netz))} V${m.tief - 16} q0,16 16,16 H${cx - hb * (schmal ? 0.8 : 0.5) - 16} q16,0 16,-16 V${G + 2}`;
   const rohr = `M${cx + hb * 0.5},${G + 2} V${m.tief - 16} q0,16 16,16 H${m.pumpeX - 16} q16,0 16,-16 V${G + 2}`;
   const halb = Math.min(dx - 6, 18 + v.pv * 14);
   const kegelY = G - hh - dach * (1 - halb / dx) - 3;

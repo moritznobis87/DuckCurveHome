@@ -32,12 +32,20 @@ final class StartbildTests: XCTestCase {
 
     // MARK: - Die Bühne
 
-    func testEinBandWirdNachDerLeistungBreitUndIstGedeckelt() {
-        XCTAssertEqual(Startbuehne.bandbreite(0), 5)
-        XCTAssertEqual(Startbuehne.bandbreite(1.3), 10.85, accuracy: 1e-6)
-        XCTAssertEqual(Startbuehne.bandbreite(4.6), 25.7, accuracy: 1e-6)
-        XCTAssertEqual(Startbuehne.bandbreite(9), 30)
-        XCTAssertEqual(Startbuehne.bandbreite(-2), 5)
+    func testEinBandWirdMitDerWurzelBreitUndHoechstensSechzehnPunkte() {
+        XCTAssertEqual(Startbuehne.bandbreite(0), 4)
+        XCTAssertEqual(Startbuehne.bandbreite(1), 8)
+        XCTAssertEqual(Startbuehne.bandbreite(4), 12)
+        XCTAssertEqual(Startbuehne.bandbreite(8.1), 15.384, accuracy: 1e-3)
+        XCTAssertEqual(Startbuehne.bandbreite(9), 16)
+        XCTAssertEqual(Startbuehne.bandbreite(25), 16)
+        XCTAssertEqual(Startbuehne.bandbreite(-2), 4)
+    }
+
+    func testEinKabelSetztUmDieHalbeBreiteTieferAn() {
+        XCTAssertEqual(Startbuehne.bandkappe(0), 1)
+        XCTAssertEqual(Startbuehne.bandkappe(1), 4)
+        XCTAssertEqual(Startbuehne.bandkappe(9), 8)
     }
 
     func testDieSonneStehtNurZwischenAufgangUndUntergangAufDemBogen() {

@@ -282,19 +282,19 @@ struct JetztSeite: View {
 
     /// Die Zeile unter dem Satz: wer gerade entscheidet, steht als Marke da; läuft die
     /// Wärmepumpe, steht eine zweite daneben; dahinter, was als Nächstes kommt oder seit wann
-    /// der Satz gilt (`Home.tsx`, `.start-marken`). Am Telefon stehen die Teile untereinander,
-    /// weil eine Zeile sie dort nicht fasst.
+    /// der Satz gilt (`Home.tsx`, `.start-marken`). Am Telefon stehen die Marken in einer Reihe
+    /// und der Satz darunter, weil eine Zeile nicht alles fasst.
     private var marken: some View {
         let anordnung =
             schmal
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
             : AnyLayout(HStackLayout(spacing: 8))
         return anordnung {
-            if !haus.betriebswort.isEmpty {
-                Startmarke(wort: haus.betriebswort)
-            }
-            if haus.zustand?.heatPump.running == true {
-                Startmarke(wort: "Wärmepumpe läuft", art: .laeuft)
+            // Die Marken stehen in einer Reihe; passen sie am Telefon nicht nebeneinander,
+            // stehen sie untereinander.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { markenreihe }
+                VStack(alignment: .leading, spacing: 6) { markenreihe }
             }
             if let dazu = unterzeile {
                 Text(dazu)
@@ -302,6 +302,15 @@ struct JetztSeite: View {
                     .foregroundStyle(Farbe.text3)
                     .lineLimit(1)
             }
+        }
+    }
+
+    @ViewBuilder private var markenreihe: some View {
+        if !haus.betriebswort.isEmpty {
+            Startmarke(wort: haus.betriebswort)
+        }
+        if haus.zustand?.heatPump.running == true {
+            Startmarke(wort: "Wärmepumpe läuft", art: .laeuft)
         }
     }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EnergySnapshot } from "@/lib/api/models";
 import type { Zelle } from "./ausblick";
-import { bandbreite, buehnenmass, sonnenanteil, sonnenort } from "./buehne";
+import { bandbreite, bandkappe, buehnenmass, sonnenanteil, sonnenort } from "./buehne";
 import { flusswerte, grundlast, wpWort } from "./fluss";
 import { STARTBILDER, STARTBILD_MERKER, startbildAus } from "./startbild";
 import { preislaenge, ringmass, stunden24, stundenwinkel } from "./stundenring";
@@ -25,12 +25,19 @@ describe("Startbild", () => {
 });
 
 describe("Bühne", () => {
-  it("macht ein Band nach der Leistung breit und deckelt es", () => {
-    expect(bandbreite(0)).toBe(5);
-    expect(bandbreite(1.3)).toBeCloseTo(10.85, 6);
-    expect(bandbreite(4.6)).toBeCloseTo(25.7, 6);
-    expect(bandbreite(9)).toBe(30);
-    expect(bandbreite(-2)).toBe(5);
+  it("macht ein Band nach der Leistung breit, mit der Wurzel und höchstens 16 Pixel", () => {
+    expect(bandbreite(0)).toBe(4);
+    expect(bandbreite(1)).toBe(8);
+    expect(bandbreite(4)).toBe(12);
+    expect(bandbreite(8.1)).toBeCloseTo(15.384, 3);
+    expect(bandbreite(9)).toBe(16);
+    expect(bandbreite(25)).toBe(16);
+    expect(bandbreite(-2)).toBe(4);
+  });
+  it("lässt ein Kabel um die halbe Breite tiefer ansetzen", () => {
+    expect(bandkappe(0)).toBe(1);
+    expect(bandkappe(1)).toBe(4);
+    expect(bandkappe(9)).toBe(8);
   });
   it("stellt die Sonne nur zwischen Aufgang und Untergang auf den Bogen", () => {
     const lauf = { punkte: [], von: 1000, bis: 5000 };
