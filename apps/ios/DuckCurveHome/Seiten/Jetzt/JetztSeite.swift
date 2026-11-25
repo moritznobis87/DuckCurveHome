@@ -358,9 +358,11 @@ struct JetztSeite: View {
     }
 
     /// Tag oder Nacht: aus der Erwartung des Fahrplans, nicht aus der Uhr; liefert die Anlage
-    /// trotzdem, ist es Tag (`ambiente.ts`, `bild`).
+    /// trotzdem, ist es Tag (`ambiente.ts`, `bild`). Entschieden wird wie im Ruhebild mit dem
+    /// belastbaren Wert: eine zwei Tage alte Messung hielte die Seite sonst die ganze Nacht auf
+    /// dem Tagbild.
     private var nacht: Bool {
-        Ruhebild.bild(sonnenlauf, jetzt: haus.jetzt, pvKw: haus.augenblick?.pvPowerKw.value) == .abend
+        Ruhebild.bild(sonnenlauf, jetzt: haus.jetzt, pvKw: haus.augenblick?.pvPowerKw.belastbar) == .abend
     }
 
     /// Wie weit die Sonne auf ihrem Bogen ist. Vor dem Aufgang und nach dem Untergang sitzt sie
