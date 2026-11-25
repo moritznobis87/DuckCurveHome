@@ -159,44 +159,70 @@ struct HausgeraetSeite: View {
 
     private func knopfzeile(_ wort: String, aktion: @escaping () -> Void) -> some View {
         Button(action: aktion) {
+            // Rund wie die Knöpfe im Dashboard (`globals.css`, `.zugang-knopf`).
             Text(wort)
-                .font(Schrift.klein)
+                .font(Schrift.sans(13))
                 .foregroundStyle(gesperrt ? Farbe.text3 : Farbe.text1)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(Farbe.flaeche3)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(.vertical, 6)
+                .overlay(Capsule().strokeBorder(Farbe.linie2, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .disabled(gesperrt)
     }
 
+    /// Das Urteil oben auf der Seite, als Zustandskarte wie auf „Einstellen“: grün, wenn alles in
+    /// Ordnung ist, sonst in der Farbe der Ampel (`globals.css`, `.einstellen-status`).
     private func urteil(_ g: GeraetOut) -> some View {
         let ampel = Hausgeraet.Ampel(g.ampel?.rawValue)
-        return Karte {
-            HStack(alignment: .top, spacing: 12) {
-                punkt(ampel, gross: true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(ampel == .gut ? "Alles in Ordnung." : (g.textDe ?? ""))
-                        .font(Schrift.karte).foregroundStyle(Farbe.text1)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(
-                        ohneVerbindung
-                            ? "Gerade keine Verbindung. Vielleicht startet die API neu; die Seite versucht es weiter."
-                            : g.unterstuetzt
-                            ? "Bericht des Geräts von \(Formate.hhmm(iso: g.berichtAm))"
-                                + (g.berichtAlt == true ? ". Er ist veraltet, weil der Zeitgeber auf dem Gerät nicht läuft." : ".")
-                            : "Diese Installation läuft nicht auf dem Hausgerät; hier steht nur, was die API über sich selbst weiß."
-                    )
-                    .font(Schrift.winzig).foregroundStyle(Farbe.text3)
+        let farbe: Color = {
+            switch ampel {
+            case .gut: return Farbe.gut
+            case .warn: return Farbe.amberWeich
+            case .schlecht: return Farbe.alarm
+            case .aus: return Farbe.mist
+            }
+        }()
+        return HStack(alignment: .center, spacing: 14) {
+            Zustandszeichen(ampel: ampel, gross: true)
+                .frame(width: 44, height: 44)
+                .background(farbe.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ampel == .gut ? "Alles in Ordnung." : (g.textDe ?? ""))
+                    .font(Schrift.sansHalbfett(19, relativeTo: .title3)).foregroundStyle(Farbe.text1)
                     .fixedSize(horizontal: false, vertical: true)
-                }
+                Text(
+                    ohneVerbindung
+                        ? "Gerade keine Verbindung. Vielleicht startet die API neu; die Seite versucht es weiter."
+                        : g.unterstuetzt
+                        ? "Bericht des Geräts von \(Formate.hhmm(iso: g.berichtAm))"
+                            + (g.berichtAlt == true ? ". Er ist veraltet, weil der Zeitgeber auf dem Gerät nicht läuft." : ".")
+                        : "Diese Installation läuft nicht auf dem Hausgerät; hier steht nur, was die API über sich selbst weiß."
+                )
+                .font(Schrift.sans(14, relativeTo: .footnote)).foregroundStyle(Farbe.text2)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(EdgeInsets(top: 18, leading: 18, bottom: 18, trailing: 18))
+        .background {
+            ZStack {
+                Farbe.flaeche1
+                RadialGradient(colors: [farbe.opacity(0.16), .clear], center: .topLeading, startRadius: 0, endRadius: 320)
             }
         }
+        .overlay(
+            RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous)
+                .strokeBorder(farbe.opacity(0.35), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 
     private func dienstkarte(_ g: GeraetOut) -> some View {
-        Karte(kicker: "Dienste", titel: "antippen für mehr") {
+        Kontokarte(zeichen: Hausgeraet.zeichen("Dienste"), titel: "Dienste", satz: nil) {
             if g.dienste.isEmpty {
                 Leer(satz: "Noch kein Bericht über die Dienste.")
             } else {
@@ -263,7 +289,10 @@ struct HausgeraetSeite: View {
     }
 
     private func apikarte(_ api: ApiSelbstOut) -> some View {
-        Karte(kicker: "Rechenkern", titel: "läuft seit \(Hausgeraet.dauer(sekunden: api.laufzeitS))") {
+        Kontokarte(
+            zeichen: Hausgeraet.zeichen("Rechenkern"), titel: "Rechenkern",
+            satz: "läuft seit \(Hausgeraet.dauer(sekunden: api.laufzeitS))"
+        ) {
             zeile(Hausgeraet.Ampel(api.ampel?.rawValue), api.textDe ?? "")
             zeile(
                 api.datenbankOk == false ? .schlecht : api.datenbankOk == true ? .gut : .aus,
@@ -286,7 +315,7 @@ struct HausgeraetSeite: View {
     }
 
     private func rechnerkarte(_ r: GeraetRechnerOut) -> some View {
-        Karte(kicker: "Gerät", titel: r.modell ?? r.name) {
+        Kontokarte(zeichen: Hausgeraet.zeichen("Gerät"), titel: "Gerät", satz: r.modell ?? r.name) {
             zeile(nil, "Läuft seit", r.adresse.map { "Adresse im Heimnetz: \($0)" },
                   rechts: Hausgeraet.dauer(sekunden: r.laufzeitS ?? 0))
             zeile(nil, "Auslastung", "Mittlere Last über 1, 5 und 15 Minuten bei \(r.kerne ?? 1) Kernen",
@@ -341,7 +370,7 @@ struct HausgeraetSeite: View {
     }
 
     private func ssdkarte(_ s: GeraetSsdOut) -> some View {
-        Karte(kicker: "SSD-Gesundheit", titel: s.modell) {
+        Kontokarte(zeichen: Hausgeraet.zeichen("SSD-Gesundheit"), titel: "SSD-Gesundheit", satz: s.modell) {
             zeile(Hausgeraet.Ampel(s.ampel?.rawValue), s.textDe ?? "", "/dev/\(s.geraet)")
             if let a = s.abnutzungProzent {
                 zeile(nil, "Abnutzung", s.reserveProzent.map { "Reserve-Blöcke: \(Hausgeraet.kurz($0, stellen: 0)) %" },
@@ -379,7 +408,7 @@ struct HausgeraetSeite: View {
 
     private func platzkarte(_ teile: [Hausgeraet.Platzteil], datenbank: Int?) -> some View {
         let summe = max(1, teile.reduce(0) { $0 + $1.bytes })
-        return Karte(kicker: "Platz auf der SSD") {
+        return Kontokarte(zeichen: Hausgeraet.zeichen("Platz auf der SSD"), titel: "Platz auf der SSD", satz: nil) {
             GeometryReader { geo in
                 HStack(spacing: 2) {
                     ForEach(teile.filter { $0.bytes > 0 && $0.art != "frei" }, id: \.name) { t in
@@ -427,8 +456,13 @@ struct HausgeraetSeite: View {
         let dienste = Array(Set(p.flatMap { $0.dienste.keys })).sorted()
         let ramGesamt = p.compactMap(\.speicherGesamtMb).last
         return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Verlauf").font(Schrift.karte).foregroundStyle(Farbe.text1)
+            HStack(spacing: 12) {
+                Zeichen(Hausgeraet.zeichen("Verlauf"), groesse: 20, farbe: Farbe.mist)
+                    .frame(width: 36, height: 36)
+                    .background(Farbe.mist.opacity(0.14))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .accessibilityHidden(true)
+                Text("Verlauf").font(Schrift.sansHalbfett(16, relativeTo: .headline)).foregroundStyle(Farbe.text1)
                 Spacer()
                 Picker("Spanne", selection: $spanne) {
                     Text("Tag").tag(GeraetVerlaufOutSpanneWahl.tag)
@@ -474,7 +508,7 @@ struct HausgeraetSeite: View {
     }
 
     private func sicherungskarte(_ s: GeraetSicherungOut) -> some View {
-        Karte(kicker: "Sicherung") {
+        Kontokarte(zeichen: Hausgeraet.zeichen("Sicherung"), titel: "Sicherung", satz: nil) {
             zeile(Hausgeraet.Ampel(s.ampel?.rawValue), s.textDe ?? "")
             if let letzte = s.letzte {
                 zeile(nil, "Letzte Sicherung", letzte, rechts: Formate.hhmm(iso: s.letzteAm))
@@ -485,7 +519,7 @@ struct HausgeraetSeite: View {
     }
 
     private func einheitenkarte(_ einheiten: [GeraetEinheitOut]) -> some View {
-        Karte(kicker: "Abläufe auf dem Gerät") {
+        Kontokarte(zeichen: Hausgeraet.zeichen("Abläufe auf dem Gerät"), titel: "Abläufe auf dem Gerät", satz: nil) {
             ForEach(einheiten, id: \.name) { e in
                 zeile(Hausgeraet.Ampel(e.ampel?.rawValue), Hausgeraet.einheitennamen[e.name] ?? e.beschreibung ?? e.name,
                       (e.textDe ?? "") + (e.naechsterLauf.map { " Nächster Lauf \(Formate.hhmm(iso: $0))." } ?? ""))
@@ -495,7 +529,7 @@ struct HausgeraetSeite: View {
 
     @ViewBuilder private var softwarekarte: some View {
         if let u = update, u.unterstuetzt == true {
-            Karte(kicker: "Software", titel: u.kanal.map { "Kanal \($0)" }) {
+            Kontokarte(zeichen: Hausgeraet.zeichen("Software"), titel: "Software", satz: u.kanal.map { "Kanal \($0)" }) {
                 zeile(nil, "Läuft", rechts: u.aktuell ?? "unbekannt")
                 if Hausgeraet.updateLaeuft(u) {
                     let index = Hausgeraet.updateSchritte.firstIndex { $0.schluessel == u.schritt }
@@ -539,7 +573,7 @@ struct HausgeraetSeite: View {
     }
 
     private var neustartkarte: some View {
-        Karte(kicker: "Neu starten") {
+        Kontokarte(zeichen: Hausgeraet.zeichen("Neu starten"), titel: "Neu starten", satz: nil) {
             HStack(spacing: 8) {
                 knopfzeile("Alle Dienste") { nachfrage = .alle }
                 knopfzeile("Gerät") { nachfrage = .geraet }

@@ -1,5 +1,7 @@
 "use client";
 
+import { Systemkarte } from "@/components/ui/Systemkarte";
+import { ABSCHNITTSZEICHEN } from "./abschnitte";
 import { useEffect, useState } from "react";
 import type { EChartsCoreOption } from "echarts/core";
 import { EChart } from "@/components/charts/EChart";
@@ -347,17 +349,16 @@ export function Verlauf() {
 
   if (v && !v.unterstuetzt) return null;
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="m-0 text-[18px] font-semibold">Verlauf</h2>
-        <div className="flex gap-1" role="group" aria-label="Spanne">
+    <Systemkarte zeichen={ABSCHNITTSZEICHEN.Verlauf} titel="Verlauf">
+      <div className="konto-reihe">
+        <div className="konto-reihe" role="group" aria-label="Spanne">
           {SPANNEN.map((x) => (
             <button
               key={x.wert}
               type="button"
               aria-pressed={spanne === x.wert}
               onClick={() => setSpanne(x.wert)}
-              className={`rounded-[6px] px-3 py-1 text-[13px] ${spanne === x.wert ? "bg-amber font-semibold text-deep" : "border border-line-2 text-text-2"}`}
+              className="zugang-knopf zugang-knopf-klein wahl-knopf"
             >
               {x.wort}
             </button>
@@ -381,6 +382,6 @@ export function Verlauf() {
       ) : !fehler ? (
         <p className="m-0 text-[14px] text-text-3">Lade …</p>
       ) : null}
-    </section>
+    </Systemkarte>
   );
 }

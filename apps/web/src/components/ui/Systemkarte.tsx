@@ -11,15 +11,18 @@ export function Systemkarte({
   zeichen,
   titel,
   satz,
+  id,
   children,
 }: {
   zeichen: IconName;
   titel: string;
   satz?: React.ReactNode;
+  /** Ein Sprungziel, etwa `software` für den Hinweis auf ein Update. */
+  id?: string;
   children?: React.ReactNode;
 }) {
   return (
-    <section className="konto-karte" aria-label={titel}>
+    <section id={id} className="konto-karte" aria-label={titel}>
       <header className="konto-karte-kopf">
         <span className="konto-zeichen" aria-hidden="true">
           <Icon name={zeichen} size={20} />
