@@ -43,6 +43,12 @@ dasselbe zeigen.
 - „Nächste 24 Stunden“ zeigt auch die Brennzeiten des Pelletofens, als zweite Reihe Striche und
   als vierte Zeitspanne.
 
+## Bilder der gebauten Seite
+
+`gebaut/` zeigt die Startseite des Dashboards im Demo-Betrieb am 25.11.2026: Bühne und Uhr, je an
+der Wand (1280 × 800) und am Handy (390 breit, die ganze Seite). Der runde Knopf unten links ist
+die Anzeige des Entwicklungsservers und gehört nicht zur Seite.
+
 ## Was beim Bau entschieden wurde
 
 - **Der Puffer zeigt weiter dasselbe Glas wie überall.** Der Entwurf hatte eine eigene Säule. Der
