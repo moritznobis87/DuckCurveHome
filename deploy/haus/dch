@@ -968,6 +968,17 @@ handgriff() {
 	bericht || true
 }
 
+kanal_umbenennen() {
+	# Der Kanal hiess bis zum 26.11.2026 `stabil`. Ein Geraet, das so eingestellt ist, bekommt den
+	# neuen Namen, sobald dieses `dch` laeuft; die CI zieht `stabil` fuer den Uebergang mit.
+	[ -w "$ENVDATEI" ] || return 0
+	if [ "$(wert DCH_VERSION)" = "stabil" ]; then
+		sed -i 's/^DCH_VERSION=.*/DCH_VERSION=stable/' "$ENVDATEI"
+		hinweis "Der Kanal heisst jetzt stable statt stabil (DCH_VERSION in $ENVDATEI)."
+	fi
+}
+kanal_umbenennen
+
 befehl=${1:-status}
 shift || true
 
@@ -996,6 +1007,8 @@ stoppen)
 	;;
 
 aktualisieren)
+	# Der alte Name des Kanals (bis 26.11.2026) fuehrt zum neuen.
+	if [ "${1:-}" = "stabil" ]; then set -- stable "${@:2}"; fi
 	if [ $# -ge 1 ]; then
 		[[ "$1" =~ ^[A-Za-z0-9._-]+$ ]] || fehler "Ungueltige Version: $1"
 		if grep -q '^DCH_VERSION=' "$ENVDATEI"; then

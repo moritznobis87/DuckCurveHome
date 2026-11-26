@@ -110,7 +110,7 @@ function stand(felder: Partial<GeraetDaten> = {}): GeraetDaten {
   };
 }
 
-const update = { unterstuetzt: true, kanal: "stabil", aktuell: "2026.11.1", verfuegbar: null, update_verfuegbar: false, neuerungen: [], geprueft_am: jetzt, zustand: "bereit", schritt: null, meldung: null, zuletzt: null, anfrage_offen: false };
+const update = { unterstuetzt: true, kanal: "stable", aktuell: "2026.11.1", verfuegbar: null, update_verfuegbar: false, neuerungen: [], geprueft_am: jetzt, zustand: "bereit", schritt: null, meldung: null, zuletzt: null, anfrage_offen: false };
 
 const verlauf = {
   unterstuetzt: true,
