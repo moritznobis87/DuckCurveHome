@@ -237,7 +237,11 @@ export function VerlaufAnsicht({ v, spanne }: { v: Verlauf; spanne: Spanne }) {
   ].filter((r) => hat(r.werte));
   const spannung = reihe((x) => x.eingangsspannung_v_min);
   const geschrieben = reihe((x) => (x.ssd_geschrieben_bytes ? x.ssd_geschrieben_bytes / 1e9 : null));
-  const dienste = Array.from(new Set(p.flatMap((x) => Object.keys(x.dienste ?? {})))).sort();
+  // Nur Dienste mit einer echten Messung: Ohne Speicherabrechnung im Kernel meldete das Gerät bis
+  // zum 26.11.2026 für jeden Dienst 0 MB, und eine flache Null ist kein Verlauf.
+  const dienste = Array.from(new Set(p.flatMap((x) => Object.keys(x.dienste ?? {}))))
+    .filter((d) => p.some((x) => (x.dienste?.[d]?.speicher_mb ?? 0) > 0))
+    .sort();
 
   const CHART = "h-[150px] w-full";
   return (
@@ -259,7 +263,7 @@ export function VerlaufAnsicht({ v, spanne }: { v: Verlauf; spanne: Spanne }) {
       ) : null}
       {hat(ram) ? (
         <Diagramm titel="Arbeitsspeicher belegt" untertitel="GB">
-          <EChart
+          <Flaeche
             className={CHART}
             option={option(spanne, s, t, [{ name: "belegt", farbe: C.ev, werte: ram }], "GB", 2, {
               min: 0,
@@ -290,7 +294,7 @@ export function VerlaufAnsicht({ v, spanne }: { v: Verlauf; spanne: Spanne }) {
       ) : null}
       {dienste.map((d) => (
         <Diagramm key={d} titel={`${DIENSTNAMEN[d] ?? d}: Speicher`} untertitel="MB">
-          <EChart
+          <Flaeche
             className="h-[110px] w-full"
             option={option(spanne, s, t, [{ name: "Speicher", farbe: C.mist, werte: reihe((x) => x.dienste?.[d]?.speicher_mb) }], "MB", 0, { min: 0 })}
           />

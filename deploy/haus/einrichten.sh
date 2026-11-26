@@ -274,18 +274,24 @@ config_block() {
 	[ "$(cat "$datei")" = "$vorher" ] || NEUSTART=1
 }
 
-cmdline_setzen() {
-	# Kernelzeile: keine Himbeeren, keine Meldungen, Konsole weg vom Bildschirm, Startbild an.
-	local datei="$BOOT/cmdline.txt" zeile p
+cmdline_ergaenzen() {
+	# Die Kernelzeile um Parameter ergaenzen, die noch fehlen. cmdline.txt ist eine einzige Zeile;
+	# eine zweite wuerde der Pi stillschweigend ueberlesen. Mit --marke zusaetzlich die Konsole
+	# vom Bildschirm weg (tty3).
+	local datei="$BOOT/cmdline.txt" zeile vorher p
 	[ -f "$datei" ] || return 0
 	zeile=$(head -n1 "$datei")
-	local vorher=$zeile
-	zeile=$(echo "$zeile" | sed 's/console=tty1/console=tty3/')
-	for p in quiet splash logo.nologo vt.global_cursor_default=0 loglevel=0 plymouth.ignore-serial-consoles; do
+	vorher=$zeile
+	if [ "${1:-}" = "--marke" ]; then
+		zeile=$(echo "$zeile" | sed 's/console=tty1/console=tty3/')
+		shift
+	fi
+	for p in "$@"; do
 		[[ " $zeile " == *" $p "* ]] || zeile="$zeile $p"
 	done
 	if [ "$zeile" != "$vorher" ]; then
-		cp "$datei" "$datei.vor-duckcurve" 2>/dev/null || true
+		# Die Fassung von vor der ersten Aenderung bleibt erhalten, nicht die von gestern.
+		[ -f "$datei.vor-duckcurve" ] || cp "$datei" "$datei.vor-duckcurve" 2>/dev/null || true
 		echo "$zeile" >"$datei"
 		NEUSTART=1
 	fi
@@ -327,7 +333,13 @@ boot_einstellungen() {
 		block="${block:+$block$'\n'}disable_splash=1"
 	fi
 	config_block "$block"
-	[ "$MARKE" = "1" ] && cmdline_setzen
+	# Speicherabrechnung fuer Container: Der Kernel von Raspberry Pi OS schaltet sie ab Werk ab
+	# (`docker info` warnt dann "No memory limit support"), und `docker stats` meldet fuer jeden
+	# Dienst 0 MB. Die Seite Hausgeraet zeigte genau das, am ersten Geraet am 26.11.2026.
+	cmdline_ergaenzen cgroup_enable=memory cgroup_memory=1
+	# Keine Himbeeren, keine Meldungen, Startbild an.
+	[ "$MARKE" = "1" ] && cmdline_ergaenzen --marke quiet splash logo.nologo vt.global_cursor_default=0 \
+		loglevel=0 plymouth.ignore-serial-consoles
 	bootloader
 }
 

@@ -106,8 +106,9 @@ sudo nano /opt/duckcurve/.env
 ```
 
 Unter „Von Railway übernehmen“ die Werte aus den Variablen des Railway-Dienstes **api** eintragen:
-Tibber, myenergi, inexogy, die Mitteilungen an die iOS-App und, falls gewünscht, der Schlüssel für
-Alfred. Danach:
+Tibber, myenergi, inexogy, die Mitteilungen an die iOS-App, der Postausgang für Einladungen
+(`DCH_RESEND_SCHLUESSEL` und `DCH_ABSENDER`) und, falls gewünscht, der Schlüssel für Alfred.
+Danach:
 
 ```bash
 sudo dch neustart
@@ -129,29 +130,33 @@ Das lädt die Datenbank herunter, sichert vorher den Stand auf dem Gerät und sp
 Dafür muss das Gerät dieselbe Hauptversion von PostgreSQL haben wie Railway oder eine neuere
 (`pg_dump` liest von keinem neueren Server). Seit November 2026 sind das beide 18.
 
-**Ein Gerät, das noch mit PostgreSQL 17 eingerichtet wurde**, hebt man von Hand, und zwar
-**bevor** es ein Update bekommt:
+**Ein Gerät, das noch mit PostgreSQL 17 eingerichtet wurde**, hebt sich selbst. Vor jedem Start
+(`dch neustart`, auch beim Booten, und bei jedem Update aus der App) prüft `dch`, ob im Volume ein
+Cluster einer älteren Hauptversion liegt. Wenn ja, sichert es ihn mit dem passenden alten
+`pg_dump` nach `/var/lib/duckcurve/sicherung/vor-postgres-18-….dump`, bewahrt den alten Stand im
+Volume `duckcurve_postgres_pg17` auf, legt PostgreSQL 18 frisch an und spielt die Sicherung ein.
+Im Test mit dem vollen Schema dauerte das 21 Sekunden. Scheitert das Sichern, bleibt alles, wie
+es war, und ein Update kehrt zur bisherigen Fassung zurück, Einrichtung und Images.
+
+Ab dem Löschen des alten Volumes bis zum Ende des Einspielens liegt die Marke
+`/var/lib/duckcurve/sicherung/postgres-heben.offen`. Bricht der Vorgang dort ab, etwa weil der
+Strom weg ist, setzt der nächste Start fort: Er legt die Datenbank frisch an und spielt die
+Sicherung erneut ein. Eingespielt wird in einer einzigen Transaktion, die Datenbank ist danach also
+vollständig oder leer. Solange die Marke liegt, starten API und Oberfläche nicht, damit sie nicht
+gegen eine leere Datenbank laufen. Wer den Fall von Hand gelöst hat, löscht die Marke, sonst spielt
+der nächste Start die Sicherung noch einmal ein und verwirft, was seitdem dazukam.
+
+Läuft danach alles, kann der alte Stand weg:
 
 ```bash
-sudo dch sichern
-```
-```bash
-sudo docker compose --project-directory /opt/duckcurve -f /opt/duckcurve/compose.yaml down
-```
-```bash
-sudo docker volume rm duckcurve_postgres
-```
-```bash
-sudo dch selbst-aktualisieren
-```
-```bash
-sudo dch wiederherstellen /var/lib/duckcurve/sicherung/<neueste>.dump
+sudo docker volume rm duckcurve_postgres_pg17
 ```
 
-`down` entfernt die Container, ohne Volumes zu löschen. `dch stoppen` genügt hier nicht: Es hält die
-Container nur an, und ein angehaltener Container belegt sein Volume weiter, sodass
-`docker volume rm` abgelehnt wird. Eine 17er-Sicherung lässt sich in 18 einspielen, umgekehrt nicht.
-Ist die Datenbank noch leer, entfallen Sichern und Wiederherstellen. Die API
+Von Hand geht es so, falls das Heben einmal scheitert: Datenbank sichern (`sudo dch sichern`),
+`sudo docker compose --project-directory /opt/duckcurve -f /opt/duckcurve/compose.yaml down`,
+`sudo docker volume rm duckcurve_postgres`, `sudo dch selbst-aktualisieren` und die Sicherung mit
+`sudo dch wiederherstellen <datei>` einspielen. `down` entfernt die Container, ohne Volumes zu
+löschen; `dch stoppen` genügt nicht, weil ein angehaltener Container sein Volume weiter belegt. Die API
 startet danach neu und bringt das Schema auf den Stand ihres Codes. Die Übernahme lässt sich
 wiederholen, etwa unmittelbar vor dem Umstellen der Bridge, damit möglichst wenig fehlt.
 
