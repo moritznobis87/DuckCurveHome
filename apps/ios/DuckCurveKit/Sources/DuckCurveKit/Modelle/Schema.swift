@@ -11479,6 +11479,7 @@ public struct UpdateStatusOut: Codable, Sendable, Hashable {
     public var meldung: String?
     public var zuletzt: UpdateErgebnisOut?
     public var anfrageOffen: Bool?
+    public var anfrage: String?
 
     public enum CodingKeys: String, CodingKey {
         case unterstuetzt
@@ -11493,9 +11494,10 @@ public struct UpdateStatusOut: Codable, Sendable, Hashable {
         case meldung
         case zuletzt
         case anfrageOffen = "anfrage_offen"
+        case anfrage
     }
 
-    public init(unterstuetzt: Bool? = nil, kanal: String? = nil, aktuell: String? = nil, verfuegbar: String? = nil, updateVerfuegbar: Bool? = nil, neuerungen: [UpdateNeuerungOut] = [], geprueftAm: String? = nil, zustand: String? = nil, schritt: String? = nil, meldung: String? = nil, zuletzt: UpdateErgebnisOut? = nil, anfrageOffen: Bool? = nil) {
+    public init(unterstuetzt: Bool? = nil, kanal: String? = nil, aktuell: String? = nil, verfuegbar: String? = nil, updateVerfuegbar: Bool? = nil, neuerungen: [UpdateNeuerungOut] = [], geprueftAm: String? = nil, zustand: String? = nil, schritt: String? = nil, meldung: String? = nil, zuletzt: UpdateErgebnisOut? = nil, anfrageOffen: Bool? = nil, anfrage: String? = nil) {
         self.unterstuetzt = unterstuetzt
         self.kanal = kanal
         self.aktuell = aktuell
@@ -11508,6 +11510,7 @@ public struct UpdateStatusOut: Codable, Sendable, Hashable {
         self.meldung = meldung
         self.zuletzt = zuletzt
         self.anfrageOffen = anfrageOffen
+        self.anfrage = anfrage
     }
 
     public init(from decoder: any Decoder) throws {
@@ -11524,6 +11527,7 @@ public struct UpdateStatusOut: Codable, Sendable, Hashable {
         self.meldung = try c.decodeIfPresent(String.self, forKey: .meldung)
         self.zuletzt = try c.decodeIfPresent(UpdateErgebnisOut.self, forKey: .zuletzt)
         self.anfrageOffen = try c.decodeIfPresent(Bool.self, forKey: .anfrageOffen)
+        self.anfrage = try c.decodeIfPresent(String.self, forKey: .anfrage)
     }
 }
 

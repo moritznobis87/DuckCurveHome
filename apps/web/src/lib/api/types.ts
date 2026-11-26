@@ -9107,6 +9107,8 @@ export interface components {
              * @default false
              */
             anfrage_offen: boolean;
+            /** Anfrage */
+            anfrage?: string | null;
         };
         /** ValidationError */
         ValidationError: {

@@ -86,7 +86,15 @@ final class HausgeraetTests: XCTestCase {
         neuer.verfuegbar = "cccccccccccc"
         XCTAssertFalse(Hausgeraet.schonGescheitert(neuer))
         neuer.anfrageOffen = true
+        neuer.anfrage = "installieren"
         XCTAssertTrue(Hausgeraet.updateLaeuft(neuer))
+        // „Jetzt nach Updates sehen“ oder ein Neustart eines Dienstes ist kein laufendes Update.
+        neuer.anfrage = "pruefen"
+        XCTAssertFalse(Hausgeraet.updateLaeuft(neuer))
+        XCTAssertTrue(Hausgeraet.suchtUpdates(neuer))
+        neuer.anfrage = "neustart"
+        XCTAssertFalse(Hausgeraet.updateLaeuft(neuer))
+        XCTAssertFalse(Hausgeraet.suchtUpdates(neuer))
     }
 
     func testPrognoseUndGroessen() throws {

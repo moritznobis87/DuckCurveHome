@@ -68,7 +68,7 @@ describe("Update", () => {
     fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
       if (init?.method === "POST") angefragt = true;
       return Promise.resolve(
-        Response.json(angefragt ? { ...bereit, anfrage_offen: true } : bereit, { status: init?.method === "POST" ? 202 : 200 }),
+        Response.json(angefragt ? { ...bereit, anfrage_offen: true, anfrage: "installieren" } : bereit, { status: init?.method === "POST" ? 202 : 200 }),
       );
     });
     render(<Software />);
@@ -158,6 +158,28 @@ describe("Update", () => {
     expect(screen.getByText("Version 2026.11.2")).toBeInTheDocument();
     expect(screen.getByText("Energie:")).toBeInTheDocument();
     expect(screen.getByText(/Update bereit: Entwicklungsstand nach 2026\.11\.2/)).toBeInTheDocument();
+  });
+
+  it("nach Updates sehen ist kein laufendes Update", async () => {
+    // Vorher zeigte jede offene Anfrage „Update läuft“, auch diese.
+    let angefragt = false;
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") angefragt = true;
+      const s = angefragt ? stand({ anfrage_offen: true, anfrage: "pruefen" }) : stand();
+      return Promise.resolve(Response.json(s, { status: init?.method === "POST" ? 202 : 200 }));
+    });
+    render(<Software />);
+    fireEvent.click(await screen.findByRole("button", { name: "Jetzt nach Updates sehen" }));
+    await screen.findByText("Das Gerät sieht gerade nach Updates. Das dauert einige Sekunden.");
+    expect(screen.queryByText("Update läuft")).not.toBeInTheDocument();
+    expect(screen.getByText("Duck Curve ist auf dem neuesten Stand.")).toBeInTheDocument();
+  });
+
+  it("eine Aktion der Seite Hausgerät ist kein laufendes Update", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(Response.json(stand({ anfrage_offen: true, anfrage: "neustart" }))));
+    render(<Software />);
+    await screen.findByText("Duck Curve ist auf dem neuesten Stand.");
+    expect(screen.queryByText("Update läuft")).not.toBeInTheDocument();
   });
 
   it("eine einzelne Version braucht keine Überschrift", async () => {

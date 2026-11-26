@@ -43,6 +43,19 @@ def anfrage_offen(o: Path) -> bool:
     return anfrage_datei(o).exists()
 
 
+def offene_anfrage(o: Path) -> str | None:
+    """Welche Anfrage auf `dch anfrage` wartet (`installieren`, `pruefen`, `neustart`, ...).
+
+    Alle Anfragen teilen sich eine Datei. Ob ein Update läuft, entscheidet darum die Aktion darin
+    und nicht, dass die Datei da ist: Sonst zeigte „Jetzt nach Updates sehen“ oder ein Neustart
+    eines Dienstes „Update läuft“. Eine unlesbare Datei heißt `unbekannt`.
+    """
+    if not anfrage_offen(o):
+        return None
+    aktion = (lies_json(anfrage_datei(o)) or {}).get("aktion")
+    return aktion if isinstance(aktion, str) and aktion else "unbekannt"
+
+
 def lies_json(datei: Path) -> dict[str, Any] | None:
     """Eine Datei des Geräts, oder `None`, wenn sie fehlt oder unlesbar ist."""
     try:

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { gruppentitel, laeuft, nachVersion, schonGescheitert, useUpdate, type UpdateStatus } from "./useUpdate";
+import { gruppentitel, laeuft, nachVersion, schonGescheitert, sucht, useUpdate, type UpdateStatus } from "./useUpdate";
 
 /**
  * Der Bereich „Software“ auf der Seite Hausgerät: welche Fassung läuft, was neu ist, und
@@ -151,7 +151,11 @@ export function Software() {
       {ergebnis && !imGang ? <p className="m-0 text-[14px] leading-[1.5] text-text-2">{ergebnis}</p> : null}
       {fehler ? <p className="m-0 text-[14px] text-alert-text">{fehler}</p> : null}
 
-      {imGang ? null : (
+      {imGang ? null : sucht(status) ? (
+        <span className="text-[14px] text-text-3" aria-live="polite">
+          Das Gerät sieht gerade nach Updates. Das dauert einige Sekunden.
+        </span>
+      ) : (
         <span>
           <button type="button" className="text-[14px] text-amber" onClick={() => void anfragen("pruefen")}>
             Jetzt nach Updates sehen

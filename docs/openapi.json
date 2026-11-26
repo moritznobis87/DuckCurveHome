@@ -20028,6 +20028,17 @@
             "type": "boolean",
             "title": "Anfrage Offen",
             "default": false
+          },
+          "anfrage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfrage"
           }
         },
         "type": "object",

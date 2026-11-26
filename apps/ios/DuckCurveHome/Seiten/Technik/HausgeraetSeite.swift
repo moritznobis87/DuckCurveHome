@@ -60,7 +60,7 @@ struct HausgeraetSeite: View {
     private var eilig: Bool {
         // Auch ohne Verbindung: die Seite versucht es dann im kurzen Takt weiter, wie das
         // Dashboard (`useGeraet.ts`, `eilig || unerreichbar`).
-        Hausgeraet.beschaeftigt(geraet) || Hausgeraet.updateLaeuft(update) || Date() < eiligBis
+        Hausgeraet.beschaeftigt(geraet) || Hausgeraet.updateLaeuft(update) || Hausgeraet.suchtUpdates(update) || Date() < eiligBis
             || ohneVerbindung
     }
 
@@ -582,7 +582,10 @@ struct HausgeraetSeite: View {
                 if !Hausgeraet.updateLaeuft(u), let e = Hausgeraet.updateErgebnis(u) {
                     Text(e).font(Schrift.winzig).foregroundStyle(Farbe.text2)
                 }
-                if !Hausgeraet.updateLaeuft(u) {
+                if Hausgeraet.suchtUpdates(u) {
+                    Text("Das Gerät sieht gerade nach Updates. Das dauert einige Sekunden.")
+                        .font(Schrift.klein).foregroundStyle(Farbe.text3)
+                } else if !Hausgeraet.updateLaeuft(u) {
                     Button("Jetzt nach Updates sehen") { Task { await updateAnfragen(.pruefen) } }
                         .font(Schrift.klein).foregroundStyle(Farbe.amber).buttonStyle(.plain)
                 }

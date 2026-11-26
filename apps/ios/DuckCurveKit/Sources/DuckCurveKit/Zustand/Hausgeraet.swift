@@ -281,10 +281,17 @@ public enum Hausgeraet {
         return "Für Duck Curve steht ein Update bereit\(mit)."
     }
 
-    /// Ob ein Update läuft oder angefragt ist.
+    /// Ob ein Update läuft oder angefragt ist. Nur die Anfrage `installieren` zählt: Alle
+    /// Anfragen an das Gerät teilen sich eine Datei, und vorher zeigte „Jetzt nach Updates sehen“
+    /// hier „Update läuft“. Das Dashboard entscheidet genauso (`laeuft` in useUpdate.ts).
     public static func updateLaeuft(_ s: UpdateStatusOut?) -> Bool {
         guard let s else { return false }
-        return s.zustand == "laeuft" || s.anfrageOffen == true
+        return s.zustand == "laeuft" || s.anfrage == "installieren"
+    }
+
+    /// Ob das Gerät gerade auf Wunsch nach Updates sieht (`sucht` in useUpdate.ts).
+    public static func suchtUpdates(_ s: UpdateStatusOut?) -> Bool {
+        s?.anfrage == "pruefen"
     }
 
     /// Ob die angebotene Fassung genau die ist, die beim letzten Versuch nicht gesund hochkam.

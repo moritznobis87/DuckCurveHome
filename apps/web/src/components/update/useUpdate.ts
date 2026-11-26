@@ -24,6 +24,8 @@ export type UpdateStatus = {
   meldung: string | null;
   zuletzt: { am: string | null; ergebnis: string | null; von: string | null; nach: string | null } | null;
   anfrage_offen: boolean;
+  /** Welche Anfrage wartet: `installieren`, `pruefen` oder eine Aktion der Seite Hausgerät. */
+  anfrage?: string | null;
 };
 
 const ADRESSE = "/api/dch/system/update";
@@ -52,8 +54,18 @@ export function gruppentitel(version: string | null): string {
   return version ? `Version ${version}` : "Seit der letzten Version";
 }
 
+/**
+ * Ob ein Update läuft oder angefragt ist. Nur die Anfrage `installieren` zählt: Alle Anfragen
+ * an das Gerät teilen sich eine Datei, und vorher zeigte „Jetzt nach Updates sehen“ hier
+ * „Update läuft“. Die App entscheidet genauso (`Hausgeraet.updateLaeuft`).
+ */
 export function laeuft(s: UpdateStatus | null): boolean {
-  return Boolean(s && (s.zustand === "laeuft" || s.anfrage_offen));
+  return Boolean(s && (s.zustand === "laeuft" || s.anfrage === "installieren"));
+}
+
+/** Ob das Gerät gerade auf Wunsch nach Updates sieht (`Hausgeraet.suchtUpdates` in der App). */
+export function sucht(s: UpdateStatus | null): boolean {
+  return Boolean(s && s.anfrage === "pruefen");
 }
 
 /**
@@ -92,7 +104,7 @@ export function useUpdate(aktiv = true) {
 
   // Abhaengig nur vom Takt, nicht vom Status selbst: Jede Antwort ist ein neues Objekt, und ein
   // Effekt, der daran haengt, fragte sofort wieder - ohne Pause, endlos.
-  const eilig = laeuft(status) || neustart;
+  const eilig = laeuft(status) || sucht(status) || neustart;
   useEffect(() => {
     if (!aktiv) return;
     void laden();

@@ -2083,6 +2083,9 @@ class UpdateStatusOut(BaseModel):
     zuletzt: UpdateErgebnisOut | None = None
     #: Eine Anfrage liegt bereit und wartet darauf, dass der Dienst sie abholt.
     anfrage_offen: bool = False
+    #: Welche: `installieren` (dann läuft ein Update an), `pruefen` (es wird nachgesehen) oder eine
+    #: Aktion der Seite Hausgerät. Nur `installieren` zählt als laufendes Update.
+    anfrage: str | None = None
 
 
 class UpdateAnfrageIn(BaseModel):

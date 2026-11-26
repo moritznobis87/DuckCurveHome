@@ -92,6 +92,7 @@ def test_installieren_legt_nur_eine_anfrage_ab(geraet: TestClient, ordner: Path)
         headers={"x-dch-urheber-name": "iPad Flur"},
     )
     assert antwort.status_code == 202 and antwort.json()["anfrage_offen"] is True
+    assert antwort.json()["anfrage"] == "installieren"
     anfrage = json.loads((ordner / "anfrage" / "anfrage.json").read_text(encoding="utf-8"))
     assert anfrage["aktion"] == "installieren" and anfrage["von"] == "iPad Flur"
     # Keine halbe Datei bleibt liegen.
@@ -110,6 +111,23 @@ def test_kein_update_ohne_neue_fassung_und_nicht_waehrend_eines_laufs(
     (ordner / "anfrage" / "anfrage.json").unlink()
     _status(ordner, update_verfuegbar=True, zustand="laeuft", schritt="Laden")
     assert geraet.post("/api/v1/system/update", json={"aktion": "installieren"}).status_code == 409
+
+
+def test_die_offene_anfrage_sagt_welche_sie_ist(geraet: TestClient, ordner: Path) -> None:
+    """Nur `installieren` ist ein laufendes Update. „Jetzt nach Updates sehen“ zeigte vorher
+    „Update läuft“, weil die Oberfläche nur sah, dass irgendeine Anfrage wartet."""
+    _status(ordner, update_verfuegbar=False)
+    antwort = geraet.post("/api/v1/system/update", json={"aktion": "pruefen"}).json()
+    assert antwort["anfrage"] == "pruefen" and antwort["anfrage_offen"] is True
+    assert geraet.get("/api/v1/system/update").json()["anfrage"] == "pruefen"
+    # Eine Aktion der Seite Hausgeraet liegt in derselben Datei.
+    (ordner / "anfrage" / "anfrage.json").write_text('{"aktion": "neustart"}', encoding="utf-8")
+    assert geraet.get("/api/v1/system/update").json()["anfrage"] == "neustart"
+    (ordner / "anfrage" / "anfrage.json").write_text("{kaputt", encoding="utf-8")
+    assert geraet.get("/api/v1/system/update").json()["anfrage"] == "unbekannt"
+    (ordner / "anfrage" / "anfrage.json").unlink()
+    status = geraet.get("/api/v1/system/update").json()
+    assert status["anfrage"] is None and status["anfrage_offen"] is False
 
 
 def test_unbekannte_aktion_abgewiesen(geraet: TestClient) -> None:
