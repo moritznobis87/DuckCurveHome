@@ -63,7 +63,7 @@ services:
       retries: 10
 
   api:
-    image: ${DCH_IMAGE_API:-ghcr.io/moritznobis87/duckcurve-api}:${DCH_VERSION:-stabil}
+    image: ${DCH_IMAGE_API:-ghcr.io/moritznobis87/duckcurve-api}:${DCH_VERSION:-stable}
     <<: *protokoll
     restart: unless-stopped
     # Alle DCH_*-Einstellungen aus .env. Die Migration der Datenbank laeuft beim Start
@@ -85,7 +85,7 @@ services:
         condition: service_healthy
 
   web:
-    image: ${DCH_IMAGE_WEB:-ghcr.io/moritznobis87/duckcurve-web}:${DCH_VERSION:-stabil}
+    image: ${DCH_IMAGE_WEB:-ghcr.io/moritznobis87/duckcurve-web}:${DCH_VERSION:-stable}
     <<: *protokoll
     restart: unless-stopped
     # Nur, was die Oberflaeche braucht; Datenbank und Anbieterschluessel sieht sie nicht.

@@ -87,7 +87,7 @@ sehen könnte.
 - **Updates:** Anwendung über Images aus der GitHub Container Registry. **Gebaut:** Das Gerät sieht alle
   sechs Stunden nach, die App zeigt dem Hausherrn einen Hinweis, installiert wird auf Knopfdruck mit Sicherung
   vorher, Gesundheitsprüfung danach und automatischer Rückkehr zur vorherigen Fassung
-  (`deploy/haus/README.md`, Abschnitt 10). Seit dem 26.11.2026 folgen Geräte dem Kanal `stabil` und
+  (`deploy/haus/README.md`, Abschnitt 10). Seit dem 26.11.2026 folgen Geräte dem Kanal `stable` und
   bekommen nur veröffentlichte Versionen (`2026.11.1`, Neuerungen in `docs/versionen.json`); ein
   Wartungsfenster für Kundengeräte ist vorgesehen (Projektplan 15.2). Sicherheitsupdates
   des Systems automatisch (`unattended-upgrades`). Ein Gerät wird für ein Update nie neu bespielt.
