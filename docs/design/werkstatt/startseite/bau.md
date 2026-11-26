@@ -102,10 +102,21 @@ Sonnenaufgang. Gemessen am 26.11.2026 am Standort aus der Konfiguration:
   mit 08:09 und 16:36 an den Enden. `gebaut/sonnenlauf-nacht-handy.png` zeigt die Nacht; dafür
   sind die Zeiten des Tages im Browser verschoben, der genannte Aufgang von morgen ist echt.
 
-**Was dabei auffiel und offen ist.** Die Ertragsprognose selbst rechnet den Sonnenstand ohne
-Zeitgleichung (`pv_simple.solar_elevation_deg`, und dieselbe Formel im Vorführhaus). Am 26.11.
-liegt ihr Sonnenmittag damit knapp dreizehn Minuten zu spät, Mitte Februar gut vierzehn zu früh. Das
-verschiebt die erwartete Erzeugung und ist eine eigene Änderung am Dienst.
+**Was dabei auffiel, und seit demselben Tag behoben ist.** Die Ertragsprognose rechnete den
+Sonnenstand mit einer einfacheren Formel ohne Zeitgleichung (`solar_elevation_deg`, und eine Kopie
+davon im Vorführhaus). Gemessen am Standort:
+
+| Tag | Sonnenmittag bis dahin | Sonnenmittag jetzt | Klarhimmel-Ertrag des Tages |
+|---|---|---|---|
+| 26.11.2026 | 12:36 | 12:23 | 10,95 kWh, jetzt 11,28 kWh |
+| 11.02.2026 | 12:36 | 12:50 | 17,56 kWh, jetzt 18,25 kWh |
+| 21.06.2026 | 13:36 | 13:37 | 64,80 kWh, jetzt 64,81 kWh |
+
+Die erwartete Erzeugung lag damit im Spätherbst um knapp eine Viertelstunde zu spät und im
+Februar um eine Viertelstunde zu früh. Die Höhe der Sonne steht jetzt neben den Sonnenzeiten in
+`sonne.py`, mit derselben Deklination und Zeitgleichung; Prognose, Prognosebewertung und
+Vorführhaus fragen dort. Die Mittagshöhen der Sonnenwenden stimmen auf ein Fünfzigstel Grad mit
+der Geometrie überein (`test_sonne.py`).
 
 ## Die Kraft der Sonne (26.11.2026)
 

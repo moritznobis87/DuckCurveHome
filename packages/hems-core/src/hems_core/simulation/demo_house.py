@@ -21,6 +21,7 @@ from hems_core.domain.measurement import Measurement
 from hems_core.domain.quality import Quality
 from hems_core.domain.snapshot import BufferTemperatures, EnergySnapshot
 from hems_core.domain.zeit import HAUS_ZONE
+from hems_core.forecasting.sonne import solar_elevation_deg
 from hems_core.planning.price_windows import PricePoint
 
 #: Unter diesem Namen holt der Dienst die Ortszeit des Hauses; definiert ist sie in
@@ -105,16 +106,13 @@ class DemoHouse:
         return (t or self.now).astimezone(BERLIN)
 
     def solar_elevation(self, t: datetime) -> float:
-        lt = self.local(t)
-        n = lt.timetuple().tm_yday
-        decl = math.radians(23.44) * math.sin(2 * math.pi * (284 + n) / 365)
-        # Sonnenzeit: UTC-Stunde + Längengrad/15 (grob, ohne Zeitgleichung)
-        ut = t.astimezone(UTC)
-        solar_hour = ut.hour + ut.minute / 60 + ut.second / 3600 + self.cfg.longitude / 15
-        hour_angle = math.radians(15 * (solar_hour - 12))
-        lat = math.radians(self.cfg.latitude)
-        s = math.sin(lat) * math.sin(decl) + math.cos(lat) * math.cos(decl) * math.cos(hour_angle)
-        return math.degrees(math.asin(max(-1.0, min(1.0, s))))
+        """Die Sonne des Vorführhauses ist die echte: dieselbe Rechnung wie im Dienst.
+
+        Bis zum 26.11.2026 stand hier eine Kopie der einfachen Formel ohne Zeitgleichung. Seit
+        die Startseite Aufgang und Untergang aus dem Ort rechnet, begann die Erzeugung im
+        Vorführhaus Ende November erst gut zwanzig Minuten nach dem gezeigten Aufgang.
+        """
+        return solar_elevation_deg(t, self.cfg.latitude, self.cfg.longitude)
 
     def day_cloudiness(self, d: date) -> float:
         return 0.08 + 0.75 * self._hash("cloud", d.isoformat())

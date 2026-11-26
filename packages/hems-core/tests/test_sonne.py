@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from hems_core.forecasting import GeoPoint, sonnenzeiten
+from hems_core.forecasting import GeoPoint, solar_elevation_deg, sonnenzeiten
 
 BERLIN_ZEIT = ZoneInfo("Europe/Berlin")
 BERLIN = GeoPoint(latitude=52.52, longitude=13.405)
@@ -67,3 +67,61 @@ def test_ohne_aufgang_oder_untergang_gibt_es_keine_zeiten() -> None:
     # Tromsø: Polarnacht im Dezember, Mitternachtssonne im Juni.
     assert sonnenzeiten(date(2026, 12, 21), TROMSOE) is None
     assert sonnenzeiten(date(2026, 6, 21), TROMSOE) is None
+
+
+# ---------------------------------------------------------------- Die Höhe der Sonne
+
+
+def _hoechster_stand(tag: date, ort: GeoPoint) -> tuple[datetime, float]:
+    """Zeitpunkt und Höhe des Sonnenmittags, minutenweise gesucht."""
+    beginn = datetime(tag.year, tag.month, tag.day, tzinfo=BERLIN_ZEIT)
+    minuten = (beginn + timedelta(minutes=m) for m in range(24 * 60))
+    return max(
+        ((t, solar_elevation_deg(t, ort.latitude, ort.longitude)) for t in minuten),
+        key=lambda paar: paar[1],
+    )
+
+
+@pytest.mark.parametrize(
+    ("tag", "deklination"),
+    [(date(2026, 6, 21), 23.44), (date(2026, 12, 21), -23.44)],
+)
+def test_am_mittag_der_sonnenwenden_steht_die_sonne_so_hoch_wie_die_geometrie_es_verlangt(
+    tag: date, deklination: float
+) -> None:
+    # Mittagshöhe = 90 Grad - Breite + Deklination; an den Sonnenwenden ist die Deklination die
+    # Schiefe der Erdachse. Für Berlin sind das 60,92 und 14,04 Grad.
+    _, hoehe = _hoechster_stand(tag, BERLIN)
+    assert hoehe == pytest.approx(90.0 - BERLIN.latitude + deklination, abs=0.02)
+
+
+def test_der_sonnenmittag_folgt_der_zeitgleichung() -> None:
+    """Ende November geht die Sonne vor, Mitte Februar nach.
+
+    Auf dem Längengrad von Berlin läge der Mittag ohne Zeitgleichung das ganze Jahr bei 12:06
+    Uhr Winterzeit. Die Formel bis zum 26.11.2026 rechnete so und verschob damit die ganze
+    erwartete Erzeugung: im November um knapp 13 Minuten nach hinten, im Februar um gut 14 nach
+    vorn.
+    """
+    november, _ = _hoechster_stand(date(2026, 11, 26), BERLIN)
+    februar, _ = _hoechster_stand(date(2026, 2, 11), BERLIN)
+    assert (november.hour, november.minute) in {(11, 53), (11, 54)}
+    assert (februar.hour, februar.minute) in {(12, 20), (12, 21)}
+
+
+@pytest.mark.parametrize("tag", [date(2026, 2, 11), date(2026, 6, 21), date(2026, 11, 26)])
+def test_bei_aufgang_und_untergang_steht_die_sonnenmitte_knapp_unter_dem_horizont(
+    tag: date,
+) -> None:
+    # Beide Rechnungen müssen zusammenpassen: Aufgang ist, wenn der obere Rand erscheint, also
+    # die Mitte 0,833 Grad unter dem Horizont steht.
+    zeiten = sonnenzeiten(tag, BERLIN)
+    assert zeiten is not None
+    for zeit in (zeiten.sunrise, zeiten.sunset):
+        hoehe = solar_elevation_deg(zeit, BERLIN.latitude, BERLIN.longitude)
+        assert hoehe == pytest.approx(-0.833, abs=0.01)
+
+
+def test_nachts_steht_die_sonne_unter_dem_horizont() -> None:
+    mitternacht = datetime(2026, 11, 26, 0, 0, tzinfo=BERLIN_ZEIT)
+    assert solar_elevation_deg(mitternacht, BERLIN.latitude, BERLIN.longitude) < -30

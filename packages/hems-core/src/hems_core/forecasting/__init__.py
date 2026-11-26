@@ -40,7 +40,7 @@ from hems_core.forecasting.models import (
     WeatherPoint,
     WeatherProvider,
 )
-from hems_core.forecasting.pv_simple import simple_pv_forecast, solar_elevation_deg
+from hems_core.forecasting.pv_simple import simple_pv_forecast
 from hems_core.forecasting.rueckblick import (
     REIHEN,
     VORLAUF_KLASSEN,
@@ -56,7 +56,7 @@ from hems_core.forecasting.rueckblick import (
     wertung,
     wertung_je_vorlauf,
 )
-from hems_core.forecasting.sonne import sonnenzeiten
+from hems_core.forecasting.sonne import solar_elevation_deg, sonnenzeiten
 
 __all__ = [
     "PLAN",

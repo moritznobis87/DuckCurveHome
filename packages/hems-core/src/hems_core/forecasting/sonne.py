@@ -15,10 +15,11 @@ und 34 für die Brechung in der Luft. Gegen veröffentlichte Zeiten stimmt das a
 `test_sonne.py`. Die Höhe des Ortes über dem Meer geht nicht ein: Auf dem Land liegt der Horizont
 so hoch wie das Haus.
 
-**Nicht dasselbe wie `pv_simple.solar_elevation_deg`.** Die Ertragsprognose rechnet den Sonnenstand
-mit einer einfacheren Formel ohne Zeitgleichung. Ihr Sonnenmittag liegt damit Ende November knapp
-dreizehn Minuten zu spät und Mitte Februar gut vierzehn zu früh. Das ist ein eigener Fehler; er ist
-in `docs/design/werkstatt/startseite/bau.md` unter „Der Sonnenstand“ als offen vermerkt.
+**Die Höhe der Sonne steht auch hier** (`solar_elevation_deg`), mit derselben Deklination und
+derselben Zeitgleichung. Bis zum 26.11.2026 rechnete die Ertragsprognose sie mit einer einfacheren
+Formel ohne Zeitgleichung: ihr Sonnenmittag lag Ende November knapp dreizehn Minuten zu spät und
+Mitte Februar gut vierzehn zu früh, und mit ihm die ganze erwartete Erzeugung. Das Vorführhaus trug
+dieselbe Formel als Kopie. Beide fragen jetzt hier.
 """
 
 from __future__ import annotations
@@ -64,6 +65,26 @@ def _deklination_und_zeitgleichung(jd: float) -> tuple[float, float]:
         - 1.25 * exzentrizitaet * exzentrizitaet * math.sin(2 * anomalie)
     )
     return deklination, zeitgleichung
+
+
+def solar_elevation_deg(at: datetime, latitude: float, longitude: float) -> float:
+    """Höhe der Sonnenmitte über dem Horizont in Grad, ohne Brechung der Luft.
+
+    Negativ, solange die Sonne unter dem Horizont steht. Die Ertragsprognose rechnet daraus den
+    Klarhimmel, die Prognosebewertung ihre Höhenklassen.
+    """
+    ut = at.astimezone(UTC)
+    minuten = ut.hour * 60.0 + ut.minute + ut.second / 60.0 + ut.microsecond / 60e6
+    jd = ut.date().toordinal() + _JD_VERSATZ + minuten / 1440.0
+    deklination, zeitgleichung = _deklination_und_zeitgleichung(jd)
+    # Wahre Sonnenzeit in Minuten: Weltzeit, um den Längengrad und die Zeitgleichung verschoben.
+    # Der Stundenwinkel ist null am Sonnenmittag und wächst um ein Grad je vier Minuten.
+    stundenwinkel = math.radians((minuten + zeitgleichung + 4.0 * longitude) / 4.0 - 180.0)
+    breite = math.radians(latitude)
+    s = math.sin(breite) * math.sin(deklination) + math.cos(breite) * math.cos(
+        deklination
+    ) * math.cos(stundenwinkel)
+    return math.degrees(math.asin(max(-1.0, min(1.0, s))))
 
 
 def sonnenzeiten(tag: date, ort: GeoPoint) -> SunEvent | None:
