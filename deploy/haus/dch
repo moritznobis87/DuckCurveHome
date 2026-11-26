@@ -254,17 +254,25 @@ laufendes_label() {
 	local id
 	id=$(compose ps -q "$1" 2>/dev/null | head -n1)
 	[ -n "$id" ] || return 0
-	docker inspect --format '{{.Image}}' "$id" 2>/dev/null |
+	# Ohne `|| true` beendete ein fehlendes Image (xargs meldet 123) unter `set -e` das ganze Skript.
+	{ docker inspect --format '{{.Image}}' "$id" 2>/dev/null |
 		xargs -r docker image inspect --format "{{index .Config.Labels \"$2\"}}" 2>/dev/null |
-		sed 's/<no value>//'
+		sed 's/<no value>//'; } || true
 }
 
 # Commit des laufenden Images: daran erkennt `pruefen` im Kanal main einen neueren Stand.
 laufende_revision() { laufendes_label "$1" org.opencontainers.image.revision; }
 
+nur_version() {
+	# $1, wenn es eine Version nach docs/versionen.json ist, sonst nichts. Das Label
+	# org.opencontainers.image.version erbt ein Image von seinem Basis-Image, wenn die CI es nicht
+	# setzt; ein Image von vor den Versionen meldete sonst etwa die Version von caddy (v2.11.9).
+	if [[ "$1" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+(\+entwicklung)?$ ]]; then echo "$1"; fi
+}
+
 # Version des laufenden Images (docs/versionen.json, gesetzt von der CI), etwa 2026.11.1 oder
 # 2026.11.1+entwicklung fuer einen Stand nach der letzten Version. Aeltere Images haben keine.
-laufende_version() { laufendes_label "$1" org.opencontainers.image.version; }
+laufende_version() { nur_version "$(laufendes_label "$1" org.opencontainers.image.version)"; }
 
 version_anzeige() {
 	# Was Dashboard und App als Version zeigen. Ein Hash erscheint nie (Festlegung 26.11.2026).
@@ -325,7 +333,7 @@ entfernt() {
 		local labels
 		labels=$(curl "${h[@]}" -L "$basis/blobs/$config" | jq -c '.config.Labels // {}') || labels='{}'
 		revision=$(jq -r '.["org.opencontainers.image.revision"] // empty' <<<"$labels")
-		version=$(jq -r '.["org.opencontainers.image.version"] // empty' <<<"$labels")
+		version=$(nur_version "$(jq -r '.["org.opencontainers.image.version"] // empty' <<<"$labels")")
 	fi
 	echo "$digest $revision $version"
 }
@@ -532,7 +540,7 @@ installieren() {
 	if [ -f "$BASIS/compose.bauen.yaml" ]; then
 		versucht=$(quelle_version "$BASIS/quelle" HEAD)
 	else
-		versucht=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' "$(bild_ref api)" 2>/dev/null | sed 's/<no value>//' || true)
+		versucht=$(nur_version "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' "$(bild_ref api)" 2>/dev/null || true)")
 	fi
 	versucht=$(version_anzeige "$versucht")
 
