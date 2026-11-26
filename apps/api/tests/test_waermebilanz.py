@@ -9,6 +9,7 @@ kein Test gesehen hat, weil im Demo-Betrieb alle Spalten kommen.
 from __future__ import annotations
 
 import asyncio
+import gc
 import threading
 import time
 from collections.abc import Awaitable, Callable, Iterator
@@ -380,6 +381,16 @@ async def _mit_puls(ruf: Callable[[], Awaitable[Any]]) -> tuple[Any, float, list
     vollständigen Rückfall allerdings mit - steht die Übersetzung wieder in der Schleife, kommt
     der Puls gemessen null Mal durch, und dieser Satz ist dann die klarste Fehlermeldung, die
     der Test geben kann.
+
+    **Die Speicherbereinigung bleibt draußen.** Vor der Messung wird einmal ganz aufgeräumt,
+    während der Messung ruht sie. Eine volle Bereinigung hält den GIL und damit den Puls an,
+    gleich auf welchem Faden sie anspringt, und wie lange, hängt am Haufen des ganzen Prozesses
+    und nicht am Prüfling: nachgemessen 0,99 s bei 9,2 Millionen verfolgten Dingen. Der Ruf
+    selbst legt so viele Dinge an, dass sie mitten in ihm anspringt. Je zwölfmal gemessen, als
+    Anteil der Nulllinie: beim Fadentest 0,69 bis 1,02 mit und 0,86 bis 1,00 ohne Bereinigung in
+    der Messung, neben der Kostenseite 0,39 bis 0,57 mit und 0,53 bis 0,67 ohne. Die Nulllinie
+    rechnet nur und legt nichts an; sie bekam diese Pause nie ab, und das Verhältnis kürzte sie
+    deshalb nicht heraus. Die älteren Messwerte in den Tests unten stammen aus der Zeit davor.
     """
     schlaege: list[float] = []
 
@@ -388,11 +399,18 @@ async def _mit_puls(ruf: Callable[[], Awaitable[Any]]) -> tuple[Any, float, list
             schlaege.append(asyncio.get_running_loop().time())
             await asyncio.sleep(0.005)
 
-    p = asyncio.create_task(puls())
-    t0 = asyncio.get_running_loop().time()
-    ergebnis = await ruf()
-    gesamt = asyncio.get_running_loop().time() - t0
-    p.cancel()
+    bereinigung_an = gc.isenabled()
+    gc.collect()
+    gc.disable()
+    try:
+        p = asyncio.create_task(puls())
+        t0 = asyncio.get_running_loop().time()
+        ergebnis = await ruf()
+        gesamt = asyncio.get_running_loop().time() - t0
+        p.cancel()
+    finally:
+        if bereinigung_an:
+            gc.enable()
     assert len(schlaege) > 5, f"der Puls kam nur {len(schlaege)}-mal durch"
     assert gesamt > 0.1, f"zu schnell für eine Aussage über Nebenläufigkeit ({gesamt:.3f} s)"
     return ergebnis, gesamt, schlaege
@@ -486,21 +504,25 @@ async def _haelt_schritt(
 
     Zurück kommt das Ergebnis des Rufs aus der Messung, die bestanden hat.
 
-    **Warum bis zu dreimal gemessen wird.** Eine Messung dauert hier 0,4 bis 0,7 Sekunden und
-    zählt rund zwanzig Schläge. Ein einzelner Aussetzer von 0,3 Sekunden - eine Speicherbereinigung
-    im vollen Prüflauf, ein Faden, den das Betriebssystem liegen lässt - halbiert sie. Die
+    **Warum bis zu dreimal gemessen wird.** Eine Messung dauert hier 0,2 bis 0,7 Sekunden und
+    zählt rund zwanzig Schläge. Ein einzelner Aussetzer von 0,3 Sekunden halbiert sie. Die
     Nulllinie fängt das nicht: sie wird *nach* dem Prüfling gemessen und teilt mit ihm die
     Dauerlast der Maschine, aber nicht den einen Augenblick.
 
-    So gefallen am 26.11.2026 in der CI, an einem Stand, der die Wärmebilanz nicht berührte:
-    16 Schläge in 0,699 s neben der Kostenseite, also 0,23 der Nulllinie, die unmittelbar danach
-    mit 99 Schlägen je Sekunde unbelastet lief. Dieselbe Messung zwölfmal hintereinander auf
-    einem Rechner, auf dem daneben der ganze Prüflauf lief: 0,39 bis 0,57. Der Lauf am nächsten
-    Commit, mit demselben Python-Stand, war grün.
+    So gefallen am 26.11.2026 zweimal in der CI, an Ständen, die die Wärmebilanz nicht
+    berührten: neben der Kostenseite 16 Schläge in 0,699 s (0,23 der Nulllinie), beim Fadentest
+    16 Schläge in 0,514 s (0,31). Beide Male lief die Nulllinie unmittelbar danach unbelastet
+    mit 99 Schlägen je Sekunde, und beide Male dauerte der Ruf rund 0,27 s länger als sonst,
+    ohne dass in dieser Zeit ein Schlag dazukam. Dieselben Messungen je zwölfmal hintereinander
+    auf einem Rechner, auf dem daneben der ganze Prüflauf lief: 0,39 bis 0,57 und 0,69 bis 1,02.
 
-    Ein echter Rückfall liegt im Prüfling und drückt jede Messung, ein Aussetzer nur eine. Darum
-    genügt eine bestandene von höchstens `MESSUNGEN`; die Schranken selbst bleiben, wie sie
-    waren. Fällt der Test, nennt er alle Messungen.
+    Die eine Ursache, die sich nachmessen ließ, ist die Speicherbereinigung; sie ruht seither
+    während der Messung, siehe `_mit_puls`. Dass sie es in der CI war, ist damit nicht gezeigt:
+    ein Faden, den das Betriebssystem einen Augenblick liegen lässt, sieht in diesen Zahlen
+    genauso aus. Dafür bleibt die Wiederholung. Ein echter Rückfall liegt im Prüfling und
+    drückt jede Messung, ein Aussetzer nur eine. Darum genügt eine bestandene von höchstens
+    `MESSUNGEN`; die Schranken selbst bleiben, wie sie waren. Fällt der Test, nennt er alle
+    Messungen.
     """
     gemessen: list[str] = []
     for _ in range(MESSUNGEN):

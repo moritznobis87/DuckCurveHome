@@ -1,5 +1,10 @@
 {
-  "unveroeffentlicht": [],
+  "unveroeffentlicht": [
+    {
+      "bereich": "Energie",
+      "text": "Die Ertragsprognose rechnet den Stand der Sonne genauer. Die erwartete Erzeugung liegt im Spätherbst nicht mehr eine Viertelstunde zu spät und im Februar nicht mehr eine Viertelstunde zu früh."
+    }
+  ],
   "versionen": [
     {
       "version": "2026.11.1",
