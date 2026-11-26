@@ -935,6 +935,7 @@ class LiveRuntime:
             planner_note_de=self.stove_plan.note_de,
             planner_warn_de=self.stove_plan.warnung_de(),
             hp_actuation=self.settings.heat_pump_actuation_enabled,
+            ort=self.config.site.location,
         )
         # Der Fahrplan wird aufbewahrt, bevor der nächste ihn überschreibt. Bis zum 09.11.2026
         # geschah das nicht, und „was hatte der Fahrplan für diese Stunde vor" war für jeden

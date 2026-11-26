@@ -105,6 +105,14 @@ class PlanIntervalOut(BaseModel):
     actual_hp_run_min: float | None = None
 
 
+class SunDayOut(BaseModel):
+    """Sonnenaufgang und Sonnenuntergang eines Tages am Standort des Hauses."""
+
+    day: date
+    sunrise: datetime
+    sunset: datetime
+
+
 class PlanOut(BaseModel):
     created_at: datetime
     planner: str
@@ -138,6 +146,14 @@ class PlanOut(BaseModel):
     # wurde; die Kapazität hängt am Zustand des Behälters, nicht an der Einstellung.
     buffer_capacity_kwh: float | None = None
     buffer_min_kwh: float | None = None
+    # Aufgang und Untergang der Sonne für die beiden Tage des Horizonts, gerechnet aus Datum und
+    # Standort (`hems_core.forecasting.sonne`).
+    #
+    # **Nicht dasselbe wie die erste und letzte Viertelstunde mit `expected_pv_kw`.** Die
+    # Oberfläche las den Sonnenlauf bis zum 26.11.2026 dort ab und zeichnete die Sonne um 09:17
+    # an den Horizont, obwohl sie seit 08:09 am Himmel stand: die Erzeugung beginnt später, als
+    # die Sonne aufgeht, und endet früher. Leer, solange der Dienst den Standort nicht kennt.
+    sun: list[SunDayOut] = Field(default_factory=list)
 
 
 class InvoiceReportOut(BaseModel):

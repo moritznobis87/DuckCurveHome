@@ -15983,6 +15983,13 @@
               }
             ],
             "title": "Buffer Min Kwh"
+          },
+          "sun": {
+            "items": {
+              "$ref": "#/components/schemas/SunDayOut"
+            },
+            "type": "array",
+            "title": "Sun"
           }
         },
         "type": "object",
@@ -19280,6 +19287,33 @@
         ],
         "title": "StreckeAnsicht",
         "description": "Das Streckenmodell eines Kreises, in Zahlen."
+      },
+      "SunDayOut": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "sunrise": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sunrise"
+          },
+          "sunset": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sunset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "sunrise",
+          "sunset"
+        ],
+        "title": "SunDayOut",
+        "description": "Sonnenaufgang und Sonnenuntergang eines Tages am Standort des Hauses."
       },
       "SystemEventOut": {
         "properties": {

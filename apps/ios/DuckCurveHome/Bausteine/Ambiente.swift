@@ -307,7 +307,10 @@ struct Ambiente: View {
         let wahl = Startbild.aus(startbildGemerkt)
         let blick = Ausblick.baue(haus.plan, jetzt: datenminute)
         let nacht = jetztStand.bild == .abend
-        let sonneAb: String? = blick.nacht ? blick.sonneWechsel.map { Formate.hhmm($0) } : nil
+        let sonneAb: String? =
+            nacht
+            ? Ruhebild.naechsterAufgang(haus.plan, jetzt: datenminute, blick: blick).map { Formate.hhmm($0) }
+            : nil
         let innen: CGFloat = mass.breite - 2 * mass.randSeite
         let nebeneinander = innen >= 520 + 14 + 404
         let anordnung =

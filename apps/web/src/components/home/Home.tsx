@@ -15,7 +15,7 @@ import { celsius, hhmm, kw, longDate } from "@/lib/format";
 import { isoDay } from "@/lib/day";
 import { AreaIcons, Brand, Fussleiste, Kontoknopf, Systemknopf } from "@/components/layout/AreaNav";
 import { abschnitte, ausblick } from "./ausblick";
-import { bild as himmel, sonnenlauf } from "./ambiente";
+import { bild as himmel, naechsterAufgang, sonnenlauf } from "./ambiente";
 import { sonnenanteil } from "./buehne";
 import { Buehne } from "./Buehne";
 import { wpWort } from "./fluss";
@@ -121,11 +121,7 @@ export function Home() {
   // Die Kurve und die Tagesgrenzen brauchen die Sekunde nicht. Mit ihr rechnete die Zeichnung
   // jeden Takt neu; die Marke „jetzt" wandert ohnehin nur minutenweise.
   const minute = Math.floor(now / 60_000) * 60_000;
-  // Tag oder Nacht und wann die Sonne wiederkommt: aus der Erwartung des Fahrplans. Nur die
-  // Uhrzeit, ohne „morgen": ein Sonnenaufgang ist immer der nächste, und neben dem Mond ist
-  // kein Platz für mehr.
   const blick = useMemo(() => ausblick(plan, minute), [plan, minute]);
-  const sonneAb = blick.nacht && blick.sonneWechsel ? hhmm(new Date(blick.sonneWechsel)) : null;
   const preis = s?.electricity_price_ct_kwh.value ?? null;
 
   // ---------------------------------------------------------------- Gestern, heute, morgen
@@ -203,11 +199,16 @@ export function Home() {
         ? `Entschieden um ${hhmm(d.at)}.`
         : "";
 
-  // Der Himmel der Bühne: Tag oder Nacht und wo die Sonne auf ihrem Bogen steht. Vor dem Aufgang
-  // und nach dem Untergang sitzt sie am Ende des Bogens, ohne Fahrplan in seiner Mitte.
+  // Der Himmel der Bühne: Tag oder Nacht und wo die Sonne auf ihrem Bogen steht, beides aus
+  // Aufgang und Untergang am Standort. Vor dem Aufgang und nach dem Untergang sitzt sie am Ende
+  // des Bogens, ohne Fahrplan in seiner Mitte.
   const lauf = useMemo(() => sonnenlauf(plan, minute), [plan, minute]);
   const nacht = himmel(lauf, minute, s?.pv_power_kw.value) === "abend";
   const stand = sonnenanteil(lauf, minute) ?? (lauf ? (minute < lauf.von ? 0 : 1) : 0.5);
+  // Wann die Sonne wiederkommt. Nur die Uhrzeit, ohne „morgen": ein Sonnenaufgang ist immer der
+  // nächste, und neben dem Mond ist kein Platz für mehr.
+  const aufgang = nacht ? naechsterAufgang(plan, minute, blick) : null;
+  const sonneAb = aufgang != null ? hhmm(new Date(aufgang)) : null;
   const vonEben = degraded && lastFrameAt ? hhmm(new Date(lastFrameAt + offset)) : null;
   const [wpMenue, setWpMenue] = useState(false);
   const [startbild] = useStartbild();

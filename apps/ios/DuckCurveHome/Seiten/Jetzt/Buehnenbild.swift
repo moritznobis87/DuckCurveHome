@@ -33,7 +33,7 @@ struct Buehnenbild: View {
             let m = Startbuehne.mass(breite: raum.size.width, hoehe: raum.size.height)
             let f = Startfluss.aus(haus.augenblick)
             ZStack(alignment: .topLeading) {
-                Startbildgrund(nacht: nacht)
+                Startbildgrund(nacht: nacht, himmel: Startbuehne.sonnenbild(f.pv, schmal: m.schmal).himmel)
                 Canvas { g, groesse in
                     zeichneHimmel(&g, groesse, m, f)
                 }
@@ -101,26 +101,30 @@ struct Buehnenbild: View {
         } else {
             let sonne = Startbuehne.sonnenort(m, anteil: stand)
             let ort = CGPoint(x: sonne.x, y: sonne.y)
+            // Klein und blass bei wenig Erzeugung, groß und strahlend bei viel (`Buehne.tsx`).
+            let bild = Startbuehne.sonnenbild(f.pv, schmal: m.schmal)
             g.stroke(
                 Startbildform.bogen(m, bis: stand),
                 with: .color(Farbe.amber.opacity(0.85)),
                 style: StrokeStyle(lineWidth: 2, lineCap: .round))
-            let schein: Double = m.schmal ? 78 : 104
+            let schein: Double = bild.schein
             let scheinfeld = CGRect(
                 x: sonne.x - schein, y: sonne.y - schein, width: schein * 2, height: schein * 2)
             g.fill(
                 Path(ellipseIn: scheinfeld),
                 with: .radialGradient(
-                    Gradient(colors: [Farbe.amber.opacity(0.55), Farbe.amber.opacity(0)]),
+                    Gradient(colors: [Farbe.amber.opacity(bild.scheinDeckung), Farbe.amber.opacity(0)]),
                     center: ort, startRadius: 0, endRadius: schein))
             if f.pv >= Startbuehne.flussAbKw {
                 let dx: Double = m.hausHalb + m.ueber
                 let halb: Double = min(dx - 6, 18 + f.pv * 14)
                 let spitze: Double = boden - m.hausHoch - m.dach
                 let kegelY: Double = boden - m.hausHoch - m.dach * (1 - halb / dx) - 3
+                // Der Lichtkegel setzt an der Scheibe an und ist dort so breit wie sie.
+                let fuss: Double = bild.radius * 0.56
                 var kegel = Path()
-                kegel.move(to: CGPoint(x: sonne.x - 9, y: sonne.y + 6))
-                kegel.addLine(to: CGPoint(x: sonne.x + 9, y: sonne.y + 6))
+                kegel.move(to: CGPoint(x: sonne.x - fuss, y: sonne.y + fuss * 0.67))
+                kegel.addLine(to: CGPoint(x: sonne.x + fuss, y: sonne.y + fuss * 0.67))
                 kegel.addLine(to: CGPoint(x: m.mitte + halb, y: kegelY))
                 kegel.addLine(to: CGPoint(x: m.mitte, y: spitze - 3))
                 kegel.addLine(to: CGPoint(x: m.mitte - halb, y: kegelY))
@@ -128,11 +132,35 @@ struct Buehnenbild: View {
                 g.fill(
                     kegel,
                     with: .linearGradient(
-                        Gradient(colors: [Farbe.amber.opacity(0.62), Farbe.amber.opacity(0.16)]),
+                        Gradient(colors: [
+                            Farbe.amber.opacity(0.62 * bild.kegel), Farbe.amber.opacity(0.16 * bild.kegel),
+                        ]),
                         startPoint: ort, endPoint: CGPoint(x: m.mitte, y: boden - m.hausHoch)))
             }
-            let scheibe = CGRect(x: sonne.x - 16, y: sonne.y - 16, width: 32, height: 32)
-            g.fill(Path(ellipseIn: scheibe), with: .color(Farbe.amberWeich))
+            if bild.strahl > 0 {
+                g.stroke(
+                    Startbildform.strahlenkranz(um: ort, innen: bild.radius + 5, lang: bild.strahl),
+                    with: .color(Farbe.amberWeich.opacity(bild.strahlDeckung)),
+                    style: StrokeStyle(lineWidth: m.schmal ? 2 : 2.4, lineCap: .round))
+            }
+            // Die Scheibe in drei Lagen: der Himmel, damit der Bogen nicht durchscheint, darauf
+            // ein blasses Weiß und darauf so viel Bernstein, wie die Sonne Kraft hat.
+            let radius: Double = bild.radius
+            let scheibe = Path(
+                ellipseIn: CGRect(
+                    x: sonne.x - radius, y: sonne.y - radius, width: radius * 2, height: radius * 2))
+            g.fill(scheibe, with: .color(Startbildgrund.himmelsgrund))
+            g.fill(scheibe, with: .color(.white.opacity(Startbuehne.scheibeBlass)))
+            let bernstein: Color = Farbe.amberWeich.opacity(bild.deckung)
+            if bild.glanz >= 1 {
+                let glanz: Double = bild.glanz
+                g.drawLayer { lage in
+                    lage.addFilter(.shadow(color: Farbe.amber, radius: glanz))
+                    lage.fill(scheibe, with: .color(bernstein))
+                }
+            } else {
+                g.fill(scheibe, with: .color(bernstein))
+            }
         }
 
         // Der Boden: ein flacher Hügel, darunter die Erde, in der Kabel und Rohr liegen.
@@ -418,6 +446,13 @@ struct Startbildgrund: View {
     let nacht: Bool
     /// Die Uhr trägt ihren Schein in der Mitte statt in der Ecke.
     var mittig = false
+    /// Wie stark der warme Schein in der Ecke ist. Die Bühne gibt hier die Kraft der Sonne mit
+    /// (``Startbuehne/sonnenbild(_:schmal:)``); ohne Angabe gilt der Wert von vorher.
+    var himmel: Double = 0.22
+
+    /// Die Farbe des Himmels auf halber Höhe. Sie liegt unter der Sonnenscheibe, damit der Bogen
+    /// nicht durch eine blasse Sonne scheint (`--himmelsgrund` in `start.css`).
+    static let himmelsgrund = Color(Farbwert(0x103748))
 
     var body: some View {
         ZStack {
@@ -430,7 +465,7 @@ struct Startbildgrund: View {
                     center: .center, startRadius: 0, endRadius: 320)
             } else if !nacht {
                 RadialGradient(
-                    colors: [Farbe.amber.opacity(0.22), .clear],
+                    colors: [Farbe.amber.opacity(himmel), .clear],
                     center: UnitPoint(x: 0.12, y: 0.08), startRadius: 0, endRadius: 520)
             }
         }
@@ -553,6 +588,26 @@ enum Startbildform {
             let ort = Startbuehne.sonnenort(m, anteil: Double(i) / Double(schritte))
             let punkt = CGPoint(x: ort.x, y: ort.y)
             if i == 0 { p.move(to: punkt) } else { p.addLine(to: punkt) }
+        }
+        return p
+    }
+
+    /// Der Strahlenkranz der Sonne: zwölf Strahlen rund um die Scheibe, jeder zweite kürzer.
+    /// `innen` ist der Abstand vom Mittelpunkt, an dem ein Strahl beginnt, `lang` die Länge
+    /// der langen Strahlen.
+    static func strahlenkranz(um mitte: CGPoint, innen: Double, lang: Double) -> Path {
+        var p = Path()
+        let zahl = Startbuehne.strahlen
+        let mx: Double = mitte.x
+        let my: Double = mitte.y
+        for i in 0..<zahl {
+            let winkel: Double = Double(i) / Double(zahl) * 2 * Double.pi
+            let anteil: Double = i % 2 == 0 ? 1 : 0.6
+            let aussen: Double = innen + lang * anteil
+            let dx: Double = cos(winkel)
+            let dy: Double = sin(winkel)
+            p.move(to: CGPoint(x: mx + dx * innen, y: my + dy * innen))
+            p.addLine(to: CGPoint(x: mx + dx * aussen, y: my + dy * aussen))
         }
         return p
     }

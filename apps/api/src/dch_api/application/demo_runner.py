@@ -122,7 +122,7 @@ from hems_core.domain import (
     SystemMode,
     apply_heat_patch,
 )
-from hems_core.forecasting import Lauf, stand_vor
+from hems_core.forecasting import GeoPoint, Lauf, stand_vor
 from hems_core.planning import (
     OptimizerConfig,
     PricePoint,
@@ -639,6 +639,7 @@ class DemoRunner:
                 planner_warn_de=self.stove_plan.warnung_de(),
                 # Im Vorführhaus kommt die Entscheidung am Kontakt an, siehe `live_state`.
                 hp_actuation=True,
+                ort=GeoPoint(latitude=self.house.cfg.latitude, longitude=self.house.cfg.longitude),
             )
             if ablage_faellig(self._plan_abgelegt, now):
                 lauf = plan_als_lauf(self.plan, now)

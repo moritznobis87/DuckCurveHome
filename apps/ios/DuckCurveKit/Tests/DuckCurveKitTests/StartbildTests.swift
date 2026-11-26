@@ -48,6 +48,62 @@ final class StartbildTests: XCTestCase {
         XCTAssertEqual(Startbuehne.bandkappe(9), 8)
     }
 
+    func testDieKraftDerSonneWaechstMitDerWurzelUndIstBeiAchtKilowattVoll() {
+        XCTAssertEqual(Startbuehne.sonnenkraft(0), 0)
+        XCTAssertEqual(Startbuehne.sonnenkraft(0.5), 0.25)
+        XCTAssertEqual(Startbuehne.sonnenkraft(2), 0.5)
+        XCTAssertEqual(Startbuehne.sonnenkraft(8), 1)
+        XCTAssertEqual(Startbuehne.sonnenkraft(20), 1)
+        XCTAssertEqual(Startbuehne.sonnenkraft(-1), 0)
+    }
+
+    func testOhneErzeugungIstDieSonneKleinUndBlassUndOhneStrahlen() {
+        let b = Startbuehne.sonnenbild(0, schmal: false)
+        XCTAssertEqual(b.radius, 7)
+        XCTAssertEqual(b.deckung, 0.45)
+        XCTAssertEqual(b.glanz, 0)
+        XCTAssertEqual(b.schein, 16.8, accuracy: 1e-6)
+        XCTAssertEqual(b.scheinDeckung, 0.14)
+        XCTAssertEqual(b.strahl, 0)
+        XCTAssertEqual(b.strahlDeckung, 0)
+        XCTAssertEqual(b.kegel, 0.4)
+        XCTAssertEqual(b.himmel, 0.06)
+    }
+
+    func testBeiZweiKilowattIstDieSonneHalbSoKraeftigMitKurzenStrahlen() {
+        let b = Startbuehne.sonnenbild(2, schmal: false)
+        XCTAssertEqual(b.radius, 14.5)
+        XCTAssertEqual(b.deckung, 0.725, accuracy: 1e-6)
+        XCTAssertEqual(b.glanz, 11)
+        XCTAssertEqual(b.schein, 60.9, accuracy: 1e-6)
+        XCTAssertEqual(b.scheinDeckung, 0.37, accuracy: 1e-6)
+        XCTAssertEqual(b.strahl, 4.571429, accuracy: 1e-5)
+        XCTAssertEqual(b.strahlDeckung, 0.242857, accuracy: 1e-5)
+        XCTAssertEqual(b.kegel, 0.7, accuracy: 1e-6)
+        XCTAssertEqual(b.himmel, 0.16, accuracy: 1e-6)
+    }
+
+    func testBeiVollerErzeugungIstDieSonneGrossUndStrahlendAmTelefonEtwasKleiner() {
+        let wand = Startbuehne.sonnenbild(8, schmal: false)
+        XCTAssertEqual(wand.radius, 22)
+        XCTAssertEqual(wand.deckung, 1)
+        XCTAssertEqual(wand.glanz, 22)
+        XCTAssertEqual(wand.schein, 132)
+        XCTAssertEqual(wand.scheinDeckung, 0.6)
+        XCTAssertEqual(wand.strahl, 16)
+        XCTAssertEqual(wand.strahlDeckung, 0.85)
+        XCTAssertEqual(wand.kegel, 1)
+        XCTAssertEqual(wand.himmel, 0.26)
+        let hand = Startbuehne.sonnenbild(8, schmal: true)
+        XCTAssertEqual(hand.radius, 18)
+        XCTAssertEqual(hand.schein, 93.6, accuracy: 1e-6)
+        XCTAssertEqual(hand.strahl, 12)
+        let morgens = Startbuehne.sonnenbild(0.5, schmal: true)
+        XCTAssertEqual(morgens.radius, 9)
+        XCTAssertEqual(morgens.schein, 27.9, accuracy: 1e-6)
+        XCTAssertEqual(morgens.strahl, 0)
+    }
+
     func testDieSonneStehtNurZwischenAufgangUndUntergangAufDemBogen() {
         let von = Date(timeIntervalSince1970: 1000)
         let bis = Date(timeIntervalSince1970: 5000)

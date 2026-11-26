@@ -8564,6 +8564,7 @@ public struct PlanOut: Codable, Sendable, Hashable {
     public var nextCheapWindow: PriceWindowOut?
     public var bufferCapacityKwh: Double?
     public var bufferMinKwh: Double?
+    public var sun: [SunDayOut]
 
     public enum CodingKeys: String, CodingKey {
         case createdAt = "created_at"
@@ -8580,9 +8581,10 @@ public struct PlanOut: Codable, Sendable, Hashable {
         case nextCheapWindow = "next_cheap_window"
         case bufferCapacityKwh = "buffer_capacity_kwh"
         case bufferMinKwh = "buffer_min_kwh"
+        case sun
     }
 
-    public init(createdAt: String, planner: String, plannerStatus: String? = nil, plannerNoteDe: String? = nil, plannerWarnDe: String? = nil, hpActuation: Bool? = nil, horizonStart: String, horizonEnd: String, windows: [PriceWindowOut] = [], intervals: [PlanIntervalOut] = [], pvForecastTodayKwh: Double, nextCheapWindow: PriceWindowOut? = nil, bufferCapacityKwh: Double? = nil, bufferMinKwh: Double? = nil) {
+    public init(createdAt: String, planner: String, plannerStatus: String? = nil, plannerNoteDe: String? = nil, plannerWarnDe: String? = nil, hpActuation: Bool? = nil, horizonStart: String, horizonEnd: String, windows: [PriceWindowOut] = [], intervals: [PlanIntervalOut] = [], pvForecastTodayKwh: Double, nextCheapWindow: PriceWindowOut? = nil, bufferCapacityKwh: Double? = nil, bufferMinKwh: Double? = nil, sun: [SunDayOut] = []) {
         self.createdAt = createdAt
         self.planner = planner
         self.plannerStatus = plannerStatus
@@ -8597,6 +8599,7 @@ public struct PlanOut: Codable, Sendable, Hashable {
         self.nextCheapWindow = nextCheapWindow
         self.bufferCapacityKwh = bufferCapacityKwh
         self.bufferMinKwh = bufferMinKwh
+        self.sun = sun
     }
 
     public init(from decoder: any Decoder) throws {
@@ -8615,6 +8618,7 @@ public struct PlanOut: Codable, Sendable, Hashable {
         self.nextCheapWindow = try c.decodeIfPresent(PriceWindowOut.self, forKey: .nextCheapWindow)
         self.bufferCapacityKwh = try c.decodeIfPresent(Double.self, forKey: .bufferCapacityKwh)
         self.bufferMinKwh = try c.decodeIfPresent(Double.self, forKey: .bufferMinKwh)
+        self.sun = try c.decodeIfPresent([SunDayOut].self, forKey: .sun) ?? []
     }
 }
 
@@ -10989,6 +10993,26 @@ public struct StreckeAnsicht: Codable, Sendable, Hashable {
         self.t1Entwurf = try c.decode(Double.self, forKey: .t1Entwurf)
         self.totzeitEntwurf = try c.decode(Double.self, forKey: .totzeitEntwurf)
         self.halbregel = try c.decode(Bool.self, forKey: .halbregel)
+    }
+}
+
+/// Sonnenaufgang und Sonnenuntergang eines Tages am Standort des Hauses.
+public struct SunDayOut: Codable, Sendable, Hashable {
+    public var day: String
+    public var sunrise: String
+    public var sunset: String
+
+    public init(day: String, sunrise: String, sunset: String) {
+        self.day = day
+        self.sunrise = sunrise
+        self.sunset = sunset
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.day = try c.decode(String.self, forKey: .day)
+        self.sunrise = try c.decode(String.self, forKey: .sunrise)
+        self.sunset = try c.decode(String.self, forKey: .sunset)
     }
 }
 

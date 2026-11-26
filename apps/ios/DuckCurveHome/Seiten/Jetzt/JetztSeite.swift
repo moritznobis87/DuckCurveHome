@@ -361,13 +361,13 @@ struct JetztSeite: View {
 
     private var ausblick: Ausblick { Ausblick.baue(haus.plan, jetzt: haus.jetzt) }
 
-    /// Aufgang und Untergang des Tages aus dem Fahrplan, wie im Ruhebild.
+    /// Aufgang und Untergang der Sonne am Standort, wie der Fahrplan sie mitbringt.
     private var sonnenlauf: Ruhebild.Sonnenlauf? {
         Ruhebild.sonnenlauf(haus.plan, jetzt: haus.jetzt)
     }
 
-    /// Tag oder Nacht: aus der Erwartung des Fahrplans, nicht aus der Uhr; liefert die Anlage
-    /// trotzdem, ist es Tag (`ambiente.ts`, `bild`). Entschieden wird wie im Ruhebild mit dem
+    /// Tag oder Nacht: zwischen Aufgang und Untergang ist es Tag; liefert die Anlage außerhalb
+    /// trotzdem, auch (`ambiente.ts`, `bild`). Entschieden wird wie im Ruhebild mit dem
     /// belastbaren Wert: eine zwei Tage alte Messung hielte die Seite sonst die ganze Nacht auf
     /// dem Tagbild.
     private var nacht: Bool {
@@ -386,9 +386,8 @@ struct JetztSeite: View {
     /// Wann die Sonne wiederkommt. Nur die Uhrzeit, ohne „morgen“: ein Sonnenaufgang ist immer
     /// der nächste.
     private var sonneAb: String? {
-        let blick = ausblick
-        guard blick.nacht, let wechsel = blick.sonneWechsel else { return nil }
-        return Formate.hhmm(wechsel)
+        guard nacht else { return nil }
+        return Ruhebild.naechsterAufgang(haus.plan, jetzt: haus.jetzt, blick: ausblick).map { Formate.hhmm($0) }
     }
 
     // MARK: - Die Kurve

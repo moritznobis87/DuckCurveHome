@@ -7,7 +7,7 @@ import { ageLabel, hhmm, kw } from "@/lib/format";
 import { useGroesse } from "@/lib/useGroesse";
 import { Icon } from "@/components/ui/Icon";
 import type { Sonnenlauf } from "./ambiente";
-import { FLUSS_AB_KW, bandbreite, bandkappe, buehnenmass, sonnenort } from "./buehne";
+import { FLUSS_AB_KW, SCHEIBE_BLASS, STRAHLEN, bandbreite, bandkappe, buehnenmass, sonnenbild, sonnenort } from "./buehne";
 import { flusswerte, frisch, grundlast, wpWort } from "./fluss";
 
 /**
@@ -42,7 +42,7 @@ export function Buehne({ snapshot, nowMs, wpLaeuft, nacht, stand, lauf, sonneAb,
   const schmal = groesse != null && buehnenmass(groesse.breite, groesse.hoehe).schmal;
   return (
     <div className="start-mitte">
-      <div className="start-buehne" data-nacht={nacht} data-gestoert={vonEben != null}>
+      <div className="start-buehne" data-nacht={nacht} data-gestoert={vonEben != null} style={{ "--himmel": `${Math.round(sonnenbild(v.pv, false).himmel * 100)}%` } as React.CSSProperties}>
         <div ref={ref} className="buehne-flaeche">
           {groesse && groesse.breite > 0 && groesse.hoehe > 0 ? (
             <Szene W={groesse.breite} H={groesse.hoehe} s={snapshot} nowMs={nowMs} wpLaeuft={wpLaeuft} nacht={nacht} stand={stand} lauf={lauf} sonneAb={sonneAb} onPumpe={onPumpe} />
@@ -110,6 +110,8 @@ function Szene({ W, H, s, nowMs, wpLaeuft, nacht, stand, lauf, sonneAb, onPumpe 
   const sterne = useMemo(() => sternenhimmel(W, m.boden - 70, m.schmal ? 34 : 70), [W, m.boden, m.schmal]);
   const { schmal, boden: G, mitte: cx, hausHalb: hb, hausHoch: hh, dach, ueber } = m;
   const sonne = sonnenort(m, stand);
+  // Klein und blass bei wenig Erzeugung, groß und strahlend bei viel.
+  const bild = sonnenbild(v.pv, schmal);
   const x0 = m.bogenRand;
   const spitze = G - hh - dach;
   const dx = hb + ueber;
@@ -125,6 +127,8 @@ function Szene({ W, H, s, nowMs, wpLaeuft, nacht, stand, lauf, sonneAb, onPumpe 
   const kabel = `M${m.netzX},${Math.min(m.tief - 16, G + 2 + bandkappe(v.netz))} V${m.tief - 16} q0,16 16,16 H${cx - hb * (schmal ? 0.8 : 0.5) - 16} q16,0 16,-16 V${G + 2}`;
   const rohr = `M${cx + hb * 0.5},${G + 2} V${m.tief - 16} q0,16 16,16 H${m.pumpeX - 16} q16,0 16,-16 V${G + 2}`;
   const halb = Math.min(dx - 6, 18 + v.pv * 14);
+  // Der Lichtkegel setzt an der Scheibe an und ist dort so breit wie sie.
+  const fuss = bild.radius * 0.56;
   const kegelY = G - hh - dach * (1 - halb / dx) - 3;
   // Eine Solarplatte liegt auf jeder Dachseite, um fünf Pixel über die Dachhaut gehoben.
   const platte = (seite: 1 | -1) => {
@@ -139,8 +143,8 @@ function Szene({ W, H, s, nowMs, wpLaeuft, nacht, stand, lauf, sonneAb, onPumpe 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="group" aria-label="Das Haus unter seinem Himmel: woher der Strom gerade kommt und wohin er fließt">
       <defs>
-        <radialGradient id="bue-schein"><stop offset="0" stopColor="var(--amber)" stopOpacity={0.55} /><stop offset="1" stopColor="var(--amber)" stopOpacity={0} /></radialGradient>
-        <linearGradient id="bue-strahl" gradientUnits="userSpaceOnUse" x1={sonne.x} y1={sonne.y} x2={cx} y2={G - hh}><stop offset="0" stopColor="var(--amber)" stopOpacity={0.62} /><stop offset="1" stopColor="var(--amber)" stopOpacity={0.16} /></linearGradient>
+        <radialGradient id="bue-schein"><stop offset="0" stopColor="var(--amber)" stopOpacity={bild.scheinDeckung} /><stop offset="1" stopColor="var(--amber)" stopOpacity={0} /></radialGradient>
+        <linearGradient id="bue-strahl" gradientUnits="userSpaceOnUse" x1={sonne.x} y1={sonne.y} x2={cx} y2={G - hh}><stop offset="0" stopColor="var(--amber)" stopOpacity={0.62 * bild.kegel} /><stop offset="1" stopColor="var(--amber)" stopOpacity={0.16 * bild.kegel} /></linearGradient>
         <linearGradient id="bue-boden" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--deep)" stopOpacity={0.9} /><stop offset="1" stopColor="var(--deep)" stopOpacity={0.55} /></linearGradient>
       </defs>
 
@@ -160,14 +164,27 @@ function Szene({ W, H, s, nowMs, wpLaeuft, nacht, stand, lauf, sonneAb, onPumpe 
       ) : (
         <>
           <path d={`M${x0},${G} A${m.rx},${m.ry} 0 0 1 ${sonne.x},${sonne.y}`} fill="none" stroke="var(--amber)" strokeOpacity={0.85} strokeWidth={2} strokeLinecap="round" />
-          <circle cx={sonne.x} cy={sonne.y} r={schmal ? 78 : 104} fill="url(#bue-schein)" />
+          <circle cx={sonne.x} cy={sonne.y} r={bild.schein} fill="url(#bue-schein)" />
           {ertrag ? (
             <>
-              <path d={`M${sonne.x - 9},${sonne.y + 6} L${sonne.x + 9},${sonne.y + 6} L${cx + halb},${kegelY} L${cx},${spitze - 3} L${cx - halb},${kegelY} Z`} fill="url(#bue-strahl)" />
-              <path className="bild-fliessen" d={`M${sonne.x},${sonne.y + 20} L${cx},${spitze - 6}`} fill="none" stroke="var(--paper)" strokeOpacity={0.8} strokeWidth={3} strokeLinecap="round" strokeDasharray="8 30" />
+              <path d={`M${sonne.x - fuss},${sonne.y + fuss * 0.67} L${sonne.x + fuss},${sonne.y + fuss * 0.67} L${cx + halb},${kegelY} L${cx},${spitze - 3} L${cx - halb},${kegelY} Z`} fill="url(#bue-strahl)" />
+              <path className="bild-fliessen" d={`M${sonne.x},${sonne.y + bild.radius + 4} L${cx},${spitze - 6}`} fill="none" stroke="var(--paper)" strokeOpacity={0.8} strokeWidth={3} strokeLinecap="round" strokeDasharray="8 30" />
             </>
           ) : null}
-          <circle cx={sonne.x} cy={sonne.y} r={16} fill="var(--amber-soft)" style={{ filter: "drop-shadow(0 0 14px var(--amber))" }} />
+          {bild.strahl > 0 ? (
+            <g stroke="var(--amber-soft)" strokeOpacity={bild.strahlDeckung} strokeWidth={schmal ? 2 : 2.4} strokeLinecap="round">
+              {Array.from({ length: STRAHLEN }, (_, i) => {
+                const a = (i / STRAHLEN) * 2 * Math.PI;
+                const innen = bild.radius + 5;
+                const aussen = innen + bild.strahl * (i % 2 ? 0.6 : 1);
+                return <line key={i} x1={sonne.x + Math.cos(a) * innen} y1={sonne.y + Math.sin(a) * innen} x2={sonne.x + Math.cos(a) * aussen} y2={sonne.y + Math.sin(a) * aussen} />;
+              })}
+            </g>
+          ) : null}
+          {/* Die Scheibe in drei Lagen: der Himmel, damit der Bogen nicht durchscheint, darauf ein blasses Weiß und darauf so viel Bernstein, wie die Sonne Kraft hat. */}
+          <circle cx={sonne.x} cy={sonne.y} r={bild.radius} fill="var(--himmelsgrund)" />
+          <circle cx={sonne.x} cy={sonne.y} r={bild.radius} fill="var(--paper)" fillOpacity={SCHEIBE_BLASS} />
+          <circle cx={sonne.x} cy={sonne.y} r={bild.radius} fill="var(--amber-soft)" fillOpacity={bild.deckung} style={bild.glanz >= 1 ? { filter: `drop-shadow(0 0 ${bild.glanz.toFixed(1)}px var(--amber))` } : undefined} />
           <Link href="/strom/pv" aria-label={`Sonne: ${kw(s?.pv_power_kw.value)} kW. Details öffnen`}>
             <title>{alter(s?.pv_power_kw, nowMs)}</title>
             <text x={oben.x} y={oben.y} className="bild-zahl" fontSize={schmal ? 30 : 40} style={{ fill: frisch(s?.pv_power_kw) ? "var(--amber)" : "var(--text-3)" }}>

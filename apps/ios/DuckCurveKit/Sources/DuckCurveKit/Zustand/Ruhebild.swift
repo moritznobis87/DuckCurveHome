@@ -8,10 +8,9 @@ import Foundation
 /// bleibt deshalb das übrig, was man aus drei Metern liest.
 ///
 /// **Zwei Bilder, und die Sonne entscheidet.** Am Tag ist die Sonne die Nachricht, am Abend der
-/// Preis und der Puffer. Umgeschaltet wird nicht nach der Uhr, sondern nach dem Sonnenlauf aus
-/// dem Fahrplan: Solange die Prognose Erzeugung kennt, gilt der Tag. Das wechselt zweimal am Tag
-/// und nicht alle fünf Minuten, wie es eine Schwelle auf die gemessene Leistung täte - eine Wolke
-/// um 13 Uhr ist kein Abend.
+/// Preis und der Puffer. Umgeschaltet wird nach Aufgang und Untergang der Sonne am Standort des
+/// Hauses, die der Fahrplan mitbringt. Das wechselt zweimal am Tag und nicht alle fünf Minuten,
+/// wie es eine Schwelle auf die gemessene Leistung täte - eine Wolke um 13 Uhr ist kein Abend.
 ///
 /// **Warum eigene Rechnung und nicht `Ausblick`.** `Ausblick` rechnet auf dem Fenster
 /// `jetzt … jetzt+24 h`. Der Sonnenbogen braucht den Kalendertag: sonst wäre am Nachmittag die
@@ -25,9 +24,10 @@ public enum Ruhebild {
 
     // MARK: - Maße
 
-    /// Ab dieser erwarteten Leistung zählt eine Viertelstunde als Erzeugung.
+    /// Ab dieser erwarteten Leistung zählt eine Viertelstunde als Erzeugung. Nur für den Ersatz
+    /// in ``sonnenlauf(_:jetzt:)``.
     public static let sonneAbKw = 0.05
-    /// Erzeugt die Anlage so viel, ist es Tag, auch wenn die Prognose nichts davon wusste.
+    /// Erzeugt die Anlage so viel, ist es Tag, auch wenn der Fahrplan nichts vom Sonnenlauf weiß.
     public static let trotzdemTagAbKw = 0.3
     /// Rasterweite einer Viertelstunde. Sie wird auf das letzte helle Intervall addiert, damit
     /// `bis` das Ende dieser Viertelstunde ist und nicht ihr Anfang.
@@ -37,7 +37,7 @@ public enum Ruhebild {
 
     // MARK: - Der Sonnenlauf
 
-    /// Die Prognose des heutigen Tages im Fenster der Erzeugung.
+    /// Aufgang und Untergang des heutigen Tages, dazu die Prognose in diesem Fenster.
     public struct Sonnenlauf: Sendable, Equatable {
         /// Eine Viertelstunde der Prognose.
         public struct Punkt: Sendable, Equatable {
@@ -50,10 +50,10 @@ public enum Ruhebild {
             }
         }
 
-        /// Die Prognose im Fenster der Erzeugung, mit einer halben Stunde Luft an beiden Enden -
-        /// also einschliesslich der dunklen Punkte davor und danach.
+        /// Die Prognose zwischen Aufgang und Untergang, mit einer halben Stunde Luft an beiden
+        /// Enden - also einschliesslich der dunklen Punkte davor und danach.
         public let punkte: [Punkt]
-        /// Beginn und Ende der erwarteten Erzeugung.
+        /// Aufgang und Untergang der Sonne.
         public let von: Date
         public let bis: Date
 
@@ -64,7 +64,30 @@ public enum Ruhebild {
         }
     }
 
-    /// Der Sonnenlauf des heutigen Tages aus dem Fahrplan. `nil`, wenn der Plan nichts dazu sagt.
+    /// Aufgang und Untergang je Tag, wie der Fahrplan sie mitbringt, nach der Zeit geordnet.
+    static func sonnentage(_ plan: PlanOut?) -> [(von: Date, bis: Date)] {
+        (plan?.sun ?? [])
+            .compactMap { tag -> (von: Date, bis: Date)? in
+                guard let von = Zeit.ausIso(tag.sunrise), let bis = Zeit.ausIso(tag.sunset), bis > von
+                else { return nil }
+                return (von, bis)
+            }
+            .sorted { $0.von < $1.von }
+    }
+
+    /// Der Sonnenlauf des heutigen Tages: Aufgang und Untergang am Standort des Hauses. `nil`,
+    /// wenn der Plan nichts dazu sagt.
+    ///
+    /// **Nicht mehr aus der Ertragsprognose.** Bis zum 26.11.2026 galten als Aufgang und Untergang
+    /// die erste und die letzte Viertelstunde, in der die Prognose mehr als 50 Watt kannte. An
+    /// jenem Tag standen damit 08:45 und 16:45 an den Enden des Bogens, die Sonne ging aber um
+    /// 08:09 auf und um 16:36 unter; um 09:17 saß sie im Bild noch am Horizont (Hausherr: „Es
+    /// passt doch nicht“). Der Dienst rechnet die Zeiten jetzt aus Datum und Standort und gibt
+    /// sie im Fahrplan mit (`plan.sun`).
+    ///
+    /// **Der Ersatz.** Ein Dienst vor diesem Tag schickt `sun` nicht mit. Dann gilt wie vorher
+    /// das Fenster der erwarteten Erzeugung: ein ungefährer Himmel ist besser als keiner, und
+    /// Dienst und App werden nicht im selben Augenblick erneuert.
     public static func sonnenlauf(_ plan: PlanOut?, jetzt: Date) -> Sonnenlauf? {
         guard let tag = Tageskacheln.fenster(.heute, jetzt: jetzt) else { return nil }
         let alle =
@@ -74,14 +97,29 @@ public enum Ruhebild {
                 return Sonnenlauf.Punkt(zeit: t, kw: iv.expectedPvKw)
             }
             .sorted { $0.zeit < $1.zeit }
-        let hell = alle.filter { $0.kw > sonneAbKw }
-        guard let erste = hell.first, let letzte = hell.last else { return nil }
-        let von = erste.zeit
-        let bis = letzte.zeit.addingTimeInterval(schritt)
+        let von: Date
+        let bis: Date
+        if let heute = sonnentage(plan).first(where: { $0.von >= tag.von && $0.von < tag.bis }) {
+            (von, bis) = heute
+        } else {
+            let hell = alle.filter { $0.kw > sonneAbKw }
+            guard let erste = hell.first, let letzte = hell.last else { return nil }
+            von = erste.zeit
+            bis = letzte.zeit.addingTimeInterval(schritt)
+        }
         let punkte = alle.filter {
             $0.zeit >= von.addingTimeInterval(-luft) && $0.zeit <= bis.addingTimeInterval(luft)
         }
         return Sonnenlauf(punkte: punkte, von: von, bis: bis)
+    }
+
+    /// Wann die Sonne das nächste Mal aufgeht: heute, wenn es noch vor dem Aufgang ist, sonst
+    /// morgen. Weiß der Fahrplan nichts vom Sonnenlauf, gilt der Beginn der Erzeugung aus dem
+    /// Ausblick (`ambiente.ts`, `naechsterAufgang`).
+    public static func naechsterAufgang(_ plan: PlanOut?, jetzt: Date, blick: Ausblick) -> Date? {
+        let tage = sonnentage(plan)
+        if !tage.isEmpty { return tage.first { $0.von > jetzt }?.von }
+        return blick.nacht ? blick.sonneWechsel : nil
     }
 
     // MARK: - Welches der beiden Bilder gilt
@@ -90,7 +128,7 @@ public enum Ruhebild {
         case tag, abend
     }
 
-    /// Tag, solange die Prognose Erzeugung kennt - sonst nur, wenn die Anlage trotzdem liefert.
+    /// Tag zwischen Aufgang und Untergang - sonst nur, wenn die Anlage trotzdem liefert.
     ///
     /// Beide Grenzen zählen dazu: um Punkt Sonnenaufgang ist es schon Tag, um Punkt
     /// Sonnenuntergang noch.

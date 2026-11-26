@@ -40,6 +40,77 @@ export function sonnenanteil(lauf: Sonnenlauf | null, nowMs: number): number | n
   return (nowMs - lauf.von) / (lauf.bis - lauf.von);
 }
 
+/**
+ * Bei dieser Erzeugung steht die Sonne in voller Kraft im Bild.
+ *
+ * Eine feste Zahl wie bei den Bändern: die Oberfläche kennt die Größe der Anlage nicht. Acht
+ * Kilowatt sind ein voller Sommermittag dieses Hauses; ein klarer Wintermittag bleibt darunter
+ * und soll im Bild auch so aussehen.
+ */
+export const VOLLE_SONNE_KW = 8;
+
+/**
+ * Wie kräftig die Sonne wirkt, von 0 bis 1.
+ *
+ * Mit der Wurzel der Erzeugung, wie die Breite der Bänder: ein halbes Kilowatt ist ein Viertel
+ * der Kraft und zwei Kilowatt die Hälfte. Geradeaus wäre die Sonne an jedem Wintertag ein Punkt.
+ */
+export function sonnenkraft(kw: number): number {
+  return Math.min(1, Math.sqrt(Math.max(0, kw) / VOLLE_SONNE_KW));
+}
+
+/** Wie die Sonne gezeichnet wird. Alle Längen in Pixeln, alle Deckungen von 0 bis 1. */
+export interface Sonnenbild {
+  /** Die Scheibe: ihr Halbmesser und wie viel Bernstein auf dem blassen Grund liegt. */
+  radius: number;
+  deckung: number;
+  /** Wie weit die Scheibe leuchtet. */
+  glanz: number;
+  /** Der weiche Schein um die Scheibe: sein Halbmesser und seine Deckung in der Mitte. */
+  schein: number;
+  scheinDeckung: number;
+  /** Der Strahlenkranz: Länge der langen Strahlen und ihre Deckung. Bei 0 gibt es keinen. */
+  strahl: number;
+  strahlDeckung: number;
+  /** Wie deckend der Lichtkegel zum Dach ist, als Anteil seiner vollen Deckung. */
+  kegel: number;
+  /** Wie stark der warme Schein des Himmels in der Ecke ist. */
+  himmel: number;
+}
+
+/**
+ * So deckend liegt das blasse Weiß unter dem Bernstein der Scheibe. Eine schwache Sonne wird
+ * damit hell und fahl wie hinter Dunst; nur mit dem dunklen Himmel gemischt wurde sie oliv.
+ */
+export const SCHEIBE_BLASS = 0.6;
+/** Ab diesem Anteil der Kraft trägt die Sonne Strahlen. */
+export const STRAHLEN_AB = 0.3;
+/** So viele Strahlen hat der Kranz; jeder zweite ist kürzer. */
+export const STRAHLEN = 12;
+
+/**
+ * Die Sonne nach ihrer Erzeugung: bei wenig klein und blass, bei viel groß und strahlend
+ * (Hausherr am 26.11.2026). Vorher war sie immer gleich groß, und ein trüber Morgen mit
+ * 0,1 kW sah aus wie ein Sommermittag.
+ */
+export function sonnenbild(kw: number, schmal: boolean): Sonnenbild {
+  const k = sonnenkraft(kw);
+  const zwischen = (wenig: number, viel: number) => wenig + (viel - wenig) * k;
+  const radius = schmal ? zwischen(6, 18) : zwischen(7, 22);
+  const kranz = Math.max(0, (k - STRAHLEN_AB) / (1 - STRAHLEN_AB));
+  return {
+    radius,
+    deckung: zwischen(0.45, 1),
+    glanz: zwischen(0, 22),
+    schein: radius * zwischen(2.4, schmal ? 5.2 : 6),
+    scheinDeckung: zwischen(0.14, 0.6),
+    strahl: kranz * (schmal ? 12 : 16),
+    strahlDeckung: kranz * 0.85,
+    kegel: zwischen(0.4, 1),
+    himmel: zwischen(0.06, 0.26),
+  };
+}
+
 export interface Buehnenmass {
   /** Das Telefon: Wallbox und Wärmepumpe stehen dann als Kacheln unter der Bühne. */
   schmal: boolean;

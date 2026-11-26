@@ -56,6 +56,7 @@ from hems_core.forecasting.rueckblick import (
     wertung,
     wertung_je_vorlauf,
 )
+from hems_core.forecasting.sonne import sonnenzeiten
 
 __all__ = [
     "PLAN",
@@ -102,6 +103,7 @@ __all__ = [
     "score_by_horizon",
     "simple_pv_forecast",
     "solar_elevation_deg",
+    "sonnenzeiten",
     "stand_vor",
     "umgerechnet",
     "wertung",

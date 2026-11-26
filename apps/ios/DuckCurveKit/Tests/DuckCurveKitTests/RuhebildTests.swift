@@ -45,9 +45,66 @@ final class RuhebildTests: XCTestCase {
         Kalender.haus.component(.hour, from: d)
     }
 
+    private func uhr(_ stunde: Int, _ minute: Int) -> Date {
+        tag.addingTimeInterval(Double(stunde) * 3600 + Double(minute) * 60)
+    }
+
+    /// Derselbe Fahrplan, dazu Aufgang und Untergang für heute und morgen, wie der Dienst sie
+    /// rechnet.
+    private func mitSonnenzeiten(_ plan: PlanOut) -> PlanOut {
+        var p = plan
+        p.sun = [
+            SunDayOut(day: "2026-10-23", sunrise: Zeit.iso(uhr(8, 9)), sunset: Zeit.iso(uhr(16, 36))),
+            SunDayOut(day: "2026-10-24", sunrise: Zeit.iso(uhr(32, 11)), sunset: Zeit.iso(uhr(40, 35))),
+        ]
+        return p
+    }
+
     // MARK: - Sonnenlauf
 
-    func testSonnenlaufFindetBeginnUndEndeDerErzeugung() {
+    func testSonnenlaufNimmtAufgangUndUntergangDieDerFahrplanMitbringt() {
+        let lauf = Ruhebild.sonnenlauf(mitSonnenzeiten(planMitSonne()), jetzt: uhr(12))
+        XCTAssertEqual(lauf?.von, uhr(8, 9))
+        XCTAssertEqual(lauf?.bis, uhr(16, 36))
+    }
+
+    func testSonnenlaufHaengtNichtAnDerErtragsprognose() {
+        // Auch ein Tag ohne erwartete Erzeugung hat einen Sonnenlauf.
+        let lauf = Ruhebild.sonnenlauf(mitSonnenzeiten(nachts()), jetzt: uhr(12))
+        XCTAssertEqual(lauf?.von, uhr(8, 9))
+        XCTAssertEqual(lauf?.bis, uhr(16, 36))
+    }
+
+    func testDieSonneStehtWoSieStehtUndNichtAmBeginnDerErzeugung() {
+        // Der Fall vom 26.11.2026: Aufgang um 08:09, Erzeugung laut Prognose erst ab 09 Uhr. Um
+        // 09:17 ist ein gutes Achtel des Tages vorbei; aus der Prognose gelesen war es ein
+        // Dreißigstel.
+        let jetzt = uhr(9, 17)
+        let echt = Ruhebild.sonnenlauf(mitSonnenzeiten(planMitSonne()), jetzt: jetzt)
+        XCTAssertEqual(Startbuehne.sonnenanteil(echt, jetzt: jetzt)!, 68.0 / 507.0, accuracy: 1e-6)
+        let ersatz = Ruhebild.sonnenlauf(planMitSonne(), jetzt: jetzt)
+        XCTAssertEqual(Startbuehne.sonnenanteil(ersatz, jetzt: jetzt)!, 17.0 / 495.0, accuracy: 1e-6)
+    }
+
+    func testNaechsterAufgangIstVorDemAufgangHeuteUndDanachMorgen() {
+        let plan = mitSonnenzeiten(planMitSonne())
+        XCTAssertEqual(
+            Ruhebild.naechsterAufgang(plan, jetzt: uhr(5), blick: Ausblick.baue(plan, jetzt: uhr(5))),
+            uhr(8, 9))
+        XCTAssertEqual(
+            Ruhebild.naechsterAufgang(plan, jetzt: uhr(21), blick: Ausblick.baue(plan, jetzt: uhr(21))),
+            uhr(32, 11))
+    }
+
+    func testNaechsterAufgangNimmtOhneSonnenzeitenDenBeginnDerErzeugung() {
+        let ohne = planMitSonne()
+        XCTAssertEqual(
+            Ruhebild.naechsterAufgang(ohne, jetzt: uhr(5), blick: Ausblick.baue(ohne, jetzt: uhr(5))),
+            uhr(9))
+        XCTAssertNil(Ruhebild.naechsterAufgang(nil, jetzt: uhr(5), blick: Ausblick.baue(nil, jetzt: uhr(5))))
+    }
+
+    func testSonnenlaufFaelltOhneSonnenzeitenAufDieErzeugungZurueck() {
         let lauf = Ruhebild.sonnenlauf(planMitSonne(), jetzt: uhr(12))
         XCTAssertNotNil(lauf)
         XCTAssertEqual(stunde(lauf!.von), 9)
