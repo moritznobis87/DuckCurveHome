@@ -68,12 +68,68 @@ warten_auf_postgres() {
 # Vor jedem Start (`dch neustart`, auch beim Booten, und im Update) prueft `postgres_heben`, ob im
 # Volume ein Cluster einer aelteren Hauptversion liegt. Wenn ja: mit dem passenden alten pg_dump
 # sichern, den alten Stand in ein eigenes Volume kopieren und dort aufbewahren, die neue Version
-# frisch anlegen und die Sicherung einspielen. Rueckgabe 0: nichts zu tun oder gehoben. 1: es
-# wurde nichts geaendert (Sichern oder Kopieren scheiterte). 2: umgestellt, aber das Einspielen
-# meldete Fehler; Sicherung und alter Stand liegen bereit.
+# frisch anlegen und die Sicherung in einer einzigen Transaktion einspielen. Rueckgabe 0: nichts zu
+# tun oder gehoben. 1: es wurde nichts geaendert (Sichern oder Kopieren scheiterte). 3: umgestellt,
+# aber noch nicht eingespielt; Sicherung und alter Stand liegen bereit, API und Oberflaeche duerfen
+# nicht starten.
+#
+# Zwischen dem Loeschen des alten Volumes und dem Ende des Einspielens liegt die Marke OFFEN. Bricht
+# der Vorgang dort ab (Strom weg, Prozess beendet), liegt im Volume ein leerer oder halber Cluster
+# der neuen Version, an dem der naechste Start den alten nicht mehr erkennt. Mit der Marke setzt er
+# fort: Volume verwerfen, frisch anlegen, die Sicherung erneut einspielen (Review-Fund zu
+# moritznobis87/DuckCurveHome#49). Weil pg_restore mit --single-transaction laeuft, ist die
+# Datenbank danach vollstaendig oder leer, nie halb; die Marke verschwindet nur im ersten Fall.
 
 pg_bild() {
 	compose config --images 2>/dev/null | grep -m1 '^postgres:' || echo postgres:18
+}
+
+OFFEN="$SICHERUNG/postgres-heben.offen"
+
+offen_wert() { sed -n "s/^$1=//p" "$OFFEN" | tail -n 1; }
+
+pg_einspielen() {
+	# Das Volume $1 frisch anlegen und die Sicherung $2 einspielen. Laeuft nach einem Abbruch
+	# erneut: Was ein abgebrochener Versuch hinterlassen hat, wird vorher verworfen. Rueckgabe 0:
+	# eingespielt, 3: die Datenbank kam nicht hoch oder pg_restore scheiterte (dann ist nichts
+	# eingespielt).
+	local vol=$1 dump=$2
+	compose rm -sf postgres >/dev/null 2>&1 || true
+	docker volume rm "$vol" >/dev/null 2>&1 || true
+	compose up -d postgres >/dev/null 2>&1 || return 3
+	local bereit=""
+	for _ in $(seq 1 60); do
+		compose exec -T postgres pg_isready -U dch -d dch >/dev/null 2>&1 && { bereit=1; break; }
+		sleep 2
+	done
+	[ -n "$bereit" ] || return 3
+	compose exec -T postgres pg_restore -U dch -d dch --no-owner --no-acl --single-transaction <"$dump" || return 3
+}
+
+einspielen_abschliessen() {
+	# Einspielen und die Marke nur dann entfernen, wenn es gelungen ist.
+	local vol=$1 dump=$2 rest=$3 ziel=$4
+	if ! pg_einspielen "$vol" "$dump"; then
+		echo "dch: Die Sicherung liess sich unter PostgreSQL $ziel nicht einspielen. API und Oberflaeche bleiben aus; der naechste Start versucht es erneut. Sicherung: $dump; der alte Stand liegt im Volume $rest." >&2
+		return 3
+	fi
+	rm -f "$OFFEN"
+	hinweis "Gehoben auf PostgreSQL $ziel. Der alte Stand liegt im Volume $rest und kann weg, wenn alles laeuft."
+}
+
+postgres_heben_fortsetzen() {
+	local dump vol rest ziel
+	dump=$(offen_wert dump)
+	vol=$(offen_wert volume)
+	rest=$(offen_wert rest)
+	ziel=$(offen_wert ziel)
+	if [ -z "$vol" ] || [ ! -s "$dump" ]; then
+		echo "dch: Ein Wechsel der PostgreSQL-Version ist nicht abgeschlossen, und die Sicherung dazu fehlt ($OFFEN). API und Oberflaeche bleiben aus; der alte Stand liegt im Volume ${rest:-?}." >&2
+		return 3
+	fi
+	hinweis "Der Wechsel auf PostgreSQL $ziel wurde unterbrochen und wird jetzt abgeschlossen."
+	compose stop api web >/dev/null 2>&1 || true
+	einspielen_abschliessen "$vol" "$dump" "$rest" "$ziel"
 }
 
 pg_volume() {
@@ -87,6 +143,10 @@ pg_volume() {
 
 postgres_heben() {
 	local bild ziel vol alt
+	if [ -f "$OFFEN" ]; then
+		postgres_heben_fortsetzen
+		return
+	fi
 	bild=$(pg_bild)
 	ziel=${bild#postgres:}
 	ziel=${ziel%%[.-]*}
@@ -137,21 +197,19 @@ postgres_heben() {
 		echo "dch: Der alte Stand liess sich nicht kopieren; es wurde nichts geaendert. Sicherung: $dump" >&2
 		return 1
 	fi
-	docker volume rm "$vol" >/dev/null
 
-	compose up -d postgres >/dev/null 2>&1
-	warten_auf_postgres
-	if ! compose exec -T postgres pg_restore -U dch -d dch --no-owner --no-acl <"$dump"; then
-		# Rueckgabe 2 statt 1: Hier ist schon umgestellt. Die alte Einrichtung zurueckzuholen
-		# hilft dann nicht mehr, denn das Volume enthaelt jetzt einen Cluster der neuen Version.
-		echo "dch: pg_restore meldete Fehler. Sicherung: $dump; der alte Stand liegt im Volume $rest." >&2
-		return 2
-	fi
-	hinweis "Gehoben auf PostgreSQL $ziel. Der alte Stand liegt im Volume $rest und kann weg, wenn alles laeuft."
+	# Ab hier ist umgestellt. Die alte Einrichtung zurueckzuholen hilft dann nicht mehr, denn das
+	# Volume enthaelt gleich einen Cluster der neuen Version; darum die Marke, bevor es weg ist.
+	printf 'dump=%s\nvolume=%s\nrest=%s\nziel=%s\n' "$dump" "$vol" "$rest" "$ziel" >"$OFFEN.teil"
+	mv "$OFFEN.teil" "$OFFEN"
+	sync
+	einspielen_abschliessen "$vol" "$dump" "$rest" "$ziel"
 }
 
 hochfahren() {
-	# Alle Dienste starten, vorher die Datenbank heben, falls noetig.
+	# Alle Dienste starten, vorher die Datenbank heben, falls noetig. Scheitert das, startet nichts:
+	# Nach Rueckgabe 1 kann die neue Version den alten Cluster nicht lesen, nach 3 ist er noch nicht
+	# eingespielt, und API und Oberflaeche liefen gegen eine leere Datenbank.
 	postgres_heben || return 1
 	compose up -d --remove-orphans
 }
@@ -349,6 +407,15 @@ dateien_nachziehen() {
 	fi
 }
 
+vorherige_bilder() {
+	# Die vor dem Update festgehaltenen Images ($1 api, $2 web) wieder unter die Namen legen, die
+	# Compose startet.
+	local ref
+	if [ -n "$1" ]; then ref=$(bild_ref api); [ -f "$BASIS/compose.bauen.yaml" ] && ref=duckcurve-api:lokal; docker tag "$1" "$ref"; fi
+	if [ -n "$2" ]; then ref=$(bild_ref web); [ -f "$BASIS/compose.bauen.yaml" ] && ref=duckcurve-web:lokal; docker tag "$2" "$ref"; fi
+	return 0
+}
+
 installieren() {
 	local von=${1:-}
 	mkdir -p "$GERAET"
@@ -404,16 +471,24 @@ installieren() {
 	local heben=0
 	postgres_heben >/dev/null 2>"$GERAET/heben.log" || heben=$?
 	if [ "$heben" = "1" ]; then
+		# Nichts an der Datenbank geaendert: ganz zur vorherigen Fassung zurueck, Einrichtung und
+		# Images. compose.yaml allein genuegt nicht, denn seine Image-Namen zeigen nach `pull`
+		# schon auf die neuen.
 		mv "$BASIS/compose.yaml.vorher" "$BASIS/compose.yaml" 2>/dev/null || true
+		vorherige_bilder "$vorher_api" "$vorher_web"
 		compose up -d --remove-orphans >/dev/null 2>&1 || true
 		schritt_setzen fehlgeschlagen "Neustart"
-		status_setzen '.meldung = "Die Datenbank ließ sich nicht auf die neue PostgreSQL-Version heben. Es wurde nichts geändert, die bisherige Fassung läuft weiter."'
+		if gesund; then
+			status_setzen '.meldung = "Die Datenbank ließ sich nicht auf die neue PostgreSQL-Version heben. Es wurde nichts geändert, die bisherige Fassung läuft weiter."'
+		else
+			status_setzen '.meldung = "Die Datenbank ließ sich nicht auf die neue PostgreSQL-Version heben, und auch die bisherige Fassung kam nicht gesund hoch. Bitte am Gerät nachsehen (dch status, dch logs api)."'
+		fi
 		return 1
 	fi
-	if [ "$heben" = "2" ]; then
-		compose up -d --remove-orphans >/dev/null 2>&1 || true
+	if [ "$heben" != "0" ]; then
+		# Nicht starten: API und Oberflaeche liefen sonst gegen eine leere Datenbank.
 		schritt_setzen fehlgeschlagen "Neustart"
-		status_setzen '.meldung = "Die Datenbank wurde auf die neue PostgreSQL-Version umgestellt, beim Einspielen gab es aber Fehler. Die Sicherung von unmittelbar davor liegt unter /var/lib/duckcurve/sicherung (vor-postgres-…). Bitte am Gerät nachsehen: dch logs api."'
+		status_setzen '.meldung = "Die Datenbank wurde auf die neue PostgreSQL-Version umgestellt, die Sicherung ließ sich aber noch nicht einspielen. Das Gerät versucht es bei jedem Start erneut, bis dahin bleibt die App aus. Die Sicherung liegt unter /var/lib/duckcurve/sicherung (vor-postgres-…); der alte Stand ist in einem eigenen Volume aufbewahrt."'
 		return 1
 	fi
 	rm -f "$BASIS/compose.yaml.vorher"
@@ -431,9 +506,7 @@ installieren() {
 	fi
 
 	schritt_setzen laeuft "Zurueck"
-	local ref
-	if [ -n "$vorher_api" ]; then ref=$(bild_ref api); [ -f "$BASIS/compose.bauen.yaml" ] && ref=duckcurve-api:lokal; docker tag "$vorher_api" "$ref"; fi
-	if [ -n "$vorher_web" ]; then ref=$(bild_ref web); [ -f "$BASIS/compose.bauen.yaml" ] && ref=duckcurve-web:lokal; docker tag "$vorher_web" "$ref"; fi
+	vorherige_bilder "$vorher_api" "$vorher_web"
 	compose up -d --remove-orphans >/dev/null 2>&1 || true
 	if gesund; then
 		status_setzen '.zustand = "zurueckgerollt" | .schritt = null

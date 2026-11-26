@@ -135,8 +135,17 @@ Cluster einer älteren Hauptversion liegt. Wenn ja, sichert es ihn mit dem passe
 `pg_dump` nach `/var/lib/duckcurve/sicherung/vor-postgres-18-….dump`, bewahrt den alten Stand im
 Volume `duckcurve_postgres_pg17` auf, legt PostgreSQL 18 frisch an und spielt die Sicherung ein.
 Im Test mit dem vollen Schema dauerte das 21 Sekunden. Scheitert das Sichern, bleibt alles, wie
-es war, und ein Update kehrt zur bisherigen Einrichtung zurück. Läuft danach alles, kann der
-alte Stand weg:
+es war, und ein Update kehrt zur bisherigen Fassung zurück, Einrichtung und Images.
+
+Ab dem Löschen des alten Volumes bis zum Ende des Einspielens liegt die Marke
+`/var/lib/duckcurve/sicherung/postgres-heben.offen`. Bricht der Vorgang dort ab, etwa weil der
+Strom weg ist, setzt der nächste Start fort: Er legt die Datenbank frisch an und spielt die
+Sicherung erneut ein. Eingespielt wird in einer einzigen Transaktion, die Datenbank ist danach also
+vollständig oder leer. Solange die Marke liegt, starten API und Oberfläche nicht, damit sie nicht
+gegen eine leere Datenbank laufen. Wer den Fall von Hand gelöst hat, löscht die Marke, sonst spielt
+der nächste Start die Sicherung noch einmal ein und verwirft, was seitdem dazukam.
+
+Läuft danach alles, kann der alte Stand weg:
 
 ```bash
 sudo docker volume rm duckcurve_postgres_pg17
