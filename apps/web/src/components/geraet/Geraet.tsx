@@ -38,6 +38,12 @@ const HANDGRIFFE: Record<string, string> = {
   zustand: "Bericht erneuern",
 };
 
+/** Die Fußzeile der Karte Rechenkern; die App setzt dieselbe Zeile (`Hausgeraet.rechenkernzeile`). */
+export function rechenkernZeile(api: { version: string; laufzeit_s: number; rss_mb: number; sse_clients: number }): string {
+  const ansichten = api.sse_clients === 1 ? "1 offene Ansicht" : `${api.sse_clients} offene Ansichten`;
+  return `Fassung ${api.version} · läuft seit ${dauer(api.laufzeit_s)} · ${Math.round(api.rss_mb)} MB · ${ansichten}`;
+}
+
 export function dauer(sekunden: number): string {
   const s = Math.max(0, Math.round(sekunden));
   const t = Math.floor(s / 86_400);
@@ -226,10 +232,7 @@ function ApiKarte({ api }: { api: ApiSelbst }) {
         ampel={api.alfred_eingerichtet ? "gut" : "aus"}
         text={api.alfred_eingerichtet ? "Sprachmodell eingerichtet." : "Kein Schlüssel für das Sprachmodell hinterlegt."}
       />
-      <span className="mono text-[12px] text-text-3">
-        Fassung {api.version} · {api.commit} · läuft seit {dauer(api.laufzeit_s)} · {Math.round(api.rss_mb)} MB · {api.sse_clients} offene
-        Ansicht(en)
-      </span>
+      <span className="mono text-[12px] text-text-3">{rechenkernZeile(api)}</span>
     </Karte>
   );
 }

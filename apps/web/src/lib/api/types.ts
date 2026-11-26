@@ -9075,12 +9075,28 @@ export interface components {
             /** Nach */
             nach?: string | null;
         };
-        /** UpdateNeuerungOut */
+        /**
+         * UpdateNeuerungOut
+         * @description Eine Neuerung aus docs/versionen.json, für Außenstehende geschrieben (tools/version.py).
+         *
+         *     `version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`).
+         *     `bereich` und `text` sind im Schema nicht Pflicht, obwohl dieser Dienst sie immer füllt: Eine
+         *     App liest damit auch einen Dienst von vorher (`sha`, `titel`), ohne dass der ganze Stand des
+         *     Updates unlesbar wird, und lässt solche Einträge weg (`Hausgeraet.neuerungenNachVersion`).
+         */
         UpdateNeuerungOut: {
-            /** Sha */
-            sha: string;
-            /** Titel */
-            titel: string;
+            /** Version */
+            version?: string | null;
+            /**
+             * Bereich
+             * @default
+             */
+            bereich: string;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
         };
         /**
          * UpdateStatusOut
@@ -9123,6 +9139,8 @@ export interface components {
              * @default false
              */
             anfrage_offen: boolean;
+            /** Anfrage */
+            anfrage?: string | null;
         };
         /** ValidationError */
         ValidationError: {

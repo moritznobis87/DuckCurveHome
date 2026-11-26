@@ -2053,8 +2053,16 @@ class RegelkreisStellenIn(BaseModel):
 
 
 class UpdateNeuerungOut(BaseModel):
-    sha: str
-    titel: str
+    """Eine Neuerung aus docs/versionen.json, für Außenstehende geschrieben (tools/version.py).
+
+    `version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`).
+    `bereich` und `text` sind im Schema nicht Pflicht, obwohl dieser Dienst sie immer füllt: Eine
+    App liest damit auch einen Dienst von vorher (`sha`, `titel`), ohne dass der ganze Stand des
+    Updates unlesbar wird, und lässt solche Einträge weg (`Hausgeraet.neuerungenNachVersion`)."""
+
+    version: str | None = None
+    bereich: str = ""
+    text: str = ""
 
 
 class UpdateErgebnisOut(BaseModel):
@@ -2075,6 +2083,17 @@ class UpdateStatusOut(BaseModel):
     update_verfuegbar: bool = False
     neuerungen: list[UpdateNeuerungOut] = Field(default_factory=list)
     geprueft_am: str | None = None
+
+    @field_validator("neuerungen", mode="before")
+    @classmethod
+    def _ohne_commit_titel(cls, wert: Any) -> Any:
+        """Ein Update-Dienst von vor dem 26.11.2026 schrieb Commit-Titel (`sha`, `titel`). Die
+        sind nicht für Außenstehende geschrieben und erscheinen nicht; bis zur nächsten Prüfung
+        steht dann keine Liste da."""
+        if not isinstance(wert, list):
+            return wert
+        return [n for n in wert if not (isinstance(n, dict) and "text" not in n)]
+
     #: bereit | laeuft | fertig | zurueckgerollt | fehlgeschlagen
     zustand: str = "bereit"
     #: Sicherung | Quelltext | Laden | Neustart | Pruefung | Zurueck, solange `zustand` laeuft
@@ -2083,6 +2102,9 @@ class UpdateStatusOut(BaseModel):
     zuletzt: UpdateErgebnisOut | None = None
     #: Eine Anfrage liegt bereit und wartet darauf, dass der Dienst sie abholt.
     anfrage_offen: bool = False
+    #: Welche: `installieren` (dann läuft ein Update an), `pruefen` (es wird nachgesehen) oder eine
+    #: Aktion der Seite Hausgerät. Nur `installieren` zählt als laufendes Update.
+    anfrage: str | None = None
 
 
 class UpdateAnfrageIn(BaseModel):

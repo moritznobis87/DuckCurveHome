@@ -86,7 +86,15 @@ final class HausgeraetTests: XCTestCase {
         neuer.verfuegbar = "cccccccccccc"
         XCTAssertFalse(Hausgeraet.schonGescheitert(neuer))
         neuer.anfrageOffen = true
+        neuer.anfrage = "installieren"
         XCTAssertTrue(Hausgeraet.updateLaeuft(neuer))
+        // „Jetzt nach Updates sehen“ oder ein Neustart eines Dienstes ist kein laufendes Update.
+        neuer.anfrage = "pruefen"
+        XCTAssertFalse(Hausgeraet.updateLaeuft(neuer))
+        XCTAssertTrue(Hausgeraet.suchtUpdates(neuer))
+        neuer.anfrage = "neustart"
+        XCTAssertFalse(Hausgeraet.updateLaeuft(neuer))
+        XCTAssertFalse(Hausgeraet.suchtUpdates(neuer))
     }
 
     func testPrognoseUndGroessen() throws {
@@ -138,19 +146,57 @@ final class HausgeraetTests: XCTestCase {
     func testUpdatehinweis() throws {
         let s = try lies(
             """
-            {"unterstuetzt": true, "verfuegbar": "bbbbbbbbbbbb", "update_verfuegbar": true,
-             "neuerungen": [{"sha": "b", "titel": "x"}, {"sha": "c", "titel": "y"}]}
+            {"unterstuetzt": true, "verfuegbar": "2026.11.2", "update_verfuegbar": true,
+             "neuerungen": [{"version": "2026.11.2", "bereich": "Haus", "text": "Satz eins."},
+                            {"version": "2026.11.2", "bereich": "Geld", "text": "Satz zwei."}]}
             """, UpdateStatusOut.self)
         XCTAssertTrue(Hausgeraet.zeigeHinweis(s, weg: "/", hausherr: true, weggeklickt: nil))
         XCTAssertFalse(Hausgeraet.zeigeHinweis(s, weg: "/", hausherr: false, weggeklickt: nil))
         XCTAssertFalse(Hausgeraet.zeigeHinweis(s, weg: "/system/geraet", hausherr: true, weggeklickt: nil))
-        XCTAssertFalse(Hausgeraet.zeigeHinweis(s, weg: "/", hausherr: true, weggeklickt: "bbbbbbbbbbbb"))
-        XCTAssertTrue(Hausgeraet.zeigeHinweis(s, weg: "/", hausherr: true, weggeklickt: "aaaaaaaaaaaa"))
+        XCTAssertFalse(Hausgeraet.zeigeHinweis(s, weg: "/", hausherr: true, weggeklickt: "2026.11.2"))
+        XCTAssertTrue(Hausgeraet.zeigeHinweis(s, weg: "/", hausherr: true, weggeklickt: "2026.11.1"))
         XCTAssertEqual(Hausgeraet.hinweissatz(s), "Für Duck Curve steht ein Update bereit mit 2 Neuerungen.")
         var laeuft = s
         laeuft.zustand = "laeuft"
-        XCTAssertTrue(Hausgeraet.zeigeHinweis(laeuft, weg: "/", hausherr: true, weggeklickt: "bbbbbbbbbbbb"))
+        XCTAssertTrue(Hausgeraet.zeigeHinweis(laeuft, weg: "/", hausherr: true, weggeklickt: "2026.11.2"))
         XCTAssertTrue(Hausgeraet.hinweissatz(laeuft).hasPrefix("Duck Curve wird gerade aktualisiert"))
+    }
+
+    /// Codex-Fund zu PR 52: Ein Dienst von vorher schickt `sha` und `titel`. Der ganze Stand muss
+    /// trotzdem lesbar bleiben, sonst zeigt die App gerade das Update nicht, das den Dienst hebt.
+    func testAlteNeuerungenSindLesbarUndErscheinenNicht() throws {
+        let s = try lies(
+            """
+            {"unterstuetzt": true, "verfuegbar": "x", "update_verfuegbar": true,
+             "neuerungen": [{"sha": "b", "titel": "interner Commit"}]}
+            """, UpdateStatusOut.self)
+        XCTAssertTrue(Hausgeraet.zeigeHinweis(s, weg: "/", hausherr: true, weggeklickt: nil))
+        XCTAssertTrue(Hausgeraet.neuerungenNachVersion(s.neuerungen).isEmpty)
+        XCTAssertEqual(Hausgeraet.hinweissatz(s), "Für Duck Curve steht ein Update bereit.")
+    }
+
+    func testNeuerungenNachVersion() {
+        let gruppen = Hausgeraet.neuerungenNachVersion([
+            UpdateNeuerungOut(version: nil, bereich: "Energie", text: "a"),
+            UpdateNeuerungOut(version: "2026.12.1", bereich: "Haus", text: "b"),
+            UpdateNeuerungOut(version: "2026.12.1", bereich: "Geld", text: "c"),
+            UpdateNeuerungOut(version: "2026.11.2", bereich: "Haus", text: "d"),
+        ])
+        XCTAssertEqual(gruppen.map(\.version), [nil, "2026.12.1", "2026.11.2"])
+        XCTAssertEqual(gruppen.map(\.eintraege.count), [1, 2, 1])
+        XCTAssertEqual(Hausgeraet.gruppentitel(nil), "Seit der letzten Version")
+        XCTAssertEqual(Hausgeraet.gruppentitel("2026.12.1"), "Version 2026.12.1")
+    }
+
+    func testRechenkernzeileOhneHash() throws {
+        var api = try lies(
+            """
+            {"version": "2026.11.1", "commit": "abc1234", "modus": "live", "laufzeit_s": 3720,
+             "rss_mb": 311.6, "quellen": [], "befunde": [], "sse_clients": 2}
+            """, ApiSelbstOut.self)
+        XCTAssertEqual(Hausgeraet.rechenkernzeile(api), "Fassung 2026.11.1 · läuft seit 1 h 2 min · 312 MB · 2 offene Ansichten")
+        api.sseClients = 1
+        XCTAssertEqual(Hausgeraet.rechenkernzeile(api), "Fassung 2026.11.1 · läuft seit 1 h 2 min · 312 MB · 1 offene Ansicht")
     }
 
     func testReiterNurFuerDenHausherrn() {

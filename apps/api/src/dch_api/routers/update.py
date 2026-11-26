@@ -40,7 +40,8 @@ def _status(ordner: Path) -> UpdateStatusOut:
         status = UpdateStatusOut(
             unterstuetzt=True, meldung="Der Stand des Update-Dienstes ist unlesbar."
         )
-    status.anfrage_offen = austausch.anfrage_offen(ordner)
+    status.anfrage = austausch.offene_anfrage(ordner)
+    status.anfrage_offen = status.anfrage is not None
     return status
 
 
@@ -74,4 +75,5 @@ def update_anfragen(request: Request, anfrage: UpdateAnfrageIn) -> UpdateStatusO
         raise DchError("kein_update", "Es steht kein Update bereit.", 409)
     austausch.anfrage_ablegen(ordner, anfrage.aktion)
     status.anfrage_offen = True
+    status.anfrage = anfrage.aktion
     return status

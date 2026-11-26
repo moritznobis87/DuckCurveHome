@@ -12,10 +12,10 @@ on:
   # mit der richtigen Basis, und nach CLAUDE.md geht jede Aenderung ueber einen PR.
   push:
     branches: [main]
-    paths: ["addons/**", "apps/bridge/**", "tools/addon-fassung-pruefen.py", "tools/tests/**",
+    paths: ["addons/**", "apps/bridge/**", "tools/addon-fassung-pruefen.py", "tools/tests/**", "tools/version.py", "docs/versionen.json",
             ".github/workflows/addons.yml"]
   pull_request:
-    paths: ["addons/**", "apps/bridge/**", "tools/addon-fassung-pruefen.py", "tools/tests/**",
+    paths: ["addons/**", "apps/bridge/**", "tools/addon-fassung-pruefen.py", "tools/tests/**", "tools/version.py", "docs/versionen.json",
             ".github/workflows/addons.yml"]
 jobs:
   fassung:

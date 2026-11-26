@@ -19930,21 +19930,31 @@
       },
       "UpdateNeuerungOut": {
         "properties": {
-          "sha": {
-            "type": "string",
-            "title": "Sha"
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
           },
-          "titel": {
+          "bereich": {
             "type": "string",
-            "title": "Titel"
+            "title": "Bereich",
+            "default": ""
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "default": ""
           }
         },
         "type": "object",
-        "required": [
-          "sha",
-          "titel"
-        ],
-        "title": "UpdateNeuerungOut"
+        "title": "UpdateNeuerungOut",
+        "description": "Eine Neuerung aus docs/versionen.json, für Außenstehende geschrieben (tools/version.py).\n\n`version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`).\n`bereich` und `text` sind im Schema nicht Pflicht, obwohl dieser Dienst sie immer füllt: Eine\nApp liest damit auch einen Dienst von vorher (`sha`, `titel`), ohne dass der ganze Stand des\nUpdates unlesbar wird, und lässt solche Einträge weg (`Hausgeraet.neuerungenNachVersion`)."
       },
       "UpdateStatusOut": {
         "properties": {
@@ -20050,6 +20060,17 @@
             "type": "boolean",
             "title": "Anfrage Offen",
             "default": false
+          },
+          "anfrage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anfrage"
           }
         },
         "type": "object",

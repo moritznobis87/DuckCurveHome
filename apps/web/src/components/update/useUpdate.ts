@@ -8,19 +8,32 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+export type Neuerung = { version?: string | null; bereich?: string; text?: string };
+
+/**
+ * Nur Neuerungen mit Satz. Ein Dienst von vor dem 26.11.2026 schickte Commit-Titel; die erscheinen
+ * nicht (`Hausgeraet.lesbareNeuerungen` in der App).
+ */
+export function lesbar(neuerungen: Neuerung[]): Neuerung[] {
+  return neuerungen.filter((n) => Boolean(n.text));
+}
+
 export type UpdateStatus = {
   unterstuetzt: boolean;
   kanal: string | null;
   aktuell: string | null;
   verfuegbar: string | null;
   update_verfuegbar: boolean;
-  neuerungen: { sha: string; titel: string }[];
+  /** Aus docs/versionen.json, für Außenstehende geschrieben; `version` leer = noch keiner Version zugeordnet. */
+  neuerungen: Neuerung[];
   geprueft_am: string | null;
   zustand: string;
   schritt: string | null;
   meldung: string | null;
   zuletzt: { am: string | null; ergebnis: string | null; von: string | null; nach: string | null } | null;
   anfrage_offen: boolean;
+  /** Welche Anfrage wartet: `installieren`, `pruefen` oder eine Aktion der Seite Hausgerät. */
+  anfrage?: string | null;
 };
 
 const ADRESSE = "/api/dch/system/update";
@@ -29,8 +42,38 @@ const RUHIG_MS = 5 * 60_000;
 /** Während eines Updates alle drei Sekunden, damit der Fortschritt mitläuft. */
 const EILIG_MS = 3_000;
 
+/**
+ * Die Neuerungen in Gruppen derselben Version, in der Reihenfolge des Dienstes (neueste zuerst).
+ * Eine Überschrift braucht es erst ab zwei Gruppen; die App gruppiert genauso
+ * (`Hausgeraet.neuerungenNachVersion`).
+ */
+export function nachVersion(neuerungen: Neuerung[]): { version: string | null; eintraege: Neuerung[] }[] {
+  const gruppen: { version: string | null; eintraege: Neuerung[] }[] = [];
+  for (const n of lesbar(neuerungen)) {
+    const version = n.version ?? null;
+    const letzte = gruppen[gruppen.length - 1];
+    if (letzte && letzte.version === version) letzte.eintraege.push(n);
+    else gruppen.push({ version, eintraege: [n] });
+  }
+  return gruppen;
+}
+
+export function gruppentitel(version: string | null): string {
+  return version ? `Version ${version}` : "Seit der letzten Version";
+}
+
+/**
+ * Ob ein Update läuft oder angefragt ist. Nur die Anfrage `installieren` zählt: Alle Anfragen
+ * an das Gerät teilen sich eine Datei, und vorher zeigte „Jetzt nach Updates sehen“ hier
+ * „Update läuft“. Die App entscheidet genauso (`Hausgeraet.updateLaeuft`).
+ */
 export function laeuft(s: UpdateStatus | null): boolean {
-  return Boolean(s && (s.zustand === "laeuft" || s.anfrage_offen));
+  return Boolean(s && (s.zustand === "laeuft" || s.anfrage === "installieren"));
+}
+
+/** Ob das Gerät gerade auf Wunsch nach Updates sieht (`Hausgeraet.suchtUpdates` in der App). */
+export function sucht(s: UpdateStatus | null): boolean {
+  return Boolean(s && s.anfrage === "pruefen");
 }
 
 /**
@@ -69,7 +112,7 @@ export function useUpdate(aktiv = true) {
 
   // Abhaengig nur vom Takt, nicht vom Status selbst: Jede Antwort ist ein neues Objekt, und ein
   // Effekt, der daran haengt, fragte sofort wieder - ohne Pause, endlos.
-  const eilig = laeuft(status) || neustart;
+  const eilig = laeuft(status) || sucht(status) || neustart;
   useEffect(() => {
     if (!aktiv) return;
     void laden();

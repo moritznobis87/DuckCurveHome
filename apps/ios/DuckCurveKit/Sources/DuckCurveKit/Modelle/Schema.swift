@@ -11466,19 +11466,28 @@ public struct UpdateErgebnisOut: Codable, Sendable, Hashable {
     }
 }
 
+/// Eine Neuerung aus docs/versionen.json, für Außenstehende geschrieben (tools/version.py).
+///
+/// `version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`).
+/// `bereich` und `text` sind im Schema nicht Pflicht, obwohl dieser Dienst sie immer füllt: Eine
+/// App liest damit auch einen Dienst von vorher (`sha`, `titel`), ohne dass der ganze Stand des
+/// Updates unlesbar wird, und lässt solche Einträge weg (`Hausgeraet.neuerungenNachVersion`).
 public struct UpdateNeuerungOut: Codable, Sendable, Hashable {
-    public var sha: String
-    public var titel: String
+    public var version: String?
+    public var bereich: String?
+    public var text: String?
 
-    public init(sha: String, titel: String) {
-        self.sha = sha
-        self.titel = titel
+    public init(version: String? = nil, bereich: String? = nil, text: String? = nil) {
+        self.version = version
+        self.bereich = bereich
+        self.text = text
     }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.sha = try c.decode(String.self, forKey: .sha)
-        self.titel = try c.decode(String.self, forKey: .titel)
+        self.version = try c.decodeIfPresent(String.self, forKey: .version)
+        self.bereich = try c.decodeIfPresent(String.self, forKey: .bereich)
+        self.text = try c.decodeIfPresent(String.self, forKey: .text)
     }
 }
 
@@ -11497,6 +11506,7 @@ public struct UpdateStatusOut: Codable, Sendable, Hashable {
     public var meldung: String?
     public var zuletzt: UpdateErgebnisOut?
     public var anfrageOffen: Bool?
+    public var anfrage: String?
 
     public enum CodingKeys: String, CodingKey {
         case unterstuetzt
@@ -11511,9 +11521,10 @@ public struct UpdateStatusOut: Codable, Sendable, Hashable {
         case meldung
         case zuletzt
         case anfrageOffen = "anfrage_offen"
+        case anfrage
     }
 
-    public init(unterstuetzt: Bool? = nil, kanal: String? = nil, aktuell: String? = nil, verfuegbar: String? = nil, updateVerfuegbar: Bool? = nil, neuerungen: [UpdateNeuerungOut] = [], geprueftAm: String? = nil, zustand: String? = nil, schritt: String? = nil, meldung: String? = nil, zuletzt: UpdateErgebnisOut? = nil, anfrageOffen: Bool? = nil) {
+    public init(unterstuetzt: Bool? = nil, kanal: String? = nil, aktuell: String? = nil, verfuegbar: String? = nil, updateVerfuegbar: Bool? = nil, neuerungen: [UpdateNeuerungOut] = [], geprueftAm: String? = nil, zustand: String? = nil, schritt: String? = nil, meldung: String? = nil, zuletzt: UpdateErgebnisOut? = nil, anfrageOffen: Bool? = nil, anfrage: String? = nil) {
         self.unterstuetzt = unterstuetzt
         self.kanal = kanal
         self.aktuell = aktuell
@@ -11526,6 +11537,7 @@ public struct UpdateStatusOut: Codable, Sendable, Hashable {
         self.meldung = meldung
         self.zuletzt = zuletzt
         self.anfrageOffen = anfrageOffen
+        self.anfrage = anfrage
     }
 
     public init(from decoder: any Decoder) throws {
@@ -11542,6 +11554,7 @@ public struct UpdateStatusOut: Codable, Sendable, Hashable {
         self.meldung = try c.decodeIfPresent(String.self, forKey: .meldung)
         self.zuletzt = try c.decodeIfPresent(UpdateErgebnisOut.self, forKey: .zuletzt)
         self.anfrageOffen = try c.decodeIfPresent(Bool.self, forKey: .anfrageOffen)
+        self.anfrage = try c.decodeIfPresent(String.self, forKey: .anfrage)
     }
 }
 
