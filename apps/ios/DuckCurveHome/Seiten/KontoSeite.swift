@@ -70,7 +70,11 @@ struct KontoSeite: View {
         .sheet(isPresented: $anmelden) {
             Einrichten(vorgabe: .passwort)
         }
-        .task { await lade() }
+        // **Neu laden, wenn die Person wechselt.** Wer sich über das Blatt oben anmeldet, bleibt
+        // auf dieser Seite: ein einfaches `.task` wäre schon gelaufen und an der Abfrage
+        // „keine Person“ umgekehrt, und Passkeys und Sitzungen blieben leer, bis man die Seite
+        // verlässt und wiederkommt.
+        .task(id: haus.zugang.email) { await lade() }
         .confirmationDialog(
             Kontoworte.loeschfrage(loeschen?.name ?? ""), isPresented: Binding(
                 get: { loeschen != nil }, set: { if !$0 { loeschen = nil } }),
