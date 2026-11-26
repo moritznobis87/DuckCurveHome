@@ -32,16 +32,24 @@ function zustand(serverTime: string): LiveState {
 }
 
 class StummeQuelle {
+  static letzte: StummeQuelle | null = null;
   onopen: (() => void) | null = null;
   onerror: (() => void) | null = null;
+  constructor() {
+    StummeQuelle.letzte = this;
+  }
   addEventListener(): void {}
   close(): void {}
 }
+
+const weiter = vi.fn();
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(JETZT);
   vi.stubGlobal("EventSource", StummeQuelle);
+  weiter.mockReset();
+  vi.stubGlobal("location", { ...window.location, assign: weiter });
   useLiveStore.setState({ history: [], historyDay: "", state: null, plan: null, lastFrameAt: null, serverOffsetMs: 0 });
   liveState.mockResolvedValue(zustand(new Date(JETZT).toISOString()));
   history.mockResolvedValue({ rows: [] } as unknown as History);
@@ -71,6 +79,37 @@ describe("Erstladung des Live-Clients", () => {
     await vi.waitFor(() => expect(useLiveStore.getState().lastFrameAt).not.toBeNull());
     expect(Number.isFinite(useLiveStore.getState().nowMs())).toBe(true);
     expect(useLiveStore.getState().historyDay).toBe(TAG);
+    stop();
+  });
+});
+
+describe("Abgelaufene Anmeldung", () => {
+  const nichtAngemeldet = Object.assign(new Error("Nicht angemeldet."), { status: 401 });
+
+  it("schickt zur Anmeldung statt endlos zu verbinden", async () => {
+    liveState.mockRejectedValue(nichtAngemeldet);
+    const stop = startLiveClient();
+    await vi.waitFor(() => expect(weiter).toHaveBeenCalledWith("/anmeldung"));
+    stop();
+  });
+
+  it("prüft nach einem Fehler des Stroms, ob es die Anmeldung ist", async () => {
+    const stop = startLiveClient();
+    await vi.waitFor(() => expect(useLiveStore.getState().lastFrameAt).not.toBeNull());
+    expect(weiter).not.toHaveBeenCalled();
+    liveState.mockRejectedValue(nichtAngemeldet);
+    StummeQuelle.letzte?.onerror?.();
+    await vi.waitFor(() => expect(weiter).toHaveBeenCalledWith("/anmeldung"));
+    stop();
+  });
+
+  it("bleibt bei einem Netzfehler und verbindet neu", async () => {
+    liveState.mockRejectedValue(Object.assign(new Error("Keine Verbindung"), { status: 0 }));
+    const stop = startLiveClient();
+    StummeQuelle.letzte?.onerror?.();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(weiter).not.toHaveBeenCalled();
+    expect(useLiveStore.getState().connection).toBe("reconnecting");
     stop();
   });
 });
