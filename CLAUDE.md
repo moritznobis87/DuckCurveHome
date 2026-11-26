@@ -57,6 +57,22 @@ einzigen Bericht hinterlassen.
   Agenten startet nur, wenn der Hausherr ihn ausdrücklich verlangt, und dann in kleinen Losen:
   höchstens zwei zugleich, jedes Los mit eigenem abgelegtem Ergebnis, bevor das nächste beginnt.
 
+## Neuerungen schreiben, Versionen bündeln
+
+Der Hausherr hat das am 26.11.2026 festgelegt: Was ein Update bringt, lesen auch Außenstehende.
+Darum stehen die Neuerungen nicht als Commit-Titel da, sondern je Bereich als ausformulierter
+Satz in `docs/versionen.json`, und Versionen heißen nach Jahr, Monat und laufender Nummer
+(`2026.11.1`), nicht nach einem Hash.
+
+- **Jeder PR mit einer Wirkung, die Nutzer bemerken, trägt seine Sätze unter
+  `unveroeffentlicht` ein.** Ein Satz sagt, was sich für den Nutzer ändert, nicht wie es gebaut
+  ist: keine Dateinamen, Hashes, PR-Nummern oder Begriffe aus der Entwicklung.
+  `tools/version.py --pruefen` hält das fest und läuft in der CI.
+- **Eine Version entsteht gebündelt und nur auf Wunsch des Hausherrn**, oder wenn du sie nach
+  einer abgeschlossenen Arbeit vorschlägst und er zustimmt: `tools/version.py --veroeffentlichen`
+  im eigenen PR. Nach dem Merge baut die CI die Images, setzt das Tag `v<version>`, legt die
+  Veröffentlichung auf GitHub an und gibt sie im Kanal `stabil` an die Hausgeräte.
+
 ## Jede Änderung geht über einen Pull Request nach `main`
 
 Der Hausherr hat das am 23.11.2026 festgelegt. Es gilt für jede Änderung, auch eine kleine, und

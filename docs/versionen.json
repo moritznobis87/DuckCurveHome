@@ -1,0 +1,31 @@
+{
+  "unveroeffentlicht": [],
+  "versionen": [
+    {
+      "version": "2026.11.1",
+      "datum": "2026-11-26",
+      "neuerungen": [
+        {
+          "bereich": "Hausgerät",
+          "text": "Duck Curve Home kann auf einem eigenen Gerät im Haus laufen. Die Daten liegen dann im Haus und nicht mehr in der Cloud."
+        },
+        {
+          "bereich": "Hausgerät",
+          "text": "Die Seite Hausgerät zeigt den Zustand des Geräts mit Temperatur, Auslastung, Arbeitsspeicher, SSD und Sicherungen, dazu den Verlauf dieser Werte."
+        },
+        {
+          "bereich": "Updates",
+          "text": "Neue Versionen lassen sich aus dem Dashboard und aus der App installieren. Vorher wird die Datenbank gesichert, und kommt die neue Version nicht sauber hoch, kehrt das Gerät von selbst zur vorherigen zurück."
+        },
+        {
+          "bereich": "Updates",
+          "text": "Jedes Update hat eine Versionsnummer, und seine Neuerungen stehen nach Bereichen geordnet da."
+        },
+        {
+          "bereich": "Anmeldung",
+          "text": "Die Anmeldung geht mit Passwort oder Passkey, und Einladungen an weitere Personen gehen per E-Mail hinaus."
+        }
+      ]
+    }
+  ]
+}

@@ -61,6 +61,7 @@ cd apps/web && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 tools/gen-types.sh                       # OpenAPI → docs/openapi.json → apps/web/src/lib/api/types.ts
 tools/ios-pruefen.sh                     # iOS: Kern bauen und testen, Oberfläche parsen
 tools/gen-swift.py                       # OpenAPI → Swift-Modelle (`--pruefen` für die CI)
+tools/version.py --pruefen               # Neuerungen in docs/versionen.json (Sätze, Versionen)
 ```
 
 Demo steuern (Zeitraffer, Störungen, Szenarien):
