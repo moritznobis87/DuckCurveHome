@@ -64,6 +64,8 @@ class WeatherPoint(BaseModel):
 
 
 class SunEvent(BaseModel):
+    """Aufgang und Untergang der Sonne an einem Kalendertag am Ort, gerechnet in `sonne.py`."""
+
     model_config = ConfigDict(frozen=True)
 
     day: date
@@ -79,7 +81,6 @@ class WeatherForecast(BaseModel):
     location: GeoPoint
     resolution_min: int
     points: list[WeatherPoint]
-    sun_events: list[SunEvent] = Field(default_factory=list)
 
 
 class PvPoint(BaseModel):

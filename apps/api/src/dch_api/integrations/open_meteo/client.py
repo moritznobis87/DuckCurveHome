@@ -1,13 +1,17 @@
-"""Open-Meteo: stündliche Prognose (Temperatur, Strahlung, Bewölkung, Wind, Niederschlag) und Sonnenzeiten."""
+"""Open-Meteo: stündliche Prognose (Temperatur, Strahlung, Bewölkung, Wind, Niederschlag).
+
+Die Sonnenzeiten kommen nicht von hier. Sie wurden bis zum 26.11.2026 mit abgerufen und nirgends
+gelesen; gerechnet werden sie in `hems_core.forecasting.sonne` aus Datum und Standort.
+"""
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 import httpx
 import structlog
 
-from hems_core.forecasting import GeoPoint, SunEvent, WeatherForecast, WeatherPoint
+from hems_core.forecasting import GeoPoint, WeatherForecast, WeatherPoint
 
 log = structlog.get_logger("open_meteo")
 URL = "https://api.open-meteo.com/v1/forecast"
@@ -41,7 +45,6 @@ class OpenMeteoWeatherProvider:
             "longitude": location.longitude,
             "elevation": location.elevation_m,
             "hourly": ",".join(HOURLY),
-            "daily": "sunrise,sunset",
             "forecast_days": days,
             "timezone": "UTC",
             "wind_speed_unit": "ms",
@@ -72,13 +75,6 @@ class OpenMeteoWeatherProvider:
             )
             for i in range(n)
         ]
-        d = data.get("daily", {})
-        sun = [
-            SunEvent(day=date.fromisoformat(t), sunrise=_ts(sr), sunset=_ts(ss))
-            for t, sr, ss in zip(
-                d.get("time", []), d.get("sunrise", []), d.get("sunset", []), strict=False
-            )
-        ]
         log.info("weather fetched", points=len(points), days=days)
         return WeatherForecast(
             provider=self.name,
@@ -86,5 +82,4 @@ class OpenMeteoWeatherProvider:
             location=location,
             resolution_min=60,
             points=points,
-            sun_events=sun,
         )

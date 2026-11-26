@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from dch_api.application.stove_planner import Zwillingspunkt
-from dch_api.schemas import PlanIntervalOut, PlanOut, PriceWindowOut
+from dch_api.schemas import PlanIntervalOut, PlanOut, PriceWindowOut, SunDayOut
 from hems_core.domain import HemsConfig
-from hems_core.forecasting import Lauf, plan_lauf
+from hems_core.forecasting import GeoPoint, Lauf, plan_lauf, sonnenzeiten
 from hems_core.planning import (
     PricePoint,
     PriceWindow,
@@ -163,6 +163,7 @@ def build_plan(
     planner_note_de: str = "",
     planner_warn_de: str = "",
     hp_actuation: bool = False,
+    ort: GeoPoint | None = None,
 ) -> PlanOut:
     """Der Fahrplan über den Horizont.
 
@@ -191,6 +192,10 @@ def build_plan(
     Preise, blinde Puffersensoren, oder schlicht außerhalb seines Horizonts -, gilt wieder die
     Regel. Ein Fahrplan, der bei fehlenden Eingängen „aus" plante, sähe von außen aus wie einer,
     der sich entschieden hat.
+
+    **Der Sonnenlauf kommt aus dem Ort, nicht aus der Prognose.** Mit `ort` trägt der Plan Aufgang
+    und Untergang der Sonne für seine beiden Tage. Die Oberfläche zeichnet damit den Himmel; aus
+    `expected_pv_kw` gelesen, begann der Tag dort erst mit der Erzeugung.
     """
     local_day = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
     day_start = local_day.astimezone(UTC)
@@ -302,7 +307,19 @@ def build_plan(
         next_cheap_window=_out(nxt) if nxt else None,
         buffer_capacity_kwh=buffer_capacity_kwh,
         buffer_min_kwh=buffer_min_kwh,
+        sun=sonnentage(local_day.date(), ort),
     )
+
+
+def sonnentage(heute: date, ort: GeoPoint | None) -> list[SunDayOut]:
+    """Aufgang und Untergang für heute und morgen, die beiden Tage des Horizonts.
+
+    Ein Tag ohne Aufgang oder Untergang fehlt in der Liste; ohne Ort ist sie leer.
+    """
+    if ort is None:
+        return []
+    tage = (sonnenzeiten(heute + timedelta(days=n), ort) for n in range(2))
+    return [SunDayOut(day=z.day, sunrise=z.sunrise, sunset=z.sunset) for z in tage if z is not None]
 
 
 #: Wie oft ein Fahrplan aufbewahrt wird. Gerechnet wird er alle Viertelstunde; abgelegt wird er

@@ -53,7 +53,7 @@ export function Ambiente({ state, plan, zahlen, morgenPvKwh, nowMs, degraded, st
   const befund = schwerster(state?.system.watch);
   const wpLaeuft = state?.heat_pump.running;
   // Die fünfte Zahl am Fuß: am Tag, was die Sonne heute bringen soll, nachts, was sie morgen bringt.
-  const erwartet = nacht ? morgenPvKwh : aussicht(plan, nowMs, lauf).erwartetKwh;
+  const erwartet = nacht ? morgenPvKwh : aussicht(plan, nowMs).erwartetKwh;
   const fuss: Kennzahl[] = erwartet == null ? zahlen : [...zahlen, { wert: de(erwartet, 1), einheit: "kWh", wort: nacht ? "Sonne morgen" : "Sonne heute erwartet" }];
   const nichts = () => undefined;
 

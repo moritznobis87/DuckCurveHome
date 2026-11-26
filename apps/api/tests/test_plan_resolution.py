@@ -13,7 +13,7 @@ from dch_api.application.plan_service import (
 )
 from dch_api.application.stove_planner import Zwillingspunkt
 from hems_core.domain import HemsConfig
-from hems_core.forecasting import PLAN
+from hems_core.forecasting import PLAN, GeoPoint
 from hems_core.planning import PricePoint
 from hems_core.simulation import BERLIN
 
@@ -407,3 +407,24 @@ def test_das_versprechen_wird_mit_dem_fahrplan_abgelegt_und_nur_wo_der_optimiere
     assert lauf is not None
     kosten = {p.ts: p.wert for p in lauf.punkte if p.variable == "cost_eur"}
     assert len(kosten) == 8 and set(kosten.values()) == {0.25}
+
+
+def test_der_plan_traegt_den_sonnenlauf_seiner_beiden_tage() -> None:
+    """Aufgang und Untergang kommen aus dem Ort und nicht aus der Ertragsprognose.
+
+    Die Prognose `_pv` kennt hier gar keine Sonne; die Zeiten stehen trotzdem im Plan, und zwar
+    für heute und morgen in Ortszeit.
+    """
+    ort = GeoPoint(latitude=52.52, longitude=13.405)
+    plan = build_plan(lambda t: 0.0, [], NOW, HemsConfig(), ort=ort)
+
+    heute = NOW.astimezone(BERLIN).date()
+    assert [s.day for s in plan.sun] == [heute, heute + timedelta(days=1)]
+    for s in plan.sun:
+        assert s.sunrise < s.sunset
+        assert s.sunrise.astimezone(BERLIN).date() == s.day
+        assert plan.horizon_start <= s.sunrise and s.sunset <= plan.horizon_end
+
+
+def test_ohne_ort_bleibt_der_sonnenlauf_leer() -> None:
+    assert build_plan(lambda t: 0.0, [], NOW, HemsConfig()).sun == []

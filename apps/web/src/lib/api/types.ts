@@ -7171,6 +7171,8 @@ export interface components {
             buffer_capacity_kwh?: number | null;
             /** Buffer Min Kwh */
             buffer_min_kwh?: number | null;
+            /** Sun */
+            sun?: components["schemas"]["SunDayOut"][];
         };
         /**
          * PriceQualityOut
@@ -8752,6 +8754,27 @@ export interface components {
             totzeit_entwurf: number;
             /** Halbregel */
             halbregel: boolean;
+        };
+        /**
+         * SunDayOut
+         * @description Sonnenaufgang und Sonnenuntergang eines Tages am Standort des Hauses.
+         */
+        SunDayOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Sunrise
+             * Format: date-time
+             */
+            sunrise: string;
+            /**
+             * Sunset
+             * Format: date-time
+             */
+            sunset: string;
         };
         /** SystemEventOut */
         SystemEventOut: {
