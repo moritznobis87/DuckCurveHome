@@ -1,4 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Geraet as GeraetDaten } from "@/lib/api/models";
@@ -224,6 +226,16 @@ describe("Hausgerät", () => {
     );
     expect(t).toHaveLength(4);
     expect(reihen[0]!.werte).toEqual([1, 2, null, 3]);
+  });
+
+  it("jedes Diagramm im Verlauf steht in einem Rahmen mit fester Höhe", () => {
+    // EChart setzt sich selbst height: 100%. Ohne festen Rahmen wächst die Zeichenfläche mit ihrem
+    // Behälter und der Behälter mit ihr. Zweimal ist ein Diagramm dem Rahmen entgangen, weil sein
+    // Aufruf über mehrere Zeilen ging (Arbeitsspeicher und Dienste, gefunden am 26.11.2026).
+    const quelle = readFileSync(join(__dirname, "Verlauf.tsx"), "utf8");
+    const aufrufe = quelle.match(/<EChart\b/g) ?? [];
+    expect(aufrufe).toHaveLength(1); // nur der eine in Flaeche
+    expect(quelle).toMatch(/function Flaeche[\s\S]*?<div className=\{className\}>\s*<EChart option=\{o\} \/>/);
   });
 
   it("schreibt Dauern lesbar", () => {

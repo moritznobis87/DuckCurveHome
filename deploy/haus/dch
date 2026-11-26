@@ -490,7 +490,11 @@ bericht() {
 		sleep 1
 	fi
 	cpu_nachher=$(cpu_zaehler)
-	dienste_json=$(jq -n --argjson i "$inspekt" --argjson s "$stats" \
+	# Ohne Speicherabrechnung im Kernel meldet `docker stats` 0 B fuer jeden Dienst. Das ist keine
+	# Messung, also steht dann nichts da statt einer falschen Null.
+	local speicher_messbar=false
+	[ "$(docker info --format '{{.MemoryLimit}}' 2>/dev/null)" = "true" ] && speicher_messbar=true
+	dienste_json=$(jq -n --argjson i "$inspekt" --argjson s "$stats" --argjson messbar "$speicher_messbar" \
 		--argjson soll "$(dienste_bekannt | jq -R . | jq -s .)" '
 		def zahl: (gsub("[^0-9.]"; "") | tonumber? // null);
 		def mib: (capture("^(?<w>[0-9.]+)\\s*(?<e>[KMGT]?i?B)") as $m
@@ -514,7 +518,7 @@ bericht() {
 			revision: ($c.Config.Labels["org.opencontainers.image.revision"] // null
 				| if . == null then null else .[0:12] end),
 			cpu_prozent: ($st.CPUPerc // null | if . == null then null else zahl end),
-			speicher_mb: ($st.MemUsage // null | if . == null then null else (split("/")[0] | mib) end)
+			speicher_mb: (if $messbar then ($st.MemUsage // null | if . == null then null else (split("/")[0] | mib) end) else null end)
 		  } end)')
 
 	if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
