@@ -101,4 +101,12 @@ final class ZugangsseiteTests: XCTestCase {
         XCTAssertTrue(Zugangsworte.herunterladen.hasSuffix("."))
         XCTAssertFalse(Zugangsworte.herunterladen.contains("\""))
     }
+
+    /// Ein Gerät mit dem Schlüssel des Hauses hat keine Person, aber einen Weg dorthin: die
+    /// Seite sagt, warum hier nichts steht, und der Knopf darunter nennt, was er tut.
+    func testEinGeraetOhnePersonBekommtEinenWegZurAnmeldung() {
+        XCTAssertTrue(Zugangsworte.geraetOhnePerson.hasPrefix("Dieses Gerät ist mit dem Schlüssel des Hauses verbunden"))
+        XCTAssertTrue(Zugangsworte.geraetOhnePerson.hasSuffix("meldet sich mit E-Mail und Passwort an."))
+        XCTAssertEqual(Zugangsworte.alsPersonAnmelden, "Mit meinem Zugang anmelden")
+    }
 }

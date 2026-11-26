@@ -26,6 +26,8 @@ struct KontoSeite: View {
     @State private var umbenennen: PasskeyOut?
     @State private var neuerName = ""
     @State private var ueberallFragen = false
+    /// Die Anmeldung als Person, von einem Gerät ohne eigenen Zugang aus.
+    @State private var anmelden = false
 
     private var schmal: Bool { breite == .compact }
 
@@ -45,14 +47,28 @@ struct KontoSeite: View {
                 }
                 .frame(maxWidth: 820, alignment: .leading)
             } else {
+                // **Ohne Person steht hier der Weg zur Anmeldung.** Ein Gerät, das mit dem
+                // Schlüssel des Hauses eingerichtet ist, hat keinen eigenen Zugang. Der Hausherr
+                // suchte am 26.11.2026 das Zeichen der Person und fand es nicht: es stand nur
+                // für angemeldete Personen da, und der Weg zur Anmeldung lag drei Seiten tief
+                // unter „Zugang und Sicherung“.
                 Karte(kicker: Zugangsworte.meinZugangUeberschrift) {
-                    Text(Zugangsworte.keinePerson)
-                        .font(Schrift.sans(15, relativeTo: .body))
-                        .foregroundStyle(Farbe.text2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text(haus.zugang.token.isEmpty ? Zugangsworte.keinePerson : Zugangsworte.geraetOhnePerson)
+                            .font(Schrift.sans(15, relativeTo: .body))
+                            .foregroundStyle(Farbe.text2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Zugangsknopf(wort: Zugangsworte.alsPersonAnmelden, art: .hervor) {
+                            anmelden = true
+                        }
+                    }
                 }
+                .frame(maxWidth: 820, alignment: .leading)
             }
+        }
+        .sheet(isPresented: $anmelden) {
+            Einrichten(vorgabe: .passwort)
         }
         .task { await lade() }
         .confirmationDialog(

@@ -18,6 +18,15 @@ public enum Zugangsworte {
     public static let keinePerson =
         "Hier ist keine Person angemeldet. Darum gibt es an dieser Stelle weder eigene Passkeys noch ein eigenes Passwort. Wer einen eigenen Zugang möchte, lässt sich vom Hausherrn einladen."
 
+    /// Was in der App auf „Mein Zugang“ steht, wenn das Gerät mit dem Schlüssel des Hauses
+    /// verbunden ist und keine Person angemeldet ist. Das Dashboard kennt diesen Fall nicht: ein
+    /// Browser ist entweder als Person angemeldet oder gar nicht.
+    public static let geraetOhnePerson =
+        "Dieses Gerät ist mit dem Schlüssel des Hauses verbunden, nicht mit einem eigenen Zugang. Darum gibt es hier weder eigene Passkeys noch ein eigenes Passwort. Wer seinen Zugang auf diesem Gerät nutzen möchte, meldet sich mit E-Mail und Passwort an."
+
+    /// Der Knopf darunter: er öffnet die Anmeldung mit E-Mail und Passwort.
+    public static let alsPersonAnmelden = "Mit meinem Zugang anmelden"
+
     /// Die Zeile über dem eigenen Zugang (`MeinZugang.tsx`): wer angemeldet ist.
     public static func angemeldetAls(_ email: String) -> String {
         "Angemeldet als \(email)."
