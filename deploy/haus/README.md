@@ -22,7 +22,7 @@ unterwegs (optional) ── home.duckcurve.de ── Cloudflare Tunnel ──▶
 
 | Dienst | Aufgabe |
 |---|---|
-| `postgres` | die eigene Datenbank (PostgreSQL 17) |
+| `postgres` | die eigene Datenbank (PostgreSQL 18, wie auf Railway) |
 | `api` | Regelung, Live-Zustand, Auswertungen, Alfred; spielt beim Start die Migrationen ein |
 | `web` | die Oberfläche |
 | `caddy` | HTTPS im Heimnetz, Stammzertifikat zum Herunterladen, Port 8001 nur für die Bridge |
@@ -125,7 +125,33 @@ In Railway beim Dienst **Postgres** unter „Connect“ die öffentliche Adresse
 sudo dch uebernehmen 'postgresql://…'
 ```
 
-Das lädt die Datenbank herunter, sichert vorher den Stand auf dem Gerät und spielt sie ein. Die API
+Das lädt die Datenbank herunter, sichert vorher den Stand auf dem Gerät und spielt sie ein.
+Dafür muss das Gerät dieselbe Hauptversion von PostgreSQL haben wie Railway oder eine neuere
+(`pg_dump` liest von keinem neueren Server). Seit November 2026 sind das beide 18.
+
+**Ein Gerät, das noch mit PostgreSQL 17 eingerichtet wurde**, hebt man von Hand, und zwar
+**bevor** es ein Update bekommt:
+
+```bash
+sudo dch sichern
+```
+```bash
+sudo docker compose --project-directory /opt/duckcurve -f /opt/duckcurve/compose.yaml down
+```
+```bash
+sudo docker volume rm duckcurve_postgres
+```
+```bash
+sudo dch selbst-aktualisieren
+```
+```bash
+sudo dch wiederherstellen /var/lib/duckcurve/sicherung/<neueste>.dump
+```
+
+`down` entfernt die Container, ohne Volumes zu löschen. `dch stoppen` genügt hier nicht: Es hält die
+Container nur an, und ein angehaltener Container belegt sein Volume weiter, sodass
+`docker volume rm` abgelehnt wird. Eine 17er-Sicherung lässt sich in 18 einspielen, umgekehrt nicht.
+Ist die Datenbank noch leer, entfallen Sichern und Wiederherstellen. Die API
 startet danach neu und bringt das Schema auf den Stand ihres Codes. Die Übernahme lässt sich
 wiederholen, etwa unmittelbar vor dem Umstellen der Bridge, damit möglichst wenig fehlt.
 
