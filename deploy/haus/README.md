@@ -227,9 +227,13 @@ zusätzlich von selbst.
 Nach dem ersten Einrichten spielt das Gerät neue Fassungen selbst ein; neu bespielt wird es dafür nie.
 
 1. **Nachsehen.** Alle sechs Stunden (und fünf Minuten nach dem Start) fragt das Gerät die Registry, ob
-   es zum Kanal (`DCH_VERSION`, Vorgabe `main`) neue Images gibt. Erkannt wird die Fassung am Commit,
-   aus dem ein Image gebaut wurde (Label `org.opencontainers.image.revision`); die Liste der Neuerungen
-   kommt aus der Commit-Historie auf GitHub.
+   es zum Kanal (`DCH_VERSION`) neue Images gibt. Vorgabe ist `stabil`: Das Gerät bekommt nur
+   veröffentlichte Versionen wie `2026.11.1`. Mit `main` bekommt es jeden Stand von `main`, mit einer
+   Version wie `2026.11.1` bleibt es auf ihr stehen. Wechseln geht mit `sudo dch aktualisieren stabil`.
+   Die Version steht als Label `org.opencontainers.image.version` im Image; ein Stand nach der letzten
+   Version heißt in der App „Entwicklungsstand nach 2026.11.1“. Die Neuerungen kommen aus
+   `docs/versionen.json` und sind für Außenstehende geschrieben, je Bereich ein Satz
+   (`tools/version.py`).
 2. **Hinweis.** Steht etwas bereit, zeigt die App mit Vollzugriff oben einen Hinweis „Für Duck Curve
    steht ein Update bereit“. „Nicht jetzt“ blendet ihn für genau diese Fassung aus. Gäste sehen nichts.
 3. **Installieren.** Unter *System → Zugang und Sicherung → Software* stehen laufende Fassung,

@@ -249,14 +249,30 @@ bild_ref() {
 	echo "${name:-$standard}:$(wert DCH_VERSION)"
 }
 
-laufende_revision() {
-	# Commit des Images, das gerade laeuft (Label org.opencontainers.image.revision), sonst leer.
+laufendes_label() {
+	# Ein Label des Images, das fuer den Dienst $1 gerade laeuft, sonst leer.
 	local id
 	id=$(compose ps -q "$1" 2>/dev/null | head -n1)
 	[ -n "$id" ] || return 0
 	docker inspect --format '{{.Image}}' "$id" 2>/dev/null |
-		xargs -r docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null |
+		xargs -r docker image inspect --format "{{index .Config.Labels \"$2\"}}" 2>/dev/null |
 		sed 's/<no value>//'
+}
+
+# Commit des laufenden Images: daran erkennt `pruefen` im Kanal main einen neueren Stand.
+laufende_revision() { laufendes_label "$1" org.opencontainers.image.revision; }
+
+# Version des laufenden Images (docs/versionen.json, gesetzt von der CI), etwa 2026.11.1 oder
+# 2026.11.1+entwicklung fuer einen Stand nach der letzten Version. Aeltere Images haben keine.
+laufende_version() { laufendes_label "$1" org.opencontainers.image.version; }
+
+version_anzeige() {
+	# Was Dashboard und App als Version zeigen. Ein Hash erscheint nie (Festlegung 26.11.2026).
+	case "$1" in
+	"") echo "" ;;
+	*+entwicklung) echo "Entwicklungsstand nach ${1%+entwicklung}" ;;
+	*) echo "$1" ;;
+	esac
 }
 
 laufender_digest() {
@@ -269,8 +285,8 @@ laufender_digest() {
 }
 
 entfernt() {
-	# Revision und Digest eines Images in der Registry, fuer die Plattform dieses Geraets.
-	# Ausgabe: "<digest> <revision>" (Revision leer, wenn das Image kein Label traegt).
+	# Digest, Revision und Version eines Images in der Registry, fuer die Plattform dieses Geraets.
+	# Ausgabe: "<digest> <revision> <version>" (leer, was das Image nicht als Label hat).
 	# Die Registry steht vorn im Namen (ghcr.io/... oder eine eigene wie registry.lan:5000/...).
 	# GHCR verlangt auch fuer oeffentliche Images ein anonymes Token, eine eigene Registry meist
 	# nicht; localhost spricht HTTP.
@@ -297,7 +313,7 @@ entfernt() {
 		"$basis/manifests/$tag") || return 1
 	manifest=$(echo "$index" | jq -r --arg a "$arch" \
 		'.manifests[]? | select(.platform.os == "linux" and .platform.architecture == $a) | .digest' | head -n1)
-	local revision=""
+	local revision="" version=""
 	if [ -n "$manifest" ]; then
 		config=$(curl "${h[@]}" -H "Accept: application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json" \
 			"$basis/manifests/$manifest" | jq -r .config.digest) || true
@@ -306,41 +322,91 @@ entfernt() {
 		config=$(echo "$index" | jq -r '.config.digest // empty')
 	fi
 	if [ -n "${config:-}" ] && [ "$config" != "null" ]; then
-		revision=$(curl "${h[@]}" -L "$basis/blobs/$config" |
-			jq -r '.config.Labels["org.opencontainers.image.revision"] // empty') || true
+		local labels
+		labels=$(curl "${h[@]}" -L "$basis/blobs/$config" | jq -c '.config.Labels // {}') || labels='{}'
+		revision=$(jq -r '.["org.opencontainers.image.revision"] // empty' <<<"$labels")
+		version=$(jq -r '.["org.opencontainers.image.version"] // empty' <<<"$labels")
 	fi
-	echo "$digest $revision"
+	echo "$digest $revision $version"
+}
+
+# Die Neuerungen, die Dashboard und App vor einem Update zeigen, stehen in docs/versionen.json:
+# je Bereich ein Satz fuer Aussenstehende (tools/version.py). Commit-Titel erscheinen nie.
+
+neuerungen_aus() {
+	# Aus dem Inhalt von versionen.json (stdin) die Neuerungen nach Version $1 bis einschliesslich $2,
+	# neueste zuerst; hoechstens 30. Ist $2 ein Entwicklungsstand, kommen die noch unveroeffentlichten
+	# davor, ohne die, die $3 (versionen.json des laufenden Stands) schon hatte. Ohne $1 (ein Image von
+	# vor den Versionen) nur die Neuerungen von $2.
+	local alt=$1 neu=$2 vorher=${3:-'{}'}
+	jq --arg alt "$alt" --arg neu "$neu" --argjson vorher "$vorher" '
+		def k: split("+")[0] | split(".") | map(tonumber);
+		(if ($neu | endswith("+entwicklung")) then
+			[.unveroeffentlicht[]? | select(. as $n | ($vorher.unveroeffentlicht // []) | index([$n]) | not)
+			 | {version: null, bereich, text}]
+		 else [] end)
+		+ [.versionen[]?
+		   | select(if $alt == "" then .version == ($neu | split("+")[0])
+		            else (.version | k) > ($alt | k) and (.version | k) <= ($neu | k) end)
+		   | .version as $v | .neuerungen[] | {version: $v, bereich, text}]
+		| .[0:30]' 2>/dev/null || echo '[]'
+}
+
+versionen_von() {
+	# docs/versionen.json zu einem Commit $1 von GitHub, leer bei einem Fehler.
+	[ -n "$1" ] || return 0
+	curl -fsS -m 20 "https://raw.githubusercontent.com/$REPO_GITHUB/$1/docs/versionen.json" 2>/dev/null || true
 }
 
 neuerungen() {
-	# Die Commit-Titel zwischen zwei Staenden, neueste zuerst, ohne Merges; hoechstens 30.
-	local alt=$1 neu=$2
-	{ [ -n "$alt" ] && [ -n "$neu" ] && [ "$alt" != "$neu" ]; } || { echo '[]'; return 0; }
-	curl -fsS -m 20 "https://api.github.com/repos/$REPO_GITHUB/compare/$alt...$neu" 2>/dev/null |
-		jq '[.commits[]? | {sha: .sha[0:7], titel: (.commit.message | split("\n")[0])}
-		     | select(.titel | startswith("Merge") | not)] | reverse | .[0:30]' 2>/dev/null || echo '[]'
+	# $1/$2: Version und Commit des laufenden Stands, $3/$4: Version und Commit des neuen.
+	local alt=$1 alt_rev=$2 neu=$3 neu_rev=$4 datei vorher='{}'
+	[ -n "$neu" ] || { echo '[]'; return 0; }
+	datei=$(versionen_von "${neu_rev:-v$neu}")
+	[ -n "$datei" ] || { echo '[]'; return 0; }
+	if [[ "$alt" == *+entwicklung ]]; then
+		vorher=$(versionen_von "$alt_rev")
+		[ -n "$vorher" ] || vorher='{}'
+	fi
+	neuerungen_aus "$alt" "$neu" "$vorher" <<<"$datei"
+}
+
+quelle_version() {
+	# Version eines Stands im Quelltext (Geraet, das selbst baut): die neueste aus versionen.json, und
+	# ein Entwicklungsstand, wenn ihr Tag nicht genau auf diesem Commit steht.
+	local q=$1 rev=$2 v
+	v=$(git -C "$q" show "$rev:docs/versionen.json" 2>/dev/null | jq -r '.versionen[0].version // empty' 2>/dev/null)
+	[ -n "$v" ] || return 0
+	if [ "$(git -C "$q" rev-parse -q --verify "refs/tags/v$v^{commit}" 2>/dev/null)" = "$(git -C "$q" rev-parse "$rev" 2>/dev/null)" ]; then
+		echo "$v"
+	else
+		echo "$v+entwicklung"
+	fi
 }
 
 pruefen() {
-	local alt_rev neu_rev alt_dig neu_dig verfuegbar=false liste='[]' bauen=false
+	local alt_rev neu_rev alt_dig neu_dig alt_ver neu_ver verfuegbar=false liste='[]' bauen=false
 	if [ -f "$BASIS/compose.bauen.yaml" ]; then
 		bauen=true
 		local q="$BASIS/quelle"
-		git -C "$q" fetch -q origin 2>/dev/null || true
+		git -C "$q" fetch -q --tags origin 2>/dev/null || true
 		alt_rev=$(git -C "$q" rev-parse HEAD 2>/dev/null || true)
 		neu_rev=$(git -C "$q" rev-parse '@{u}' 2>/dev/null || true)
+		alt_ver=$(quelle_version "$q" HEAD)
+		neu_ver=$(quelle_version "$q" '@{u}')
 		[ -n "$neu_rev" ] && [ "$alt_rev" != "$neu_rev" ] && verfuegbar=true
-		if [ "$verfuegbar" = true ]; then
-			liste=$(git -C "$q" log --no-merges --format='%h%x09%s' -n 30 "$alt_rev..$neu_rev" |
-				jq -R -s 'split("\n") | map(select(length > 0) | split("\t") | {sha: .[0], titel: .[1]})')
+		if [ "$verfuegbar" = true ] && [ -n "$neu_ver" ]; then
+			local vorher
+			vorher=$(git -C "$q" show HEAD:docs/versionen.json 2>/dev/null || echo '{}')
+			liste=$(git -C "$q" show '@{u}:docs/versionen.json' 2>/dev/null | neuerungen_aus "$alt_ver" "$neu_ver" "$vorher")
 		fi
 	else
 		local ergebnis
 		alt_rev=$(laufende_revision api)
+		alt_ver=$(laufende_version api)
 		alt_dig=$(laufender_digest api)
 		if ergebnis=$(entfernt "$(bild_ref api)"); then
-			neu_dig=${ergebnis%% *}
-			neu_rev=${ergebnis#* }
+			read -r neu_dig neu_rev neu_ver <<<"$ergebnis"
 			if [ -n "$alt_rev" ] && [ -n "$neu_rev" ]; then
 				[ "$alt_rev" != "$neu_rev" ] && verfuegbar=true
 			elif [ -n "$neu_dig" ] && [ "$neu_dig" != "$alt_dig" ]; then
@@ -352,7 +418,7 @@ pruefen() {
 			if web_ergebnis=$(entfernt "$(bild_ref web)"); then
 				[ -n "${web_ergebnis%% *}" ] && [ "${web_ergebnis%% *}" != "$web_alt" ] && verfuegbar=true
 			fi
-			[ "$verfuegbar" = true ] && liste=$(neuerungen "$alt_rev" "$neu_rev")
+			[ "$verfuegbar" = true ] && liste=$(neuerungen "$alt_ver" "$alt_rev" "$neu_ver" "$neu_rev")
 		else
 			status_setzen '.unterstuetzt = true | .geprueft_am = $t | .meldung = "Die Registry war nicht erreichbar."' \
 				--arg t "$(jetzt)"
@@ -360,11 +426,13 @@ pruefen() {
 		fi
 	fi
 	status_setzen '.unterstuetzt = true | .kanal = $k | .gebaut_auf_geraet = ($b == "true")
-		| .aktuell = $a | .verfuegbar = (if $v == "true" then $n else null end)
+		| .aktuell = (if $a == "" then null else $a end)
+		| .verfuegbar = (if $v == "true" and $n != "" then $n else null end)
 		| .update_verfuegbar = ($v == "true") | .neuerungen = $l | .geprueft_am = $t
 		| .zustand = (.zustand // "bereit")
 		| .meldung = (if .meldung == "Die Registry war nicht erreichbar." then null else .meldung end)' \
-		--arg k "$(wert DCH_VERSION)" --arg b "$bauen" --arg a "${alt_rev:0:12}" --arg n "${neu_rev:0:12}" \
+		--arg k "$(wert DCH_VERSION)" --arg b "$bauen" --arg a "$(version_anzeige "$alt_ver")" \
+		--arg n "$(version_anzeige "$neu_ver")" \
 		--arg v "$verfuegbar" --argjson l "$liste" --arg t "$(jetzt)"
 }
 
@@ -422,7 +490,7 @@ installieren() {
 	exec 9>"$GERAET/.sperre"
 	flock -n 9 || fehler "Es laeuft bereits ein Update."
 	local vorher_api vorher_web alt
-	alt=$(laufende_revision api)
+	alt=$(version_anzeige "$(laufende_version api)")
 	status_setzen '.zustand = "laeuft" | .schritt = "Sicherung" | .meldung = null | .begonnen_am = $t | .von = $v' \
 		--arg t "$(jetzt)" --arg v "$von"
 
@@ -462,10 +530,11 @@ installieren() {
 	# Welche Fassung jetzt versucht wird; auch nach einer Rueckkehr soll klar sein, welche nicht hochkam.
 	local versucht
 	if [ -f "$BASIS/compose.bauen.yaml" ]; then
-		versucht=$(git -C "$BASIS/quelle" rev-parse HEAD 2>/dev/null || true)
+		versucht=$(quelle_version "$BASIS/quelle" HEAD)
 	else
-		versucht=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$(bild_ref api)" 2>/dev/null || true)
+		versucht=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' "$(bild_ref api)" 2>/dev/null | sed 's/<no value>//' || true)
 	fi
+	versucht=$(version_anzeige "$versucht")
 
 	schritt_setzen laeuft "Neustart"
 	local heben=0
@@ -498,8 +567,8 @@ installieren() {
 	if gesund; then
 		status_setzen '.zustand = "fertig" | .schritt = null | .update_verfuegbar = false | .verfuegbar = null
 			| .neuerungen = [] | .meldung = null
-			| .zuletzt = {am: $t, ergebnis: "ok", von: $a, nach: $n}' \
-			--arg t "$(jetzt)" --arg a "${alt:0:12}" --arg n "$(laufende_revision api | cut -c1-12)"
+			| .zuletzt = {am: $t, ergebnis: "ok", von: (if $a == "" then null else $a end), nach: (if $n == "" then null else $n end)}' \
+			--arg t "$(jetzt)" --arg a "$alt" --arg n "$(version_anzeige "$(laufende_version api)")"
 		docker image prune -f >/dev/null 2>&1 || true
 		pruefen || true
 		return 0
@@ -511,13 +580,13 @@ installieren() {
 	if gesund; then
 		status_setzen '.zustand = "zurueckgerollt" | .schritt = null
 			| .meldung = "Die neue Fassung kam nicht gesund hoch. Die vorherige läuft wieder."
-			| .zuletzt = {am: $t, ergebnis: "zurueckgerollt", von: $a, nach: $n}' \
-			--arg t "$(jetzt)" --arg a "${alt:0:12}" --arg n "${versucht:0:12}"
+			| .zuletzt = {am: $t, ergebnis: "zurueckgerollt", von: (if $a == "" then null else $a end), nach: (if $n == "" then null else $n end)}' \
+			--arg t "$(jetzt)" --arg a "$alt" --arg n "$versucht"
 	else
 		status_setzen '.zustand = "fehlgeschlagen" | .schritt = null
 			| .meldung = "Weder die neue noch die vorherige Fassung kam gesund hoch. Bitte am Gerät nachsehen (dch status, dch logs api)."
-			| .zuletzt = {am: $t, ergebnis: "fehlgeschlagen", von: $a, nach: $n}' \
-			--arg t "$(jetzt)" --arg a "${alt:0:12}" --arg n "${versucht:0:12}"
+			| .zuletzt = {am: $t, ergebnis: "fehlgeschlagen", von: (if $a == "" then null else $a end), nach: (if $n == "" then null else $n end)}' \
+			--arg t "$(jetzt)" --arg a "$alt" --arg n "$versucht"
 	fi
 	return 1
 }
@@ -903,7 +972,7 @@ status)
 	else
 		hinweis "Oberflaeche antwortet NICHT."
 	fi
-	hinweis "Version: $(wert DCH_VERSION)"
+	hinweis "Kanal: $(wert DCH_VERSION), Version: $(version_anzeige "$(laufende_version api)")"
 	;;
 
 logs)
