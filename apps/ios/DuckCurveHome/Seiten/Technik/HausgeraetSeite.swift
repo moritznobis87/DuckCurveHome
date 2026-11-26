@@ -255,8 +255,13 @@ struct HausgeraetSeite: View {
                             Text("seit \(Hausgeraet.seit(iso: d.gestartetAm))")
                                 .font(Schrift.zahlKlein).foregroundStyle(Farbe.text2)
                         }
-                        if let cpu = d.cpuProzent, let mb = d.speicherMb {
-                            Text("\(Formate.zahl(cpu, stellen: 1)) % · \(Formate.zahl(mb, stellen: 0)) MB")
+                        // Wie im Dashboard: CPU auch dann, wenn das Gerät keinen Speicher messen kann.
+                        let last = [
+                            d.cpuProzent.map { "\(Formate.zahl($0, stellen: 1)) % CPU" },
+                            d.speicherMb.map { "\(Formate.zahl($0, stellen: 0)) MB" },
+                        ].compactMap { $0 }
+                        if !last.isEmpty {
+                            Text(last.joined(separator: " · "))
                                 .font(Schrift.zahlKlein).foregroundStyle(Farbe.text3)
                         }
                     }
@@ -453,7 +458,10 @@ struct HausgeraetSeite: View {
             linie("Datenbank", Farbe.pv) { $0.datenbankBytes.map { Double($0) / 1e6 } },
             linie("Sicherungen", Self.blau) { $0.sicherungBytes.map { Double($0) / 1e6 } },
         ].filter { !$0.punkte.isEmpty }
-        let dienste = Array(Set(p.flatMap { $0.dienste.keys })).sorted()
+        // Nur Dienste mit echter Messung; ohne Speicherabrechnung meldete das Gerät 0 MB.
+        let dienste = Array(Set(p.flatMap { $0.dienste.keys }))
+            .filter { d in p.contains { ($0.dienste[d]?.speicherMb ?? 0) > 0 } }
+            .sorted()
         let ramGesamt = p.compactMap(\.speicherGesamtMb).last
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
