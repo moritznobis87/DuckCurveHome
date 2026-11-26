@@ -1,5 +1,10 @@
 {
-  "unveroeffentlicht": [],
+  "unveroeffentlicht": [
+    {
+      "bereich": "Anmeldung",
+      "text": "Ist die Anmeldung im Browser abgelaufen, führt das Dashboard zur Anmeldung, statt beim Verbinden stehen zu bleiben."
+    }
+  ],
   "versionen": [
     {
       "version": "2026.11.1",
