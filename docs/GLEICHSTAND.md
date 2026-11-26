@@ -102,6 +102,7 @@ Abstimmen (`Hauszustand.hatVollzugriff`).
 | Personen verwalten und einladen | vorhanden | fehlt | `components/zugang/Personen.tsx` |
 | Eigene Passkeys, eigene Sitzungen, neue Wiederherstellungscodes | vorhanden auf „Mein Zugang“ | seit dem 24.11.2026 vorhanden: Passkeys umbenennen und löschen, neue Codes, Sitzungen beenden, überall abmelden, dazu dieselbe Kopfkarte. Es fehlt nur das Anlegen eines Passkeys; es braucht dieselbe Zuordnung wie die Anmeldung mit Passkey, und die Seite sagt, dass man ihn im Dashboard anlegt. | `components/zugang/MeinZugang.tsx`, `KontoSeite.swift` |
 | Sitzung in der Liste erkennen | Ein Browser steht dort mit seinem Gerät („iPhone“, „Mac“). | Eine Sitzung der App steht dort als „unbekanntes Gerät“, weil die App keinen sprechenden User-Agent schickt. | `MeinZugang.tsx` (`geraet`), `Zugang.kopfzeilen` |
+| Zeichen der Person im Kopf | Steht da, wenn eine Person angemeldet ist. Ohne Anmeldung gibt es im Browser nur die Anmeldeseite. | Steht seit dem 26.11.2026 immer da. Ein Gerät, das mit dem API-Token eingerichtet ist, hat keine Person; dort führt das Zeichen auf „Mein Zugang“ mit dem Knopf „Mit meinem Zugang anmelden“. Bauartbedingt: den Fall „verbunden, aber keine Person“ kennt nur die App. | `components/layout/AreaNav.tsx`, `App/Reiterzeile.swift`, `Seiten/KontoSeite.swift` |
 
 ## Übersichten (24.11.2026)
 

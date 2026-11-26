@@ -27,6 +27,14 @@ struct Einrichten: View {
         case token
     }
 
+    /// Der Weg, mit dem das Blatt aufgeht, wenn der Aufrufer ihn kennt: „Mein Zugang“ öffnet es
+    /// für die Anmeldung als Person, auch auf einem Gerät, das mit dem Token eingerichtet ist.
+    private let vorgabe: Weg?
+
+    init(vorgabe: Weg? = nil) {
+        self.vorgabe = vorgabe
+    }
+
     @State private var adresse: String = ""
     @State private var weg: Weg = .passwort
     @State private var email: String = ""
@@ -78,6 +86,7 @@ struct Einrichten: View {
                 // Wer mit dem API-Token eingerichtet war, findet diesen Weg wieder vor.
                 weg = haus.zugang.istPerson || haus.zugang.token.isEmpty ? .passwort : .token
             }
+            if let vorgabe { weg = vorgabe }
         }
     }
 

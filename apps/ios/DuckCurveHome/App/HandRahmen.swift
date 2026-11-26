@@ -133,7 +133,8 @@ struct HandRahmen: View {
             // auf der Höhe der Großbuchstaben, sonst stünde er unter der Zeile.
             Systemknopf(wegweiser: wegweiser, groesse: 20)
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 9 }
-            // Daneben die Person: der Weg zum eigenen Zugang, für jede angemeldete Person.
+            // Daneben die Person: der Weg zum eigenen Zugang oder, ohne angemeldete Person, zur
+            // Anmeldung.
             Kontoknopf(wegweiser: wegweiser, groesse: 20)
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 9 }
         }

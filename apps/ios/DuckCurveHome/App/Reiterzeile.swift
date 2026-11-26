@@ -207,16 +207,19 @@ struct Systemknopf: View {
 ///
 /// Passwort und Abmelden gehören jeder angemeldeten Person und nicht nur dem Hausherrn. Bis zum
 /// 24.11.2026 standen sie auf „Zugang und Sicherung“ hinter dem Zahnrad, das ein Bewohner nicht
-/// hat. Der Knopf steht deshalb neben dem Zahnrad und nicht dahinter. Ein Gerät mit dem
-/// API-Token hat keinen eigenen Zugang und sieht den Knopf nicht.
+/// hat. Der Knopf steht deshalb neben dem Zahnrad und nicht dahinter.
+///
+/// **Er steht immer da, auch ohne angemeldete Person.** Bis zum 26.11.2026 sah ein Gerät mit dem
+/// API-Token den Knopf nicht, weil es keinen eigenen Zugang hat. Der Hausherr suchte ihn auf
+/// seinem Telefon und fand ihn nicht. Jetzt führt er auch dort auf „Mein Zugang“, und die Seite
+/// bietet die Anmeldung als Person an (``KontoSeite``).
 struct Kontoknopf: View {
-    @Environment(Hauszustand.self) private var haus
     let wegweiser: Wegweiser
     /// Die Größe des Zeichens: 22 Punkte im Kopf der Wandanzeige, 20 am Telefon.
     var groesse: CGFloat = 22
 
     var body: some View {
-        if haus.zugang.istPerson, let seite = Bereiche.einzelseite(Bereiche.kontoweg) {
+        if let seite = Bereiche.einzelseite(Bereiche.kontoweg) {
             let istAktiv = wegweiser.einzelseite?.weg == seite.weg
             Button {
                 wegweiser.merkeReiter()

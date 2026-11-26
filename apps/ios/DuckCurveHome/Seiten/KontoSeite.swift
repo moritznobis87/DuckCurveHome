@@ -26,6 +26,8 @@ struct KontoSeite: View {
     @State private var umbenennen: PasskeyOut?
     @State private var neuerName = ""
     @State private var ueberallFragen = false
+    /// Die Anmeldung als Person, von einem Gerät ohne eigenen Zugang aus.
+    @State private var anmelden = false
 
     private var schmal: Bool { breite == .compact }
 
@@ -45,16 +47,34 @@ struct KontoSeite: View {
                 }
                 .frame(maxWidth: 820, alignment: .leading)
             } else {
+                // **Ohne Person steht hier der Weg zur Anmeldung.** Ein Gerät, das mit dem
+                // Schlüssel des Hauses eingerichtet ist, hat keinen eigenen Zugang. Der Hausherr
+                // suchte am 26.11.2026 das Zeichen der Person und fand es nicht: es stand nur
+                // für angemeldete Personen da, und der Weg zur Anmeldung lag drei Seiten tief
+                // unter „Zugang und Sicherung“.
                 Karte(kicker: Zugangsworte.meinZugangUeberschrift) {
-                    Text(Zugangsworte.keinePerson)
-                        .font(Schrift.sans(15, relativeTo: .body))
-                        .foregroundStyle(Farbe.text2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text(haus.zugang.token.isEmpty ? Zugangsworte.keinePerson : Zugangsworte.geraetOhnePerson)
+                            .font(Schrift.sans(15, relativeTo: .body))
+                            .foregroundStyle(Farbe.text2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Zugangsknopf(wort: Zugangsworte.alsPersonAnmelden, art: .hervor) {
+                            anmelden = true
+                        }
+                    }
                 }
+                .frame(maxWidth: 820, alignment: .leading)
             }
         }
-        .task { await lade() }
+        .sheet(isPresented: $anmelden) {
+            Einrichten(vorgabe: .passwort)
+        }
+        // **Neu laden, wenn die Person wechselt.** Wer sich über das Blatt oben anmeldet, bleibt
+        // auf dieser Seite: ein einfaches `.task` wäre schon gelaufen und an der Abfrage
+        // „keine Person“ umgekehrt, und Passkeys und Sitzungen blieben leer, bis man die Seite
+        // verlässt und wiederkommt.
+        .task(id: haus.zugang.email) { await lade() }
         .confirmationDialog(
             Kontoworte.loeschfrage(loeschen?.name ?? ""), isPresented: Binding(
                 get: { loeschen != nil }, set: { if !$0 { loeschen = nil } }),
