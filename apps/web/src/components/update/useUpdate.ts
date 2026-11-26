@@ -8,13 +8,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+export type Neuerung = { version?: string | null; bereich: string; text: string };
+
 export type UpdateStatus = {
   unterstuetzt: boolean;
   kanal: string | null;
   aktuell: string | null;
   verfuegbar: string | null;
   update_verfuegbar: boolean;
-  neuerungen: { sha: string; titel: string }[];
+  /** Aus docs/versionen.json, für Außenstehende geschrieben; `version` leer = noch keiner Version zugeordnet. */
+  neuerungen: Neuerung[];
   geprueft_am: string | null;
   zustand: string;
   schritt: string | null;
@@ -28,6 +31,26 @@ const ADRESSE = "/api/dch/system/update";
 const RUHIG_MS = 5 * 60_000;
 /** Während eines Updates alle drei Sekunden, damit der Fortschritt mitläuft. */
 const EILIG_MS = 3_000;
+
+/**
+ * Die Neuerungen in Gruppen derselben Version, in der Reihenfolge des Dienstes (neueste zuerst).
+ * Eine Überschrift braucht es erst ab zwei Gruppen; die App gruppiert genauso
+ * (`Hausgeraet.neuerungenNachVersion`).
+ */
+export function nachVersion(neuerungen: Neuerung[]): { version: string | null; eintraege: Neuerung[] }[] {
+  const gruppen: { version: string | null; eintraege: Neuerung[] }[] = [];
+  for (const n of neuerungen) {
+    const version = n.version ?? null;
+    const letzte = gruppen[gruppen.length - 1];
+    if (letzte && letzte.version === version) letzte.eintraege.push(n);
+    else gruppen.push({ version, eintraege: [n] });
+  }
+  return gruppen;
+}
+
+export function gruppentitel(version: string | null): string {
+  return version ? `Version ${version}` : "Seit der letzten Version";
+}
 
 export function laeuft(s: UpdateStatus | null): boolean {
   return Boolean(s && (s.zustand === "laeuft" || s.anfrage_offen));

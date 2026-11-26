@@ -53,6 +53,7 @@ from dch_api.application.stove_control import StoveMode
 from dch_api.application.stove_planner import StovePlan
 from dch_api.application.tibber_invoice import MeasuredPeriod
 from dch_api.errors import DchError
+from dch_api.fassung import fassung
 from dch_api.infrastructure.history import HistoryStore
 from dch_api.infrastructure.sse_broker import SseBroker
 from dch_api.schemas import (
@@ -147,7 +148,7 @@ class _UebersprungenError(Exception):
     """Kein Fehler: der Fahrplan ist noch frisch genug, es wird nicht neu gerechnet."""
 
 
-VERSION = "0.1.0-phase1"
+VERSION = fassung()
 
 
 class DemoRunner:

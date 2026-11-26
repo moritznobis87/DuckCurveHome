@@ -75,6 +75,9 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ needs.version.outputs.neu == 'true' && needs.version.outputs.version || format('{0}+entwicklung', needs.version.outputs.version) }}
+          # Dieselbe Version fuer die API selbst (dch_api/fassung.py): Sie zeigt sie unter Rechenkern.
+          build-args: |
+            DCH_FASSUNG=${{ needs.version.outputs.neu == 'true' && needs.version.outputs.version || format('{0}+entwicklung', needs.version.outputs.version) }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

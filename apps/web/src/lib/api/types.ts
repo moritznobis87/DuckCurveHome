@@ -9052,12 +9052,19 @@ export interface components {
             /** Nach */
             nach?: string | null;
         };
-        /** UpdateNeuerungOut */
+        /**
+         * UpdateNeuerungOut
+         * @description Eine Neuerung aus docs/versionen.json, für Außenstehende geschrieben (tools/version.py).
+         *
+         *     `version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`).
+         */
         UpdateNeuerungOut: {
-            /** Sha */
-            sha: string;
-            /** Titel */
-            titel: string;
+            /** Version */
+            version?: string | null;
+            /** Bereich */
+            bereich: string;
+            /** Text */
+            text: string;
         };
         /**
          * UpdateStatusOut

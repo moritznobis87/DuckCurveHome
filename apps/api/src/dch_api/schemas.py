@@ -2037,8 +2037,13 @@ class RegelkreisStellenIn(BaseModel):
 
 
 class UpdateNeuerungOut(BaseModel):
-    sha: str
-    titel: str
+    """Eine Neuerung aus docs/versionen.json, für Außenstehende geschrieben (tools/version.py).
+
+    `version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`)."""
+
+    version: str | None = None
+    bereich: str
+    text: str
 
 
 class UpdateErgebnisOut(BaseModel):
@@ -2059,6 +2064,17 @@ class UpdateStatusOut(BaseModel):
     update_verfuegbar: bool = False
     neuerungen: list[UpdateNeuerungOut] = Field(default_factory=list)
     geprueft_am: str | None = None
+
+    @field_validator("neuerungen", mode="before")
+    @classmethod
+    def _ohne_commit_titel(cls, wert: Any) -> Any:
+        """Ein Update-Dienst von vor dem 26.11.2026 schrieb Commit-Titel (`sha`, `titel`). Die
+        sind nicht für Außenstehende geschrieben und erscheinen nicht; bis zur nächsten Prüfung
+        steht dann keine Liste da."""
+        if not isinstance(wert, list):
+            return wert
+        return [n for n in wert if not (isinstance(n, dict) and "text" not in n)]
+
     #: bereit | laeuft | fertig | zurueckgerollt | fehlgeschlagen
     zustand: str = "bereit"
     #: Sicherung | Quelltext | Laden | Neustart | Pruefung | Zurueck, solange `zustand` laeuft

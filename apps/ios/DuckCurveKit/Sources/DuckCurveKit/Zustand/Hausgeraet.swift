@@ -80,6 +80,40 @@ public enum Hausgeraet {
         dienstnamen[name] ?? name
     }
 
+    /// Die Fußzeile der Karte Rechenkern, dieselbe wie im Dashboard (`rechenkernZeile` in Geraet.tsx).
+    /// Ein Commit-Hash erscheint nicht; `version` ist die Version aus docs/versionen.json.
+    public static func rechenkernzeile(_ api: ApiSelbstOut) -> String {
+        let n = api.sseClients ?? 0
+        let ansichten = n == 1 ? "1 offene Ansicht" : "\(n) offene Ansichten"
+        let mb = Int(api.rssMb.rounded())
+        return "Fassung \(api.version) · läuft seit \(dauer(sekunden: api.laufzeitS)) · \(mb) MB · \(ansichten)"
+    }
+
+    /// Eine Gruppe von Neuerungen derselben Version; `version` leer heißt: noch keiner zugeordnet.
+    public struct Neuerungsgruppe: Hashable, Sendable {
+        public let version: String?
+        public let eintraege: [UpdateNeuerungOut]
+    }
+
+    /// Die Neuerungen in Gruppen derselben Version, in der Reihenfolge des Dienstes (neueste
+    /// zuerst). Eine Überschrift braucht es erst ab zwei Gruppen; das Dashboard gruppiert genauso
+    /// (`nachVersion` in useUpdate.ts).
+    public static func neuerungenNachVersion(_ neuerungen: [UpdateNeuerungOut]) -> [Neuerungsgruppe] {
+        var gruppen: [Neuerungsgruppe] = []
+        for n in neuerungen {
+            if let letzte = gruppen.last, letzte.version == n.version {
+                gruppen[gruppen.count - 1] = Neuerungsgruppe(version: letzte.version, eintraege: letzte.eintraege + [n])
+            } else {
+                gruppen.append(Neuerungsgruppe(version: n.version, eintraege: [n]))
+            }
+        }
+        return gruppen
+    }
+
+    public static func gruppentitel(_ version: String?) -> String {
+        version.map { "Version \($0)" } ?? "Seit der letzten Version"
+    }
+
     /// „3 h 12 min“, „2 T 4 h“ - wie lange etwas schon läuft.
     public static func dauer(sekunden: Int) -> String {
         let s = max(0, sekunden)

@@ -314,7 +314,7 @@ struct HausgeraetSeite: View {
                 api.alfredEingerichtet == true ? .gut : .aus, "Alfred",
                 api.alfredEingerichtet == true ? "Sprachmodell eingerichtet." : "Kein Schlüssel für das Sprachmodell hinterlegt."
             )
-            Text("Fassung \(api.version) · \(api.commit) · \(Formate.zahl(api.rssMb, stellen: 0)) MB")
+            Text(Hausgeraet.rechenkernzeile(api))
                 .font(Schrift.zahlKlein).foregroundStyle(Farbe.text3)
         }
     }
@@ -551,8 +551,18 @@ struct HausgeraetSeite: View {
                         .font(Schrift.winzig).foregroundStyle(Farbe.text3)
                 } else if u.updateVerfuegbar == true {
                     Text("Update bereit: \(u.verfuegbar ?? "neue Fassung")").font(Schrift.karte).foregroundStyle(Farbe.text1)
-                    ForEach(u.neuerungen, id: \.sha) { n in
-                        Text("• \(n.titel)").font(Schrift.klein).foregroundStyle(Farbe.text2)
+                    let gruppen = Hausgeraet.neuerungenNachVersion(u.neuerungen)
+                    if gruppen.isEmpty {
+                        Text("Was sich geändert hat, ist nicht bekannt.").font(Schrift.klein).foregroundStyle(Farbe.text3)
+                    }
+                    ForEach(gruppen, id: \.self) { gruppe in
+                        if gruppen.count > 1 {
+                            Text(Hausgeraet.gruppentitel(gruppe.version)).font(Schrift.winzig).foregroundStyle(Farbe.text3)
+                        }
+                        ForEach(gruppe.eintraege, id: \.self) { n in
+                            (Text("• \(n.bereich): ").foregroundStyle(Farbe.text1) + Text(n.text).foregroundStyle(Farbe.text2))
+                                .font(Schrift.klein)
+                        }
                     }
                     if Hausgeraet.schonGescheitert(u) {
                         Text("Diese Fassung kam beim letzten Versuch nicht gesund hoch; das Gerät ist zur vorherigen zurückgekehrt.")

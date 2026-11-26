@@ -11442,19 +11442,25 @@ public struct UpdateErgebnisOut: Codable, Sendable, Hashable {
     }
 }
 
+/// Eine Neuerung aus docs/versionen.json, für Außenstehende geschrieben (tools/version.py).
+///
+/// `version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`).
 public struct UpdateNeuerungOut: Codable, Sendable, Hashable {
-    public var sha: String
-    public var titel: String
+    public var version: String?
+    public var bereich: String
+    public var text: String
 
-    public init(sha: String, titel: String) {
-        self.sha = sha
-        self.titel = titel
+    public init(version: String? = nil, bereich: String, text: String) {
+        self.version = version
+        self.bereich = bereich
+        self.text = text
     }
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.sha = try c.decode(String.self, forKey: .sha)
-        self.titel = try c.decode(String.self, forKey: .titel)
+        self.version = try c.decodeIfPresent(String.self, forKey: .version)
+        self.bereich = try c.decode(String.self, forKey: .bereich)
+        self.text = try c.decode(String.self, forKey: .text)
     }
 }
 

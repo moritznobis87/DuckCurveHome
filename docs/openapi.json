@@ -19896,21 +19896,33 @@
       },
       "UpdateNeuerungOut": {
         "properties": {
-          "sha": {
-            "type": "string",
-            "title": "Sha"
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
           },
-          "titel": {
+          "bereich": {
             "type": "string",
-            "title": "Titel"
+            "title": "Bereich"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
           }
         },
         "type": "object",
         "required": [
-          "sha",
-          "titel"
+          "bereich",
+          "text"
         ],
-        "title": "UpdateNeuerungOut"
+        "title": "UpdateNeuerungOut",
+        "description": "Eine Neuerung aus docs/versionen.json, für Außenstehende geschrieben (tools/version.py).\n\n`version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`)."
       },
       "UpdateStatusOut": {
         "properties": {

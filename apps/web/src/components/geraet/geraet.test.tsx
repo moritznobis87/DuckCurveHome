@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Geraet as GeraetDaten } from "@/lib/api/models";
-import { Geraet, dauer, platzAbschnitte } from "./Geraet";
+import { Geraet, dauer, platzAbschnitte, rechenkernZeile } from "./Geraet";
 import { dauerText, mitLuecken, prognoseSaetze } from "./Verlauf";
 import { holeProtokoll } from "./useGeraet";
 
@@ -86,7 +86,7 @@ function stand(felder: Partial<GeraetDaten> = {}): GeraetDaten {
     letzte_aktion: null,
     beschaeftigt: null,
     api: {
-      version: "0.1.0",
+      version: "2026.11.1",
       commit: "abc1234",
       modus: "live",
       laufzeit_s: 3_600,
@@ -110,7 +110,7 @@ function stand(felder: Partial<GeraetDaten> = {}): GeraetDaten {
   };
 }
 
-const update = { unterstuetzt: true, kanal: "main", aktuell: "aaaaaaaaaaaa", verfuegbar: null, update_verfuegbar: false, neuerungen: [], geprueft_am: jetzt, zustand: "bereit", schritt: null, meldung: null, zuletzt: null, anfrage_offen: false };
+const update = { unterstuetzt: true, kanal: "stabil", aktuell: "2026.11.1", verfuegbar: null, update_verfuegbar: false, neuerungen: [], geprueft_am: jetzt, zustand: "bereit", schritt: null, meldung: null, zuletzt: null, anfrage_offen: false };
 
 const verlauf = {
   unterstuetzt: true,
@@ -242,5 +242,13 @@ describe("Hausgerät", () => {
     expect(dauer(42)).toBe("42 s");
     expect(dauer(3_720)).toBe("1 h 2 min");
     expect(dauer(90_000)).toBe("1 T 1 h");
+  });
+});
+
+describe("rechenkernZeile", () => {
+  it("nennt die Version und keinen Hash, mit richtigem Plural", () => {
+    const api = { version: "2026.11.1", laufzeit_s: 3_720, rss_mb: 311.6, sse_clients: 2 };
+    expect(rechenkernZeile(api)).toBe("Fassung 2026.11.1 · läuft seit 1 h 2 min · 312 MB · 2 offene Ansichten");
+    expect(rechenkernZeile({ ...api, sse_clients: 1 })).toBe("Fassung 2026.11.1 · läuft seit 1 h 2 min · 312 MB · 1 offene Ansicht");
   });
 });

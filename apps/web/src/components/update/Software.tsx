@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { laeuft, schonGescheitert, useUpdate, type UpdateStatus } from "./useUpdate";
+import { gruppentitel, laeuft, nachVersion, schonGescheitert, useUpdate, type UpdateStatus } from "./useUpdate";
 
 /**
  * Der Bereich „Software“ auf der Seite Hausgerät: welche Fassung läuft, was neu ist, und
@@ -53,7 +53,7 @@ export function Software() {
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 rounded-[3px] border border-line-1 bg-surface-2 px-4 py-3 text-[14px]">
         <span>
           <span className="text-text-3">Läuft: </span>
-          <span className="mono text-text-1">{status.aktuell || "unbekannt"}</span>
+          <span className="text-text-1">{status.aktuell || "unbekannt"}</span>
         </span>
         <span>
           <span className="text-text-3">Kanal: </span>
@@ -87,14 +87,23 @@ export function Software() {
       ) : status.update_verfuegbar ? (
         <div className="flex flex-col gap-3 rounded-[3px] border border-line-2 px-4 py-3">
           <span className="text-[15px] font-semibold">
-            Update bereit: <span className="mono">{status.verfuegbar ?? "neue Fassung"}</span>
+            Update bereit: {status.verfuegbar ?? "neue Fassung"}
           </span>
           {status.neuerungen.length ? (
-            <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[14px] text-text-2">
-              {status.neuerungen.map((n) => (
-                <li key={n.sha}>{n.titel}</li>
+            <div className="flex flex-col gap-2">
+              {nachVersion(status.neuerungen).map((gruppe, _, alle) => (
+                <div key={gruppe.version ?? "neu"} className="flex flex-col gap-1">
+                  {alle.length > 1 ? <span className="text-[13px] text-text-3">{gruppentitel(gruppe.version)}</span> : null}
+                  <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[14px] text-text-2">
+                    {gruppe.eintraege.map((n, i) => (
+                      <li key={i}>
+                        <span className="text-text-1">{n.bereich}:</span> {n.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           ) : (
             <span className="text-[14px] text-text-3">Was sich geändert hat, ist nicht bekannt.</span>
           )}

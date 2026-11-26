@@ -76,6 +76,7 @@ from dch_api.application.stove_control import STALE_AFTER_S, StoveController, St
 from dch_api.application.stove_planner import StovePlan, decide_switch, plan_stove
 from dch_api.application.tibber_invoice import MeasuredPeriod
 from dch_api.errors import DchError
+from dch_api.fassung import fassung
 from dch_api.infrastructure.bridge_hub import BridgeHub
 from dch_api.infrastructure.db.repositories import SqlRepositories
 from dch_api.infrastructure.history import SERIES
@@ -212,7 +213,7 @@ def _nach_schwere(befunde: list[WatchFindingOut]) -> list[WatchFindingOut]:
 
 
 log = structlog.get_logger("live")
-VERSION = "0.1.0-phase2"
+VERSION = fassung()
 HISTORY_KEYS = [k for k in SERIES if k != "hp_release_contact"] + ["actuator:hp_release_contact"]
 
 

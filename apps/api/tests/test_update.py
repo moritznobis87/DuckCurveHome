@@ -51,18 +51,37 @@ def test_frisch_eingerichtet_ohne_befund(geraet: TestClient) -> None:
 def test_der_stand_des_dienstes_kommt_an(geraet: TestClient, ordner: Path) -> None:
     _status(
         ordner,
-        aktuell="aaaaaaaaaaaa",
-        verfuegbar="bbbbbbbbbbbb",
+        aktuell="2026.11.1",
+        verfuegbar="2026.12.1",
         update_verfuegbar=True,
-        neuerungen=[{"sha": "bbbbbbb", "titel": "Alfred: neue Werkzeuge"}],
+        neuerungen=[
+            {"version": "2026.12.1", "bereich": "Alfred", "text": "Alfred liest Rechnungen."}
+        ],
         geprueft_am="2026-11-20T07:00:00Z",
         zustand="bereit",
         unbekanntes_feld="stoert nicht",
     )
     status = geraet.get("/api/v1/system/update").json()
     assert status["update_verfuegbar"] is True
-    assert status["neuerungen"] == [{"sha": "bbbbbbb", "titel": "Alfred: neue Werkzeuge"}]
+    assert status["neuerungen"] == [
+        {"version": "2026.12.1", "bereich": "Alfred", "text": "Alfred liest Rechnungen."}
+    ]
     assert status["anfrage_offen"] is False
+
+
+def test_commit_titel_eines_alten_dienstes_erscheinen_nicht(
+    geraet: TestClient, ordner: Path
+) -> None:
+    """Ein Update-Dienst von vor dem 26.11.2026 schrieb Commit-Titel. Die sind nicht für
+    Außenstehende geschrieben; bis zur nächsten Prüfung steht dann keine Liste da."""
+    _status(
+        ordner,
+        update_verfuegbar=True,
+        neuerungen=[{"sha": "bbbbbbb", "titel": "Hausgeraet: interner Umbau"}],
+    )
+    status = geraet.get("/api/v1/system/update").json()
+    assert status["update_verfuegbar"] is True and status["neuerungen"] == []
+    assert status["meldung"] is None
 
 
 def test_installieren_legt_nur_eine_anfrage_ab(geraet: TestClient, ordner: Path) -> None:

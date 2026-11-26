@@ -26,6 +26,10 @@ COPY docs /app/docs
 COPY HEMS_CONTROL.md /app/HEMS_CONTROL.md
 COPY apps/api/docker-entrypoint.sh /app/docker-entrypoint.sh
 ENV PATH="/app/.venv/bin:$PATH" DCH_HOST= DCH_PORT=8000
+# Die Version aus docs/versionen.json, gesetzt von der CI (dch_api/fassung.py). Erst hier, damit
+# eine neue Version nicht die Schichten davor neu baut.
+ARG DCH_FASSUNG=""
+ENV DCH_FASSUNG=$DCH_FASSUNG
 RUN chmod a+x /app/docker-entrypoint.sh
 USER dch
 EXPOSE 8000
