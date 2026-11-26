@@ -15,17 +15,7 @@ from hems_core.forecasting.models import (
     SiteConfig,
     WeatherForecast,
 )
-
-
-def solar_elevation_deg(at: datetime, latitude: float, longitude: float) -> float:
-    ut = at.astimezone(UTC)
-    n = ut.timetuple().tm_yday
-    decl = math.radians(23.44) * math.sin(2 * math.pi * (284 + n) / 365)
-    solar_hour = ut.hour + ut.minute / 60 + ut.second / 3600 + longitude / 15
-    hour_angle = math.radians(15 * (solar_hour - 12))
-    lat = math.radians(latitude)
-    s = math.sin(lat) * math.sin(decl) + math.cos(lat) * math.cos(decl) * math.cos(hour_angle)
-    return math.degrees(math.asin(max(-1.0, min(1.0, s))))
+from hems_core.forecasting.sonne import solar_elevation_deg
 
 
 def clear_sky_ac_kw(at: datetime, system: PvSystemConfig, site: SiteConfig) -> float:

@@ -56,7 +56,8 @@ Weitere Dokumente: [ARCHITECTURE.md](ARCHITECTURE.md) · [CONFIGURATION.md](CONF
 
 ```bash
 uv run pytest -q                         # Python-Tests (Kern + API)
-uv run ruff check apps packages && uv run mypy apps/api/src packages/hems-core/src && uv run lint-imports
+uv run ruff check apps packages && uv run ruff format --check apps packages
+uv run mypy apps/api/src apps/bridge/src packages/hems-core/src && uv run lint-imports
 cd apps/web && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 tools/gen-types.sh                       # OpenAPI → docs/openapi.json → apps/web/src/lib/api/types.ts
 tools/ios-pruefen.sh                     # iOS: Kern bauen und testen, Oberfläche parsen
