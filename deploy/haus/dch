@@ -968,12 +968,21 @@ handgriff() {
 	bericht || true
 }
 
+kanal_setzen() {
+	# DCH_VERSION in der .env auf $1 setzen.
+	if grep -q '^DCH_VERSION=' "$ENVDATEI"; then
+		sed -i "s/^DCH_VERSION=.*/DCH_VERSION=$1/" "$ENVDATEI"
+	else
+		echo "DCH_VERSION=$1" >>"$ENVDATEI"
+	fi
+}
+
 kanal_umbenennen() {
 	# Der Kanal hiess bis zum 26.11.2026 `stabil`. Ein Geraet, das so eingestellt ist, bekommt den
 	# neuen Namen, sobald dieses `dch` laeuft; die CI zieht `stabil` fuer den Uebergang mit.
 	[ -w "$ENVDATEI" ] || return 0
 	if [ "$(wert DCH_VERSION)" = "stabil" ]; then
-		sed -i 's/^DCH_VERSION=.*/DCH_VERSION=stable/' "$ENVDATEI"
+		kanal_setzen stable
 		hinweis "Der Kanal heisst jetzt stable statt stabil (DCH_VERSION in $ENVDATEI)."
 	fi
 }
@@ -1009,13 +1018,11 @@ stoppen)
 aktualisieren)
 	# Der alte Name des Kanals (bis 26.11.2026) fuehrt zum neuen.
 	if [ "${1:-}" = "stabil" ]; then set -- stable "${@:2}"; fi
+	kanal_vorher=""
 	if [ $# -ge 1 ]; then
 		[[ "$1" =~ ^[A-Za-z0-9._-]+$ ]] || fehler "Ungueltige Version: $1"
-		if grep -q '^DCH_VERSION=' "$ENVDATEI"; then
-			sed -i "s/^DCH_VERSION=.*/DCH_VERSION=$1/" "$ENVDATEI"
-		else
-			echo "DCH_VERSION=$1" >>"$ENVDATEI"
-		fi
+		kanal_vorher=$(wert DCH_VERSION)
+		kanal_setzen "$1"
 	fi
 	# Derselbe Ablauf wie aus der App: Sicherung, Quelltext, Laden, Neustart, Pruefung, und bei
 	# einem Fehlschlag zurueck zur vorherigen Fassung. Eine Migration ist nur additiv
@@ -1023,6 +1030,13 @@ aktualisieren)
 	if installieren "Befehlszeile"; then
 		hinweis "Aktualisiert. $(jq -r '.zuletzt | "Von \(.von // "?") auf \(.nach // "?")."' "$STATUS")"
 	else
+		# Der Kanal gilt erst, wenn das Update durch ist. Bleibt der neue Wert nach einem
+		# Fehlschlag stehen, sucht der naechste Start nach Images, die es vielleicht nicht gibt,
+		# und die Dienste kommen nicht hoch (am 26.11.2026 mit `stable`, bevor der Tag bestand).
+		if [ -n "$kanal_vorher" ]; then
+			kanal_setzen "$kanal_vorher"
+			hinweis "Der Kanal bleibt $kanal_vorher."
+		fi
 		fehler "$(jq -r '.meldung // "Update fehlgeschlagen."' "$STATUS")"
 	fi
 	;;
