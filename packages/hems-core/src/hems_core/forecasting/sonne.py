@@ -12,12 +12,13 @@ gerechnet und im Fahrplan mitgegeben.
 Deklination und Zeitgleichung, daraus der Stundenwinkel, bei dem der obere Sonnenrand am Horizont
 steht. Dafür gilt die übliche Höhe von −0,833 Grad: 16 Bogenminuten für den halben Sonnendurchmesser
 und 34 für die Brechung in der Luft. Gegen veröffentlichte Zeiten stimmt das auf die Minute, siehe
-`test_sonne.py`. Die Höhe des Ortes über dem Meer geht nicht ein; sie verschiebt den Horizont um
-Sekunden.
+`test_sonne.py`. Die Höhe des Ortes über dem Meer geht nicht ein: Auf dem Land liegt der Horizont
+so hoch wie das Haus.
 
 **Nicht dasselbe wie `pv_simple.solar_elevation_deg`.** Die Ertragsprognose rechnet den Sonnenstand
-mit einer einfacheren Formel ohne Zeitgleichung. Sie liegt damit im November gut zwölf Minuten zu
-spät und im Februar gut vierzehn zu früh. Das ist ein eigener Fehler und steht dort.
+mit einer einfacheren Formel ohne Zeitgleichung. Ihr Sonnenmittag liegt damit Ende November knapp
+dreizehn Minuten zu spät und Mitte Februar gut vierzehn zu früh. Das ist ein eigener Fehler; er ist
+in `docs/design/werkstatt/startseite/bau.md` unter „Der Sonnenstand“ als offen vermerkt.
 """
 
 from __future__ import annotations

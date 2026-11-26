@@ -74,6 +74,39 @@ Masts.“
 - `gebaut/buehne-handy-8kw.png` und `gebaut/buehne-wand-8kw.png` zeigen das Dashboard mit den
   Werten aus dem Bild des Hausherrn.
 
+## Der Sonnenstand (26.11.2026, nach einem Bild vom iPhone um 09:17 Uhr)
+
+Der Hausherr: „Irgendwas stimmt doch hier mit dem Sonnenstand nicht. Die Sonne steht gerade beim
+Sonnenaufgang, wir haben aber schon 9:20 Uhr.“
+
+**Die Ursache.** Die Enden des Bogens waren die erste und die letzte Viertelstunde, in der die
+Ertragsprognose mehr als 50 Watt kannte. Das ist der Beginn der Erzeugung und nicht der
+Sonnenaufgang. Gemessen am 26.11.2026 am Standort aus der Konfiguration:
+
+| | Aufgang | Untergang | Stand der Sonne um 09:17 |
+|---|---|---|---|
+| Sonne am Standort, gerechnet | 08:09 | 16:36 | 13 % des Bogens |
+| Im Bild bis dahin | 08:45 | 16:45 | 7 % des Bogens, also am Horizont |
+
+**Die Änderung.**
+
+- Der Dienst rechnet Aufgang und Untergang aus Datum und Standort
+  (`packages/hems-core/src/hems_core/forecasting/sonne.py`, Verfahren der NOAA) und gibt sie im
+  Fahrplan für heute und morgen mit (`PlanOut.sun`). Acht veröffentlichte Zeiten für Berlin und
+  Frankfurt trifft die Rechnung auf die Minute (`test_sonne.py`).
+- Dashboard und App nehmen diese Zeiten für den Bogen, die beiden Uhrzeiten an seinen Enden, für
+  Tag und Nacht und für den Satz „Die Sonne geht um … auf.“ (`ambiente.ts`, `Ruhebild.swift`,
+  dieselben Fälle in beiden Tests).
+- Schickt ein älterer Dienst die Zeiten nicht mit, gilt wie vorher das Fenster der Erzeugung.
+- `gebaut/sonnenlauf-handy.png` und `gebaut/sonnenlauf-wand.png` zeigen das Dashboard um 09:34 Uhr
+  mit 08:09 und 16:36 an den Enden. `gebaut/sonnenlauf-nacht-handy.png` zeigt die Nacht; dafür
+  sind die Zeiten des Tages im Browser verschoben, der genannte Aufgang von morgen ist echt.
+
+**Was dabei auffiel und offen ist.** Die Ertragsprognose selbst rechnet den Sonnenstand ohne
+Zeitgleichung (`pv_simple.solar_elevation_deg`, und dieselbe Formel im Vorführhaus). Am 26.11.
+liegt ihr Sonnenmittag damit knapp dreizehn Minuten zu spät, Mitte Februar gut vierzehn zu früh. Das
+verschiebt die erwartete Erzeugung und ist eine eigene Änderung am Dienst.
+
 ## Bilder der gebauten Seite
 
 `gebaut/` zeigt die Startseite des Dashboards im Demo-Betrieb am 25.11.2026: Bühne und Uhr, je an
