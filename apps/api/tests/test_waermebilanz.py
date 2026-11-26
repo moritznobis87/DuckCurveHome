@@ -464,6 +464,88 @@ async def _nulllinie_im_faden(dauer: float) -> float:
     return _schlagrate(gesamt, schlaege)
 
 
+#: So oft wird die Schlagrate höchstens gemessen, bevor ein Test fällt.
+MESSUNGEN = 3
+
+#: Eine Messung: das Ergebnis des Rufs, seine Antwortzeit, seine Schlagrate und die Nulllinie.
+Messung = tuple[Any, float, float, float]
+
+
+async def _einmal_messen(ruf: Callable[[], Awaitable[Any]]) -> Messung:
+    ergebnis, gesamt, schlaege = await _mit_puls(ruf)
+    return ergebnis, gesamt, _schlagrate(gesamt, schlaege), await _nulllinie_im_faden(gesamt)
+
+
+async def _haelt_schritt(
+    ruf: Callable[[], Awaitable[Any]],
+    anteil: float,
+    *,
+    messen: Callable[[Callable[[], Awaitable[Any]]], Awaitable[Messung]] = _einmal_messen,
+) -> Any:
+    """Der Puls kommt neben `ruf` mit mindestens `anteil` der Nulllinie durch - sonst fällt der Test.
+
+    Zurück kommt das Ergebnis des Rufs aus der Messung, die bestanden hat.
+
+    **Warum bis zu dreimal gemessen wird.** Eine Messung dauert hier 0,4 bis 0,7 Sekunden und
+    zählt rund zwanzig Schläge. Ein einzelner Aussetzer von 0,3 Sekunden - eine Speicherbereinigung
+    im vollen Prüflauf, ein Faden, den das Betriebssystem liegen lässt - halbiert sie. Die
+    Nulllinie fängt das nicht: sie wird *nach* dem Prüfling gemessen und teilt mit ihm die
+    Dauerlast der Maschine, aber nicht den einen Augenblick.
+
+    So gefallen am 26.11.2026 in der CI, an einem Stand, der die Wärmebilanz nicht berührte:
+    16 Schläge in 0,699 s neben der Kostenseite, also 0,23 der Nulllinie, die unmittelbar danach
+    mit 99 Schlägen je Sekunde unbelastet lief. Dieselbe Messung zwölfmal hintereinander auf
+    einem Rechner, auf dem daneben der ganze Prüflauf lief: 0,39 bis 0,57. Der Lauf am nächsten
+    Commit, mit demselben Python-Stand, war grün.
+
+    Ein echter Rückfall liegt im Prüfling und drückt jede Messung, ein Aussetzer nur eine. Darum
+    genügt eine bestandene von höchstens `MESSUNGEN`; die Schranken selbst bleiben, wie sie
+    waren. Fällt der Test, nennt er alle Messungen.
+    """
+    gemessen: list[str] = []
+    for _ in range(MESSUNGEN):
+        ergebnis, gesamt, rate, nulllinie = await messen(ruf)
+        if rate > nulllinie * anteil:
+            return ergebnis
+        gemessen.append(
+            f"{rate:.0f} Schläge/s während {gesamt:.3f} s gegen {nulllinie:.0f} der Nulllinie"
+        )
+    raise AssertionError(
+        f"in {MESSUNGEN} Messungen nie über {anteil:.2f} der Nulllinie: " + "; ".join(gemessen)
+    )
+
+
+async def test_ein_einzelner_aussetzer_laesst_die_messung_nicht_fallen() -> None:
+    """Die erste Messung liegt unter der Schranke, die zweite darüber: bestanden mit der zweiten."""
+    folge = iter([("erste", 0.699, 23.0, 99.0), ("zweite", 0.45, 50.0, 97.0)])
+    gerufen = 0
+
+    async def messen(_ruf: Callable[[], Awaitable[Any]]) -> Messung:
+        nonlocal gerufen
+        gerufen += 1
+        return next(folge)
+
+    async def ruf() -> None:
+        return None
+
+    assert await _haelt_schritt(ruf, 1 / 4, messen=messen) == "zweite"
+    assert gerufen == 2
+
+
+async def test_ein_dauernder_rueckfall_faellt_in_jeder_messung() -> None:
+    """Liegt jede Messung unter der Schranke, fällt der Test und nennt alle drei."""
+
+    async def messen(_ruf: Callable[[], Awaitable[Any]]) -> Messung:
+        return "zu langsam", 0.7, 20.0, 99.0
+
+    async def ruf() -> None:
+        return None
+
+    with pytest.raises(AssertionError, match=r"in 3 Messungen nie über 0\.25") as fehler:
+        await _haelt_schritt(ruf, 1 / 4, messen=messen)
+    assert str(fehler.value).count("20 Schläge/s") == MESSUNGEN
+
+
 async def test_die_rechnung_blockiert_die_ereignisschleife_nicht() -> None:
     """Die Wärmebilanz rechnet lange - und der Dienst muss daneben weiter antworten.
 
@@ -492,17 +574,13 @@ async def test_die_rechnung_blockiert_die_ereignisschleife_nicht() -> None:
         return []
 
     acc = EnergyAccounting(HemsConfig(), BERLIN, keine, heat_rows=_leser(zeilen))
-    bilanz, gesamt, schlaege = await _mit_puls(
-        lambda: acc.heat_balance("month", date(2026, 10, 15), FADEN_BEGINN + timedelta(days=tage))
+    bilanz = await _haelt_schritt(
+        lambda: acc.heat_balance("month", date(2026, 10, 15), FADEN_BEGINN + timedelta(days=tage)),
+        1 / 3,
     )
 
     assert bilanz.totals.heat_pump_kwh > 0, "ohne gerechnete Wärme sagt der Test nichts"
     assert bilanz.buckets, "ohne Eimer wäre der teure Teil der Rechnung nicht gelaufen"
-    rate = _schlagrate(gesamt, schlaege)
-    nulllinie = await _nulllinie_im_faden(gesamt)
-    assert rate > nulllinie / 3, (
-        f"{rate:.0f} Schläge/s während {gesamt:.3f} s gegen {nulllinie:.0f} der Nulllinie"
-    )
 
 
 async def test_die_schleife_steht_auch_mit_der_kostenseite_nicht_lange() -> None:
@@ -534,17 +612,13 @@ async def test_die_schleife_steht_auch_mit_der_kostenseite_nicht_lange() -> None
     zeilen = _minutenzeilen(FADEN_BEGINN, tage * 24 * 60)
     leser = _leser(zeilen)
     acc = EnergyAccounting(HemsConfig(), BERLIN, leser, heat_rows=leser)
-    bilanz, gesamt, schlaege = await _mit_puls(
-        lambda: acc.heat_balance("month", date(2026, 10, 15), FADEN_BEGINN + timedelta(days=tage))
+    bilanz = await _haelt_schritt(
+        lambda: acc.heat_balance("month", date(2026, 10, 15), FADEN_BEGINN + timedelta(days=tage)),
+        1 / 4,
     )
 
     assert bilanz.totals.heat_pump_kwh > 0, "ohne gerechnete Wärme sagt der Test nichts"
     assert bilanz.cost.heat_pump_paid_eur > 0, "ohne Stromkosten lief die Kostenseite nicht mit"
-    rate = _schlagrate(gesamt, schlaege)
-    nulllinie = await _nulllinie_im_faden(gesamt)
-    assert rate > nulllinie / 4, (
-        f"{rate:.0f} Schläge/s während {gesamt:.3f} s gegen {nulllinie:.0f} der Nulllinie"
-    )
 
 
 # ------------------------------------------------------------- Monatsgrenze und Zeitumstellung
@@ -665,18 +739,17 @@ async def test_die_uebersetzung_der_zeilen_laeuft_im_faden(
     monkeypatch.setattr(energy_accounting, "_proben_bauen", mitschreiben)
 
     acc = EnergyAccounting(HemsConfig(), BERLIN, keine, heat_rows=_leser(zeilen))
-    (proben, schritt), gesamt, schlaege = await _mit_puls(
-        lambda: acc._samples_for(beginn, beginn + timedelta(days=31))
-    )
+
+    async def uebersetzen() -> tuple[list[HeatSample], float]:
+        # Jede Messung ruft die Übersetzung neu; gezählt wird der Faden der letzten.
+        faeden.clear()
+        return await acc._samples_for(beginn, beginn + timedelta(days=31))
+
+    proben, schritt = await _haelt_schritt(uebersetzen, 1 / 3)
 
     assert len(proben) == 31 * 24 * 60, "ohne die Proben sagt der Test nichts"
     assert schritt == 1.0
     assert len(faeden) == 1, f"die Übersetzung lief {len(faeden)}-mal, erwartet war einmal"
     assert faeden[0] != threading.get_ident(), (
         "die Übersetzung lief auf dem Faden der Ereignisschleife"
-    )
-    rate = _schlagrate(gesamt, schlaege)
-    nulllinie = await _nulllinie_im_faden(gesamt)
-    assert rate > nulllinie / 3, (
-        f"{rate:.0f} Schläge/s während {gesamt:.3f} s gegen {nulllinie:.0f} der Nulllinie"
     )
