@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { gruppentitel, laeuft, nachVersion, schonGescheitert, sucht, useUpdate, type UpdateStatus } from "./useUpdate";
+import { gruppentitel, laeuft, lesbar, nachVersion, schonGescheitert, sucht, useUpdate, type UpdateStatus } from "./useUpdate";
 
 /**
  * Der Bereich „Software“ auf der Seite Hausgerät: welche Fassung läuft, was neu ist, und
@@ -89,7 +89,7 @@ export function Software() {
           <span className="text-[15px] font-semibold">
             Update bereit: {status.verfuegbar ?? "neue Fassung"}
           </span>
-          {status.neuerungen.length ? (
+          {lesbar(status.neuerungen).length ? (
             <div className="flex flex-col gap-2">
               {nachVersion(status.neuerungen).map((gruppe, _, alle) => (
                 <div key={gruppe.version ?? "neu"} className="flex flex-col gap-1">

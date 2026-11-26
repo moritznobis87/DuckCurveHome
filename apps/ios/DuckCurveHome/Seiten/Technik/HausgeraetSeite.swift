@@ -560,7 +560,7 @@ struct HausgeraetSeite: View {
                             Text(Hausgeraet.gruppentitel(gruppe.version)).font(Schrift.winzig).foregroundStyle(Farbe.text3)
                         }
                         ForEach(gruppe.eintraege, id: \.self) { n in
-                            (Text("• \(n.bereich): ").foregroundStyle(Farbe.text1) + Text(n.text).foregroundStyle(Farbe.text2))
+                            (Text("• \(n.bereich ?? ""): ").foregroundStyle(Farbe.text1) + Text(n.text ?? "").foregroundStyle(Farbe.text2))
                                 .font(Schrift.klein)
                         }
                     }

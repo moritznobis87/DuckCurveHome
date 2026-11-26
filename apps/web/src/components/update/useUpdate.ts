@@ -8,7 +8,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type Neuerung = { version?: string | null; bereich: string; text: string };
+export type Neuerung = { version?: string | null; bereich?: string; text?: string };
+
+/**
+ * Nur Neuerungen mit Satz. Ein Dienst von vor dem 26.11.2026 schickte Commit-Titel; die erscheinen
+ * nicht (`Hausgeraet.lesbareNeuerungen` in der App).
+ */
+export function lesbar(neuerungen: Neuerung[]): Neuerung[] {
+  return neuerungen.filter((n) => Boolean(n.text));
+}
 
 export type UpdateStatus = {
   unterstuetzt: boolean;
@@ -41,7 +49,7 @@ const EILIG_MS = 3_000;
  */
 export function nachVersion(neuerungen: Neuerung[]): { version: string | null; eintraege: Neuerung[] }[] {
   const gruppen: { version: string | null; eintraege: Neuerung[] }[] = [];
-  for (const n of neuerungen) {
+  for (const n of lesbar(neuerungen)) {
     const version = n.version ?? null;
     const letzte = gruppen[gruppen.length - 1];
     if (letzte && letzte.version === version) letzte.eintraege.push(n);

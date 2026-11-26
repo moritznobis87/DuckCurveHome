@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSitzung } from "@/lib/live/useRole";
-import { laeuft, schonGescheitert, useUpdate } from "./useUpdate";
+import { laeuft, lesbar, schonGescheitert, useUpdate } from "./useUpdate";
 
 /**
  * Sagt dem Hausherrn, dass für das Hausgerät ein Update bereitsteht, und führt zur Seite, auf der es
@@ -14,6 +14,11 @@ import { laeuft, schonGescheitert, useUpdate } from "./useUpdate";
  * Gemerkt wird das im Gerät, wie beim Hinweis zu den Mitteilungen.
  */
 const MERKER = "dch-update-weg";
+
+function hinweissatz(anzahl: number): string {
+  const mit = anzahl ? ` mit ${anzahl} ${anzahl === 1 ? "Neuerung" : "Neuerungen"}` : "";
+  return `Für Duck Curve steht ein Update bereit${mit}.`;
+}
 
 export function UpdateHinweis() {
   // Vollzugriff, nicht „darf stellen“: Der Hinweis führt auf die Seite des Hausgeräts, und die
@@ -48,7 +53,7 @@ export function UpdateHinweis() {
       <span className="mitteil-hinweis-text">
         {imGang
           ? "Duck Curve wird gerade aktualisiert. Die Anwendung startet dabei einmal neu."
-          : `Für Duck Curve steht ein Update bereit${status.neuerungen.length ? ` mit ${status.neuerungen.length} ${status.neuerungen.length === 1 ? "Neuerung" : "Neuerungen"}` : ""}.`}
+          : hinweissatz(lesbar(status.neuerungen).length)}
       </span>
       <span className="mitteil-hinweis-knoepfe">
         <Link href="/system/geraet#software" className="mitteil-hinweis-los">

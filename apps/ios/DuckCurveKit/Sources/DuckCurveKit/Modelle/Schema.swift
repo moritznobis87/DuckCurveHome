@@ -11445,12 +11445,15 @@ public struct UpdateErgebnisOut: Codable, Sendable, Hashable {
 /// Eine Neuerung aus docs/versionen.json, für Außenstehende geschrieben (tools/version.py).
 ///
 /// `version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`).
+/// `bereich` und `text` sind im Schema nicht Pflicht, obwohl dieser Dienst sie immer füllt: Eine
+/// App liest damit auch einen Dienst von vorher (`sha`, `titel`), ohne dass der ganze Stand des
+/// Updates unlesbar wird, und lässt solche Einträge weg (`Hausgeraet.neuerungenNachVersion`).
 public struct UpdateNeuerungOut: Codable, Sendable, Hashable {
     public var version: String?
-    public var bereich: String
-    public var text: String
+    public var bereich: String?
+    public var text: String?
 
-    public init(version: String? = nil, bereich: String, text: String) {
+    public init(version: String? = nil, bereich: String? = nil, text: String? = nil) {
         self.version = version
         self.bereich = bereich
         self.text = text
@@ -11459,8 +11462,8 @@ public struct UpdateNeuerungOut: Codable, Sendable, Hashable {
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.version = try c.decodeIfPresent(String.self, forKey: .version)
-        self.bereich = try c.decode(String.self, forKey: .bereich)
-        self.text = try c.decode(String.self, forKey: .text)
+        self.bereich = try c.decodeIfPresent(String.self, forKey: .bereich)
+        self.text = try c.decodeIfPresent(String.self, forKey: .text)
     }
 }
 

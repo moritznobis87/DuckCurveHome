@@ -162,6 +162,19 @@ final class HausgeraetTests: XCTestCase {
         XCTAssertTrue(Hausgeraet.hinweissatz(laeuft).hasPrefix("Duck Curve wird gerade aktualisiert"))
     }
 
+    /// Codex-Fund zu PR 52: Ein Dienst von vorher schickt `sha` und `titel`. Der ganze Stand muss
+    /// trotzdem lesbar bleiben, sonst zeigt die App gerade das Update nicht, das den Dienst hebt.
+    func testAlteNeuerungenSindLesbarUndErscheinenNicht() throws {
+        let s = try lies(
+            """
+            {"unterstuetzt": true, "verfuegbar": "x", "update_verfuegbar": true,
+             "neuerungen": [{"sha": "b", "titel": "interner Commit"}]}
+            """, UpdateStatusOut.self)
+        XCTAssertTrue(Hausgeraet.zeigeHinweis(s, weg: "/", hausherr: true, weggeklickt: nil))
+        XCTAssertTrue(Hausgeraet.neuerungenNachVersion(s.neuerungen).isEmpty)
+        XCTAssertEqual(Hausgeraet.hinweissatz(s), "Für Duck Curve steht ein Update bereit.")
+    }
+
     func testNeuerungenNachVersion() {
         let gruppen = Hausgeraet.neuerungenNachVersion([
             UpdateNeuerungOut(version: nil, bereich: "Energie", text: "a"),

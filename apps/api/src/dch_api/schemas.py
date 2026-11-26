@@ -2039,11 +2039,14 @@ class RegelkreisStellenIn(BaseModel):
 class UpdateNeuerungOut(BaseModel):
     """Eine Neuerung aus docs/versionen.json, für Außenstehende geschrieben (tools/version.py).
 
-    `version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`)."""
+    `version` ist leer, solange die Neuerung noch zu keiner Version gehört (Kanal `main`).
+    `bereich` und `text` sind im Schema nicht Pflicht, obwohl dieser Dienst sie immer füllt: Eine
+    App liest damit auch einen Dienst von vorher (`sha`, `titel`), ohne dass der ganze Stand des
+    Updates unlesbar wird, und lässt solche Einträge weg (`Hausgeraet.neuerungenNachVersion`)."""
 
     version: str | None = None
-    bereich: str
-    text: str
+    bereich: str = ""
+    text: str = ""
 
 
 class UpdateErgebnisOut(BaseModel):

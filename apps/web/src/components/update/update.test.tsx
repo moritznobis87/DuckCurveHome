@@ -182,6 +182,14 @@ describe("Update", () => {
     expect(screen.queryByText("Update läuft")).not.toBeInTheDocument();
   });
 
+  it("Commit-Titel eines Dienstes von vorher erscheinen nicht", async () => {
+    const alt = stand({ update_verfuegbar: true, verfuegbar: "2026.11.1", neuerungen: [{ sha: "b", titel: "interner Commit" } as never] });
+    fetchMock.mockImplementation(() => Promise.resolve(Response.json(alt)));
+    render(<Software />);
+    await screen.findByText("Was sich geändert hat, ist nicht bekannt.");
+    expect(screen.queryByText("interner Commit")).not.toBeInTheDocument();
+  });
+
   it("eine einzelne Version braucht keine Überschrift", async () => {
     fetchMock.mockImplementation(() => Promise.resolve(Response.json(bereit)));
     render(<Software />);

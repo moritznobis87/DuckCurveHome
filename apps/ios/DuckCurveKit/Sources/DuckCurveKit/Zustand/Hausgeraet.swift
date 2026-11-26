@@ -100,7 +100,7 @@ public enum Hausgeraet {
     /// (`nachVersion` in useUpdate.ts).
     public static func neuerungenNachVersion(_ neuerungen: [UpdateNeuerungOut]) -> [Neuerungsgruppe] {
         var gruppen: [Neuerungsgruppe] = []
-        for n in neuerungen {
+        for n in lesbareNeuerungen(neuerungen) {
             if let letzte = gruppen.last, letzte.version == n.version {
                 gruppen[gruppen.count - 1] = Neuerungsgruppe(version: letzte.version, eintraege: letzte.eintraege + [n])
             } else {
@@ -108,6 +108,12 @@ public enum Hausgeraet {
             }
         }
         return gruppen
+    }
+
+    /// Nur Neuerungen mit Satz. Ein Dienst von vor dem 26.11.2026 schickt Commit-Titel (`sha`,
+    /// `titel`); die liest die App, ohne am ganzen Stand zu scheitern, und zeigt sie nicht.
+    public static func lesbareNeuerungen(_ neuerungen: [UpdateNeuerungOut]) -> [UpdateNeuerungOut] {
+        neuerungen.filter { !($0.text ?? "").isEmpty }
     }
 
     public static func gruppentitel(_ version: String?) -> String {
@@ -276,7 +282,7 @@ public enum Hausgeraet {
 
     public static func hinweissatz(_ s: UpdateStatusOut) -> String {
         if updateLaeuft(s) { return "Duck Curve wird gerade aktualisiert. Die Anwendung startet dabei einmal neu." }
-        let n = s.neuerungen.count
+        let n = lesbareNeuerungen(s.neuerungen).count
         let mit = n == 0 ? "" : " mit \(n) \(n == 1 ? "Neuerung" : "Neuerungen")"
         return "Für Duck Curve steht ein Update bereit\(mit)."
     }
