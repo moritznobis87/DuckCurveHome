@@ -106,8 +106,9 @@ sudo nano /opt/duckcurve/.env
 ```
 
 Unter „Von Railway übernehmen“ die Werte aus den Variablen des Railway-Dienstes **api** eintragen:
-Tibber, myenergi, inexogy, die Mitteilungen an die iOS-App und, falls gewünscht, der Schlüssel für
-Alfred. Danach:
+Tibber, myenergi, inexogy, die Mitteilungen an die iOS-App, der Postausgang für Einladungen
+(`DCH_RESEND_SCHLUESSEL` und `DCH_ABSENDER`) und, falls gewünscht, der Schlüssel für Alfred.
+Danach:
 
 ```bash
 sudo dch neustart
