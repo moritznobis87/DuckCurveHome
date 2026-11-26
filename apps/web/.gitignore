@@ -5,3 +5,7 @@ next-env.d.ts
 coverage/
 playwright-report/
 test-results/
+
+# Zwischenstand der inkrementellen Typpruefung (tsconfig "incremental"). Er schreibt sich bei jedem
+# Lauf neu und tauchte darum nach jeder Pruefung als Aenderung auf.
+*.tsbuildinfo
