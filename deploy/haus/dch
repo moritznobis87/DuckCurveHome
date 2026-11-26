@@ -57,6 +57,105 @@ warten_auf_postgres() {
 	fehler "Die Datenbank antwortet nicht."
 }
 
+# ------------------------------------------------------------------- PostgreSQL heben
+#
+# Eine neue Hauptversion von PostgreSQL liest das Datenverzeichnis der alten nicht: Der Entrypoint
+# von postgres:18 bricht ab, wenn im Volume ein 17er-Cluster liegt. Bis November 2026 lief das
+# Geraet mit 17 und dem Volume unter /var/lib/postgresql/data; seit 18 liegt es unter
+# /var/lib/postgresql. Ohne diesen Teil haette ein Update aus der App ein Geraet mit Daten
+# lahmgelegt (Review-Fund zu moritznobis87/DuckCurveHome#46).
+#
+# Vor jedem Start (`dch neustart`, auch beim Booten, und im Update) prueft `postgres_heben`, ob im
+# Volume ein Cluster einer aelteren Hauptversion liegt. Wenn ja: mit dem passenden alten pg_dump
+# sichern, den alten Stand in ein eigenes Volume kopieren und dort aufbewahren, die neue Version
+# frisch anlegen und die Sicherung einspielen. Rueckgabe 0: nichts zu tun oder gehoben. 1: es
+# wurde nichts geaendert (Sichern oder Kopieren scheiterte). 2: umgestellt, aber das Einspielen
+# meldete Fehler; Sicherung und alter Stand liegen bereit.
+
+pg_bild() {
+	compose config --images 2>/dev/null | grep -m1 '^postgres:' || echo postgres:18
+}
+
+pg_volume() {
+	# Das Volume des Dienstes postgres in diesem Projekt, gefunden ueber die Etiketten von Compose.
+	local projekt
+	projekt=$(compose config --format json 2>/dev/null | jq -r '.name // empty')
+	[ -n "$projekt" ] || projekt=$(basename "$BASIS")
+	docker volume ls -q --filter "label=com.docker.compose.project=$projekt" \
+		--filter "label=com.docker.compose.volume=postgres" | head -n1
+}
+
+postgres_heben() {
+	local bild ziel vol alt
+	bild=$(pg_bild)
+	ziel=${bild#postgres:}
+	ziel=${ziel%%[.-]*}
+	[[ "$ziel" =~ ^[0-9]+$ ]] || return 0
+	vol=$(pg_volume)
+	[ -n "$vol" ] || return 0 # frisches Geraet, noch kein Volume
+	# Im alten Layout liegt PG_VERSION oben im Volume; im neuen unter <version>/docker/.
+	alt=$(docker run --rm --entrypoint cat -v "$vol":/v "$bild" /v/PG_VERSION 2>/dev/null | tr -cd '0-9')
+	[ -n "$alt" ] || return 0
+	[ "$alt" -lt "$ziel" ] || return 0
+
+	hinweis "Die Datenbank liegt noch unter PostgreSQL $alt und wird auf $ziel gehoben."
+	local stempel dump tmp rest
+	stempel=$(date +%Y%m%d-%H%M%S)
+	mkdir -p "$SICHERUNG"
+	chmod 700 "$SICHERUNG"
+	dump="$SICHERUNG/vor-postgres-$ziel-$stempel.dump"
+	tmp="duckcurve-postgres-$alt-heben"
+	rest="${vol}_pg${alt}"
+
+	compose stop api web >/dev/null 2>&1 || true
+	compose rm -sf postgres >/dev/null 2>&1 || true
+	docker rm -f "$tmp" >/dev/null 2>&1 || true
+	# Der alte Server auf dem alten Volume, nur fuer den Export. Das Datenverzeichnis besteht
+	# schon, der Entrypoint legt also nichts neu an und braucht kein Passwort.
+	if ! docker run -d --name "$tmp" -v "$vol":/var/lib/postgresql/data "postgres:$alt" >/dev/null; then
+		echo "dch: PostgreSQL $alt liess sich zum Sichern nicht starten; es wurde nichts geaendert." >&2
+		return 1
+	fi
+	for _ in $(seq 1 60); do
+		docker exec "$tmp" pg_isready -U dch -d dch >/dev/null 2>&1 && break
+		sleep 2
+	done
+	if ! docker exec "$tmp" pg_dump -U dch -d dch -Fc --no-owner >"$dump.teil"; then
+		docker rm -f "$tmp" >/dev/null 2>&1 || true
+		rm -f "$dump.teil"
+		echo "dch: Die Sicherung unter PostgreSQL $alt ist fehlgeschlagen; es wurde nichts geaendert." >&2
+		return 1
+	fi
+	mv "$dump.teil" "$dump"
+	docker rm -f "$tmp" >/dev/null 2>&1 || true
+	hinweis "Gesichert: $dump ($(du -h "$dump" | cut -f1))"
+
+	# Den alten Stand nicht wegwerfen, sondern daneben aufbewahren: Er ist der Rueckweg, falls beim
+	# Einspielen etwas fehlt. Loeschen geht spaeter von Hand (docker volume rm).
+	docker volume create "$rest" >/dev/null
+	if ! docker run --rm -v "$vol":/alt -v "$rest":/neu --entrypoint sh "postgres:$alt" -c 'cp -a /alt/. /neu/'; then
+		echo "dch: Der alte Stand liess sich nicht kopieren; es wurde nichts geaendert. Sicherung: $dump" >&2
+		return 1
+	fi
+	docker volume rm "$vol" >/dev/null
+
+	compose up -d postgres >/dev/null 2>&1
+	warten_auf_postgres
+	if ! compose exec -T postgres pg_restore -U dch -d dch --no-owner --no-acl <"$dump"; then
+		# Rueckgabe 2 statt 1: Hier ist schon umgestellt. Die alte Einrichtung zurueckzuholen
+		# hilft dann nicht mehr, denn das Volume enthaelt jetzt einen Cluster der neuen Version.
+		echo "dch: pg_restore meldete Fehler. Sicherung: $dump; der alte Stand liegt im Volume $rest." >&2
+		return 2
+	fi
+	hinweis "Gehoben auf PostgreSQL $ziel. Der alte Stand liegt im Volume $rest und kann weg, wenn alles laeuft."
+}
+
+hochfahren() {
+	# Alle Dienste starten, vorher die Datenbank heben, falls noetig.
+	postgres_heben || return 1
+	compose up -d --remove-orphans
+}
+
 # ----------------------------------------------------------------------------------- Updates
 #
 # Die App steuert Docker nicht selbst: Wer an Docker kommt, ist praktisch Administrator des
@@ -267,6 +366,10 @@ installieren() {
 	fi
 
 	schritt_setzen laeuft "Quelltext"
+	# Die Einrichtung von vorher aufheben: Laesst sich die Datenbank nicht auf eine neue
+	# Hauptversion heben, kehrt das Update zu ihr zurueck, statt mit einem Postgres zu starten, das
+	# den vorhandenen Bestand nicht lesen kann.
+	cp "$BASIS/compose.yaml" "$BASIS/compose.yaml.vorher" 2>/dev/null || true
 	if [ -d "$BASIS/quelle/.git" ]; then
 		git -C "$BASIS/quelle" pull -q --ff-only 2>/dev/null || true
 		dateien_nachziehen
@@ -298,6 +401,22 @@ installieren() {
 	fi
 
 	schritt_setzen laeuft "Neustart"
+	local heben=0
+	postgres_heben >/dev/null 2>"$GERAET/heben.log" || heben=$?
+	if [ "$heben" = "1" ]; then
+		mv "$BASIS/compose.yaml.vorher" "$BASIS/compose.yaml" 2>/dev/null || true
+		compose up -d --remove-orphans >/dev/null 2>&1 || true
+		schritt_setzen fehlgeschlagen "Neustart"
+		status_setzen '.meldung = "Die Datenbank ließ sich nicht auf die neue PostgreSQL-Version heben. Es wurde nichts geändert, die bisherige Fassung läuft weiter."'
+		return 1
+	fi
+	if [ "$heben" = "2" ]; then
+		compose up -d --remove-orphans >/dev/null 2>&1 || true
+		schritt_setzen fehlgeschlagen "Neustart"
+		status_setzen '.meldung = "Die Datenbank wurde auf die neue PostgreSQL-Version umgestellt, beim Einspielen gab es aber Fehler. Die Sicherung von unmittelbar davor liegt unter /var/lib/duckcurve/sicherung (vor-postgres-…). Bitte am Gerät nachsehen: dch logs api."'
+		return 1
+	fi
+	rm -f "$BASIS/compose.yaml.vorher"
 	compose up -d --remove-orphans >/dev/null 2>&1 || true
 
 	schritt_setzen laeuft "Pruefung"
@@ -715,7 +834,7 @@ logs)
 	;;
 
 neustart)
-	compose up -d --remove-orphans
+	hochfahren
 	;;
 
 stoppen)
