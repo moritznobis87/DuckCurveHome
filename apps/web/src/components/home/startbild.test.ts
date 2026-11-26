@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EnergySnapshot } from "@/lib/api/models";
 import type { Zelle } from "./ausblick";
-import { bandbreite, bandkappe, buehnenmass, sonnenanteil, sonnenort } from "./buehne";
+import { bandbreite, bandkappe, buehnenmass, sonnenanteil, sonnenbild, sonnenkraft, sonnenort } from "./buehne";
 import { flusswerte, grundlast, wpWort } from "./fluss";
 import { STARTBILDER, STARTBILD_MERKER, startbildAus } from "./startbild";
 import { preislaenge, ringmass, stunden24, stundenwinkel } from "./stundenring";
@@ -40,13 +40,65 @@ describe("Bühne", () => {
     expect(bandkappe(9)).toBe(8);
   });
   it("stellt die Sonne nur zwischen Aufgang und Untergang auf den Bogen", () => {
-    const lauf = { punkte: [], von: 1000, bis: 5000 };
+    const lauf = { von: 1000, bis: 5000 };
     expect(sonnenanteil(lauf, 1000)).toBe(0);
     expect(sonnenanteil(lauf, 3000)).toBe(0.5);
     expect(sonnenanteil(lauf, 5000)).toBe(1);
     expect(sonnenanteil(lauf, 999)).toBeNull();
     expect(sonnenanteil(lauf, 5001)).toBeNull();
     expect(sonnenanteil(null, 3000)).toBeNull();
+  });
+  it("misst die Kraft der Sonne mit der Wurzel der Erzeugung, voll bei acht Kilowatt", () => {
+    expect(sonnenkraft(0)).toBe(0);
+    expect(sonnenkraft(0.5)).toBe(0.25);
+    expect(sonnenkraft(2)).toBe(0.5);
+    expect(sonnenkraft(8)).toBe(1);
+    expect(sonnenkraft(20)).toBe(1);
+    expect(sonnenkraft(-1)).toBe(0);
+  });
+  it("zeichnet die Sonne ohne Erzeugung klein und blass, ohne Strahlen", () => {
+    const b = sonnenbild(0, false);
+    expect(b.radius).toBe(7);
+    expect(b.deckung).toBe(0.45);
+    expect(b.glanz).toBe(0);
+    expect(b.schein).toBeCloseTo(16.8, 6);
+    expect(b.scheinDeckung).toBe(0.14);
+    expect(b.strahl).toBe(0);
+    expect(b.strahlDeckung).toBe(0);
+    expect(b.kegel).toBe(0.4);
+    expect(b.himmel).toBe(0.06);
+  });
+  it("zeichnet sie bei zwei Kilowatt halb so kräftig, mit kurzen Strahlen", () => {
+    const b = sonnenbild(2, false);
+    expect(b.radius).toBe(14.5);
+    expect(b.deckung).toBeCloseTo(0.725, 6);
+    expect(b.glanz).toBe(11);
+    expect(b.schein).toBeCloseTo(60.9, 6);
+    expect(b.scheinDeckung).toBeCloseTo(0.37, 6);
+    expect(b.strahl).toBeCloseTo(4.571429, 5);
+    expect(b.strahlDeckung).toBeCloseTo(0.242857, 5);
+    expect(b.kegel).toBeCloseTo(0.7, 6);
+    expect(b.himmel).toBeCloseTo(0.16, 6);
+  });
+  it("zeichnet sie bei voller Erzeugung groß und strahlend, am Telefon etwas kleiner", () => {
+    const wand = sonnenbild(8, false);
+    expect(wand.radius).toBe(22);
+    expect(wand.deckung).toBe(1);
+    expect(wand.glanz).toBe(22);
+    expect(wand.schein).toBe(132);
+    expect(wand.scheinDeckung).toBe(0.6);
+    expect(wand.strahl).toBe(16);
+    expect(wand.strahlDeckung).toBe(0.85);
+    expect(wand.kegel).toBe(1);
+    expect(wand.himmel).toBe(0.26);
+    const hand = sonnenbild(8, true);
+    expect(hand.radius).toBe(18);
+    expect(hand.schein).toBeCloseTo(93.6, 6);
+    expect(hand.strahl).toBe(12);
+    const morgens = sonnenbild(0.5, true);
+    expect(morgens.radius).toBe(9);
+    expect(morgens.schein).toBeCloseTo(27.9, 6);
+    expect(morgens.strahl).toBe(0);
   });
   it("rechnet die Maße der Wand", () => {
     const m = buehnenmass(816, 400);

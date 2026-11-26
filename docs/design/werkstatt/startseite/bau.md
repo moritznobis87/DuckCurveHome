@@ -107,6 +107,28 @@ Zeitgleichung (`pv_simple.solar_elevation_deg`, und dieselbe Formel im Vorführh
 liegt ihr Sonnenmittag damit knapp dreizehn Minuten zu spät, Mitte Februar gut vierzehn zu früh. Das
 verschiebt die erwartete Erzeugung und ist eine eigene Änderung am Dienst.
 
+## Die Kraft der Sonne (26.11.2026)
+
+Der Hausherr: „Lass die Sonne bitte bei geringer Erzeugung ganz schwach und klein wirken, bei
+starker Erzeugung groß und strahlend.“ Vorher war sie immer gleich groß, und ein trüber Morgen
+mit 0,1 kW sah aus wie ein Sommermittag.
+
+- **Eine Zahl für die Kraft.** `sonnenkraft` geht von 0 bis 1 und wächst mit der Wurzel der
+  Erzeugung; bei 8 kW ist sie voll. Ein halbes Kilowatt ist damit ein Viertel der Kraft, zwei
+  Kilowatt sind die Hälfte. Die Oberfläche kennt die Größe der Anlage nicht, darum ist die Skala
+  fest wie bei den Bändern.
+- **Was der Kraft folgt** (`sonnenbild`, in Dashboard und Kit mit denselben Prüfwerten): der
+  Halbmesser der Scheibe (an der Wand 7 bis 22, am Telefon 6 bis 18), ihre Farbe von fahlem Hell
+  zu Bernstein, ihr Leuchten, der weiche Schein um sie, der Lichtkegel zum Dach und der warme
+  Schein des Himmels in der Ecke. Ab knapp einem Drittel der Kraft trägt sie einen Kranz aus
+  zwölf Strahlen, der mit ihr länger wird.
+- **Blass statt oliv.** Eine schwache Scheibe, nur durchscheinend auf den dunklen Himmel gelegt,
+  wurde olivgrün. Sie liegt jetzt auf einem blassen Weiß und sieht aus wie eine Sonne hinter
+  Dunst.
+- `gebaut/sonnenkraft-wand.png` zeigt das Dashboard an der Wand bei 0,1, 2 und 8 kW,
+  `gebaut/sonnenkraft-handy.png` am Telefon bei 0,5, 4 und 8 kW. Die Leistungen und der Stand
+  der Sonne sind dafür im Browser gesetzt.
+
 ## Bilder der gebauten Seite
 
 `gebaut/` zeigt die Startseite des Dashboards im Demo-Betrieb am 25.11.2026: Bühne und Uhr, je an

@@ -94,8 +94,9 @@
 .home-dock-dazu { margin-top: -3px; font-size: 10.5px; line-height: 1; color: var(--text-3); white-space: nowrap; }
 
 /* ---------- Das Bild der Mitte: Rahmen, Schrift und Bewegung für Bühne und Uhr ---------- */
-.start-buehne { position: relative; flex: 1; min-height: 0; overflow: hidden; border: 1px solid var(--line-1); border-radius: 20px; background: linear-gradient(180deg, #0a2a3b 0%, #0d3142 55%, #113a4c 100%); }
-.start-buehne[data-nacht="false"] { background: radial-gradient(90% 120% at 12% 8%, color-mix(in srgb, var(--amber) 22%, transparent), transparent 58%), linear-gradient(180deg, #0f3446 0%, #113a4c 100%); }
+.start-buehne { --himmelsgrund: #103748; position: relative; flex: 1; min-height: 0; overflow: hidden; border: 1px solid var(--line-1); border-radius: 20px; background: linear-gradient(180deg, #0a2a3b 0%, #0d3142 55%, #113a4c 100%); }
+/* Der warme Schein in der Ecke folgt der Kraft der Sonne (`--himmel`, gesetzt in `Buehne.tsx`); die Uhr setzt ihn nicht und behält 22 %. */
+.start-buehne[data-nacht="false"] { background: radial-gradient(90% 120% at 12% 8%, color-mix(in srgb, var(--amber) var(--himmel, 22%), transparent), transparent 58%), linear-gradient(180deg, #0f3446 0%, #113a4c 100%); }
 .buehne-flaeche { position: absolute; inset: 0; transition: opacity 0.4s, filter 0.4s; }
 .buehne-flaeche svg { display: block; }
 .start-buehne[data-gestoert="true"] .buehne-flaeche { opacity: 0.5; filter: saturate(0.55); }
