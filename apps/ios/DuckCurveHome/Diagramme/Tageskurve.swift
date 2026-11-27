@@ -546,25 +546,10 @@ private struct Legendenmarke: View {
                 .frame(width: 14, height: 8)
                 .opacity(0.6)
         case .linie:
-            Legendenstrich()
-                .stroke(farbe, style: StrokeStyle(lineWidth: 2))
-                .frame(width: 18, height: 8)
+            Strichmarke(farbe: farbe)
         case .gestrichelt:
-            // Zwei Striche mit einer Lücke: fünf Punkte, vier frei, fünf, vier.
-            Legendenstrich()
-                .stroke(farbe, style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
-                .frame(width: 18, height: 8)
+            Strichmarke(farbe: farbe, gestrichelt: true)
         }
-    }
-}
-
-/// Ein waagerechter Strich durch die Mitte seines Feldes.
-private struct Legendenstrich: Shape {
-    func path(in feld: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: feld.minX, y: feld.midY))
-        p.addLine(to: CGPoint(x: feld.maxX, y: feld.midY))
-        return p
     }
 }
 

@@ -37,8 +37,10 @@ from dch_api.application.ha_import import ImportResult
 from dch_api.application.invoice_service import InvoiceService
 from dch_api.application.live_feed import Takt
 from dch_api.application.plan_service import (
+    Damalspunkt,
     Istpunkt,
     ablage_faellig,
+    damals_nachschlag,
     ist_nachschlag,
     plan_als_lauf,
 )
@@ -327,7 +329,23 @@ class DemoRunner:
             self.history.series(start.astimezone(UTC), now),
             now,
             laeuft_ab_kw=self.hems.heat_pump.running_threshold_kw,
+            puffer=self.hems.buffer,
         )
+
+    def _damals_nachschlag(self, now: datetime) -> Callable[[datetime], Damalspunkt | None]:
+        """Der Plan von damals aus den aufbewahrten Fahrplänen der Vorführung."""
+        start = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        def groesse(name: str) -> Callable[[datetime], float | None] | None:
+            punkte = [
+                (lauf.erstellt, p.ts, p.wert)
+                for lauf in self._plan_laeufe
+                for p in lauf.punkte
+                if p.variable == name and p.wert is not None and start <= p.ts < now
+            ]
+            return stand_vor(punkte, raster_min=15) if punkte else None
+
+        return damals_nachschlag(groesse("heat_kw"), groesse("buffer_kwh"))
 
     def _record_forecast_run(self, now: datetime) -> None:
         start = now - timedelta(hours=1)
@@ -633,6 +651,7 @@ class DemoRunner:
                 hp_on=self.stove_plan.hp_on_at,
                 twin=self.stove_plan.twin_at,
                 ist=self._ist_nachschlag(now),
+                damals=self._damals_nachschlag(now),
                 buffer_capacity_kwh=self.stove_plan.buffer_capacity_kwh,
                 buffer_min_kwh=self.stove_plan.buffer_min_kwh,
                 planner_status=self.stove_plan.status,

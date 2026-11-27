@@ -58,9 +58,11 @@ from dch_api.application.myenergi_source import (
 )
 from dch_api.application.plan_service import (
     IST_REIHEN,
+    Damalspunkt,
     Istpunkt,
     ablage_faellig,
     build_plan,
+    damals_nachschlag,
     ist_nachschlag,
     plan_als_lauf,
 )
@@ -914,7 +916,35 @@ class LiveRuntime:
         except Exception as exc:
             log.warning("plan actuals not read", error=repr(exc)[:200])
             return lambda _t: None
-        return ist_nachschlag(rows, now, laeuft_ab_kw=self.hems.heat_pump.running_threshold_kw)
+        return ist_nachschlag(
+            rows,
+            now,
+            laeuft_ab_kw=self.hems.heat_pump.running_threshold_kw,
+            puffer=self.hems.buffer,
+        )
+
+    async def _damals_nachschlag(self, now: datetime) -> Callable[[datetime], Damalspunkt | None]:
+        """Der Plan von damals für den laufenden Ortstag, aus dem Prognosearchiv.
+
+        Je Größe eine Abfrage, also zwei je Fahrplan und damit acht in der Stunde. Wie bei der
+        Messung darf ein Fehler den Fahrplan nicht aufhalten: ohne Archiv bleiben die Streifen
+        links der Jetzt-Linie so leer, wie sie vorher waren.
+        """
+        start = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        async def groesse(name: str) -> Callable[[datetime], float | None] | None:
+            try:
+                # Drei Stunden Vorlauf reichen: abgelegt wird stündlich, und gefragt ist der
+                # jüngste Fahrplan vor dem Zeitpunkt, nicht der vom Vortag.
+                punkte = await self.repos.forecast_history(
+                    PLAN, name, start.astimezone(UTC), now, vorlauf_h=3
+                )
+            except Exception as exc:
+                log.warning("plan of then not read", groesse=name, error=repr(exc)[:200])
+                return None
+            return stand_vor(punkte, raster_min=15) if punkte else None
+
+        return damals_nachschlag(await groesse("heat_kw"), await groesse("buffer_kwh"))
 
     async def refresh_plan(self) -> None:
         now = self.now
@@ -930,6 +960,7 @@ class LiveRuntime:
             hp_on=self.stove_plan.hp_on_at,
             twin=self.stove_plan.twin_at,
             ist=await self._ist_nachschlag(now),
+            damals=await self._damals_nachschlag(now),
             buffer_capacity_kwh=self.stove_plan.buffer_capacity_kwh,
             buffer_min_kwh=self.stove_plan.buffer_min_kwh,
             planner_status=self.stove_plan.status,

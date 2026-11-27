@@ -57,6 +57,7 @@
 		7ADC1391DB1466144D3A6EE8 /* Automatikkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD58805BB6C50E5A7C686E2 /* Automatikkarte.swift */; };
 		7BA728D9D24497FBC2C1119E /* Unteransichten.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC7469018CE630476024776F /* Unteransichten.swift */; };
 		824E41A9E11CD2A4EB81477D /* Speichersteuerkarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5415F4BC3F74F2529DCC0B6 /* Speichersteuerkarte.swift */; };
+		83631685917590218BCBD68F /* Strichmarke.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA492F2F8DAA0AF12C6CFD3 /* Strichmarke.swift */; };
 		83979A335889D8B32195AD4F /* Geldfarbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35511C5E90815784C780CCA1 /* Geldfarbe.swift */; };
 		86081F4D7F554FABD4D7897D /* Abdeckungskarte.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E5135A3C960FF18F667327A /* Abdeckungskarte.swift */; };
 		8638A47733CD3ABDE1B1DE1A /* Betragszeile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6990FD9C3BB7F0E9A5390ADC /* Betragszeile.swift */; };
@@ -197,6 +198,7 @@
 		65F257425E5BA1598D79A707 /* MeinPasswortKarte.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeinPasswortKarte.swift; sourceTree = "<group>"; };
 		6990FD9C3BB7F0E9A5390ADC /* Betragszeile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Betragszeile.swift; sourceTree = "<group>"; };
 		6C052BD7A45994835EC22D32 /* Kennlinienbilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kennlinienbilder.swift; sourceTree = "<group>"; };
+		6FA492F2F8DAA0AF12C6CFD3 /* Strichmarke.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strichmarke.swift; sourceTree = "<group>"; };
 		70D0DC76B4C835ABDEB44904 /* Vorschauen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vorschauen.swift; sourceTree = "<group>"; };
 		71D659D49C85D23F490706A6 /* RechnungenSeite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RechnungenSeite.swift; sourceTree = "<group>"; };
 		74871F9C1B6E06A9AFB0325F /* Kostentreppe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kostentreppe.swift; sourceTree = "<group>"; };
@@ -360,6 +362,7 @@
 				5E28F2036D3D5B7885BC4F87 /* Ansichtswahl.swift */,
 				90E127C736AC8ABEDFAB4437 /* Farben.swift */,
 				4FE935C11F91B3B4788FA2C8 /* Karte.swift */,
+				6FA492F2F8DAA0AF12C6CFD3 /* Strichmarke.swift */,
 				926698EEDAB57A85461E370A /* Typografie.swift */,
 				A5D48D7AA0788028340C51B9 /* Umbruchzeile.swift */,
 				1B67D80E0116B660F33FAFC6 /* Zeichen.swift */,
@@ -733,6 +736,7 @@
 				C4424C91CF38AE065FD8883B /* Speichertagbild.swift in Sources */,
 				E13E305715ECAA8F56FA9AA0 /* Sprachhoerer.swift in Sources */,
 				94EF6E54642FE150E261AA1B /* Startkarten.swift in Sources */,
+				83631685917590218BCBD68F /* Strichmarke.swift in Sources */,
 				A414B4F48D8F7D73D8DE92B8 /* StromSeite.swift in Sources */,
 				CEAFA94E7F3D3F4C2E4D0168 /* Stundenringbild.swift in Sources */,
 				BF90E13714A06E92ACA5FEBA /* Systemanschluss.swift in Sources */,

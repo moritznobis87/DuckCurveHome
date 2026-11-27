@@ -21,7 +21,7 @@ public enum Fahrplanworte {
 
     public static let methodeTitel = "Woher die Zahlen kommen"
 
-    /// Die drei Absätze, wortgleich mit der Vorlage.
+    /// Die vier Absätze, wortgleich mit der Vorlage.
     public static let methode: [String] = [
         "Preis und PV-Erwartung sind Prognosen, der Wärmebedarf ist ein Modell: "
             + "Heizgradstunden gegen die Wettervorhersage plus ein Warmwasserprofil über den "
@@ -31,7 +31,8 @@ public enum Fahrplanworte {
             + "Außentemperatur, noch nicht aus der Vorlauftemperatur, denn die liefert "
             + "bislang kein Fühler.",
         "Links der Jetzt-Linie stehen zwei verschiedene Dinge nebeneinander. Gemessen sind "
-            + "die PV-Leistung, die Leistung der Wärmepumpe und die Anforderung an sie; sie "
+            + "die PV-Leistung, die Leistung der Wärmepumpe, die Anforderung an sie und der "
+            + "Inhalt des Puffers; sie "
             + "enden an der letzten abgeschlossenen Viertelstunde, denn die laufende ist erst "
             + "zum Teil vorbei und sähe aus wie ein Einbruch. Der geplante Zustand der "
             + "Wärmepumpe ist dort dagegen keine Erinnerung: der Optimierer rechnet ab jetzt, "
@@ -39,6 +40,17 @@ public enum Fahrplanworte {
             + "heute für diese Stunde sagen würde. Weicht der gemessene Kontakt davon ab, ist "
             + "das deshalb kein Widerspruch, sondern der Abstand zwischen zwei verschiedenen "
             + "Fragen.",
+        "Rechts der Jetzt-Linie steht im Streifen der Wärmepumpe gestrichelt die Leistung, "
+            + "mit der der Optimierer sie zählt. Das ist ihr Nennwert und keine Prognose: die "
+            + "Maschine moduliert und zieht gemessen zeitweise deutlich mehr. Der gemessene "
+            + "Pufferinhalt links der Jetzt-Linie ist aus den vier Fühlern gerechnet, so wie "
+            + "der Startwert, mit dem der Optimierer beginnt; darum schließt die gestrichelte "
+            + "Kurve an der Jetzt-Linie an die gemessene an. Der Wärmebedarf und der "
+            + "gestrichelte Pufferinhalt links der Jetzt-Linie sind eine Erinnerung: sie "
+            + "stammen aus dem letzten Fahrplan, der vor der jeweiligen Viertelstunde "
+            + "aufbewahrt wurde, und aufbewahrt wird jede Stunde einer. Der Abstand zwischen "
+            + "der gestrichelten und der gefüllten Pufferkurve ist also der Abstand zwischen "
+            + "Plan und Wirklichkeit.",
         "Was aus einem Fahrplan geworden ist, steht im Rückblick: dort liegt der aufbewahrte "
             + "Fahrplan von damals neben der Messung, in Euro. Wie gut die Prognosen waren, "
             + "steht unter System → Prognose. Noch nicht gebaut ist der Lernschritt, der das "

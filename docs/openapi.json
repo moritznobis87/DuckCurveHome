@@ -15838,6 +15838,17 @@
             ],
             "title": "Planned Pellet Cost Eur"
           },
+          "planned_hp_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Hp Kw"
+          },
           "actual_pv_kw": {
             "anyOf": [
               {
@@ -15881,6 +15892,39 @@
               }
             ],
             "title": "Actual Hp Run Min"
+          },
+          "actual_buffer_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Buffer Kwh"
+          },
+          "past_plan_heat_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Past Plan Heat Kw"
+          },
+          "past_plan_buffer_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Past Plan Buffer Kwh"
           }
         },
         "type": "object",

@@ -69,6 +69,24 @@ def usable_energy_kwh(temps: Sequence[float], cfg: BufferConfig) -> float:
     return min(usable, capacity_kwh(cfg))
 
 
+def nutzbarer_inhalt_kwh(temps: Sequence[float], cfg: BufferConfig) -> float:
+    """Der nutzbare Inhalt des Puffers aus vier Schichttemperaturen, nach der eingestellten Methode.
+
+    Dieselbe Zahl wie `compute_buffer_state(...).usable_energy_kwh`, nur aus bloßen Temperaturen
+    statt aus Messwerten mit Güte. Gebraucht wird sie für eine Zeitreihe: der Fahrplan zeigt
+    neben dem geplanten Pufferinhalt den gemessenen der vergangenen Stunden, und beide müssen
+    auf derselben Skala liegen. Der Optimierer beginnt mit `usable_energy_kwh` aus
+    `compute_buffer_state`; eine zweite Rechnung daneben ergäbe an der Jetzt-Linie einen Sprung.
+    """
+    if cfg.soc_method == "weighted_mean_v1":
+        if len(cfg.weights) != 4 or len(temps) != 4:
+            raise ValueError("buffer.weights und die Temperaturen müssen je vier Werte enthalten")
+        mittel = sum(w * t for w, t in zip(cfg.weights, temps, strict=True)) / sum(cfg.weights)
+        spanne = cfg.max_temperature_c - cfg.min_useful_temperature_c
+        return _clamp01((mittel - cfg.min_useful_temperature_c) / spanne) * capacity_kwh(cfg)
+    return usable_energy_kwh(temps, cfg)
+
+
 def compute_buffer_state(temps: BufferTemperatures, cfg: BufferConfig) -> BufferState:
     cap = capacity_kwh(cfg)
     values = [m.value if m.usable else None for m in temps.as_list()]

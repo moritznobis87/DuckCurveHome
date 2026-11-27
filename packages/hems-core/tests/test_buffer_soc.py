@@ -4,7 +4,7 @@ import pytest
 from hc_helpers import T0, m
 
 from hems_core.domain import BufferConfig, BufferStatus, BufferTemperatures, Quality
-from hems_core.thermal import capacity_kwh, compute_buffer_state
+from hems_core.thermal import capacity_kwh, compute_buffer_state, nutzbarer_inhalt_kwh
 
 
 def temps(*t: float) -> BufferTemperatures:
@@ -52,3 +52,23 @@ def test_missing_sensor_gives_unknown() -> None:
     st = compute_buffer_state(t, cfg)
     assert st.soc is None
     assert st.status is BufferStatus.UNKNOWN
+
+
+@pytest.mark.parametrize("methode", ["layered_energy_v1", "weighted_mean_v1"])
+@pytest.mark.parametrize(
+    "schichten", [(62.0, 55.0, 41.0, 30.0), (36.0, 36.0, 36.0, 36.0), (80.0, 80.0, 80.0, 80.0)]
+)
+def test_der_nutzbare_inhalt_aus_blossen_temperaturen_ist_der_des_pufferzustands(
+    methode: str, schichten: tuple[float, float, float, float]
+) -> None:
+    """Der gemessene Pufferinhalt im Fahrplan und der Startwert des Optimierers sind eine Zahl.
+
+    Der Optimierer beginnt mit `compute_buffer_state(...).usable_energy_kwh`. Der Fahrplan
+    zeigt daneben den gemessenen Inhalt der vergangenen Stunden aus `nutzbarer_inhalt_kwh`;
+    wichen die beiden ab, spränge die Kurve an der Jetzt-Linie.
+    """
+    cfg = BufferConfig(soc_method=methode)  # type: ignore[arg-type]
+    zustand = compute_buffer_state(temps(*schichten), cfg)
+    assert nutzbarer_inhalt_kwh(schichten, cfg) == pytest.approx(
+        zustand.usable_energy_kwh, abs=1e-3
+    )
