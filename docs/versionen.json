@@ -1,51 +1,56 @@
 {
-  "unveroeffentlicht": [
-    {
-      "bereich": "Anmeldung",
-      "text": "Ist die Anmeldung im Browser abgelaufen, führt das Dashboard zur Anmeldung, statt beim Verbinden stehen zu bleiben."
-    },
-    {
-      "bereich": "Updates",
-      "text": "Der Kanal für veröffentlichte Versionen heißt jetzt stable. Ein Gerät, das noch auf dem alten Namen steht, stellt sich von selbst um."
-    },
-    {
-      "bereich": "Energie",
-      "text": "Die Ertragsprognose rechnet den Stand der Sonne genauer. Die erwartete Erzeugung liegt im Spätherbst nicht mehr eine Viertelstunde zu spät und im Februar nicht mehr eine Viertelstunde zu früh."
-    },
-    {
-      "bereich": "Jetzt",
-      "text": "Die Legende unter der Tageskurve nennt nur noch, was im Bild steht. In der App sehen ihre Marken jetzt aus wie die Linien: gestrichelt, wo die Linie gestrichelt ist."
-    },
-    {
-      "bereich": "Haus",
-      "text": "In der App sind die Kästen über der Raumliste gleich hoch, die Skala der Abweichung zeigt alle fünf Zahlen, und unter dem Wort des Alarms steht nicht mehr dasselbe Wort ein zweites Mal."
-    },
-    {
-      "bereich": "Anlage",
-      "text": "Der Fahrplan zeigt jetzt, mit welcher elektrischen Leistung die Wärmepumpe geplant ist, und für die vergangenen Stunden des Tages den gemessenen Inhalt des Puffers."
-    },
-    {
-      "bereich": "Anlage",
-      "text": "Für die vergangenen Stunden zeigt der Fahrplan außerdem, mit welchem Wärmebedarf und welchem Pufferinhalt der Plan von damals gerechnet hat. So ist zu sehen, wie weit Plan und Wirklichkeit auseinanderlagen."
-    },
-    {
-      "bereich": "Anlage",
-      "text": "In der App ist die Annahme des Fahrplans in der Legende der Kennlinie jetzt gestrichelt gezeichnet, so wie die Linie im Bild."
-    },
-    {
-      "bereich": "Hausgerät",
-      "text": "Die Einrichtung des Hausgeräts beschreibt jetzt eine Anmeldung, die im Heimnetz wirklich gelingt: mit Passwort oder Wiederherstellungscode. Wer noch kein Passwort hat, findet den Weg dorthin, und Passkeys funktionieren, sobald der Zugang von unterwegs eingerichtet ist."
-    },
-    {
-      "bereich": "Haus",
-      "text": "Über dem Hausmodell steht die Herkunft des Plans jetzt kurz und in der Uhrzeit des Hauses: der Name der Datei und wann sie gemeldet wurde. Die Hinweise zu einem fehlenden Plan sind in Dashboard und App gleich geschrieben."
-    },
-    {
-      "bereich": "Anlage",
-      "text": "Im Fahrplan steht für die vergangenen Stunden jetzt auch, ob der Plan von damals die Wärmepumpe angefordert hatte und mit welcher Leistung er sie zählte. Vorher stand dort, was die Preisregel heute über die Stunde sagen würde."
-    }
-  ],
+  "unveroeffentlicht": [],
   "versionen": [
+    {
+      "version": "2026.11.2",
+      "datum": "2026-11-27",
+      "neuerungen": [
+        {
+          "bereich": "Anmeldung",
+          "text": "Ist die Anmeldung im Browser abgelaufen, führt das Dashboard zur Anmeldung, statt beim Verbinden stehen zu bleiben."
+        },
+        {
+          "bereich": "Updates",
+          "text": "Der Kanal für veröffentlichte Versionen heißt jetzt stable. Ein Gerät, das noch auf dem alten Namen steht, stellt sich von selbst um."
+        },
+        {
+          "bereich": "Energie",
+          "text": "Die Ertragsprognose rechnet den Stand der Sonne genauer. Die erwartete Erzeugung liegt im Spätherbst nicht mehr eine Viertelstunde zu spät und im Februar nicht mehr eine Viertelstunde zu früh."
+        },
+        {
+          "bereich": "Jetzt",
+          "text": "Die Legende unter der Tageskurve nennt nur noch, was im Bild steht. In der App sehen ihre Marken jetzt aus wie die Linien: gestrichelt, wo die Linie gestrichelt ist."
+        },
+        {
+          "bereich": "Haus",
+          "text": "In der App sind die Kästen über der Raumliste gleich hoch, die Skala der Abweichung zeigt alle fünf Zahlen, und unter dem Wort des Alarms steht nicht mehr dasselbe Wort ein zweites Mal."
+        },
+        {
+          "bereich": "Anlage",
+          "text": "Der Fahrplan zeigt jetzt, mit welcher elektrischen Leistung die Wärmepumpe geplant ist, und für die vergangenen Stunden des Tages den gemessenen Inhalt des Puffers."
+        },
+        {
+          "bereich": "Anlage",
+          "text": "Für die vergangenen Stunden zeigt der Fahrplan außerdem, mit welchem Wärmebedarf und welchem Pufferinhalt der Plan von damals gerechnet hat. So ist zu sehen, wie weit Plan und Wirklichkeit auseinanderlagen."
+        },
+        {
+          "bereich": "Anlage",
+          "text": "In der App ist die Annahme des Fahrplans in der Legende der Kennlinie jetzt gestrichelt gezeichnet, so wie die Linie im Bild."
+        },
+        {
+          "bereich": "Hausgerät",
+          "text": "Die Einrichtung des Hausgeräts beschreibt jetzt eine Anmeldung, die im Heimnetz wirklich gelingt: mit Passwort oder Wiederherstellungscode. Wer noch kein Passwort hat, findet den Weg dorthin, und Passkeys funktionieren, sobald der Zugang von unterwegs eingerichtet ist."
+        },
+        {
+          "bereich": "Haus",
+          "text": "Über dem Hausmodell steht die Herkunft des Plans jetzt kurz und in der Uhrzeit des Hauses: der Name der Datei und wann sie gemeldet wurde. Die Hinweise zu einem fehlenden Plan sind in Dashboard und App gleich geschrieben."
+        },
+        {
+          "bereich": "Anlage",
+          "text": "Im Fahrplan steht für die vergangenen Stunden jetzt auch, ob der Plan von damals die Wärmepumpe angefordert hatte und mit welcher Leistung er sie zählte. Vorher stand dort, was die Preisregel heute über die Stunde sagen würde."
+        }
+      ]
+    },
     {
       "version": "2026.11.1",
       "datum": "2026-11-26",
