@@ -123,6 +123,42 @@ Wann er zuschaltet, und womit es sich verhindern lässt:
   „Elektroeinsatz Einstellung“ (17.2.6) legt die Zahl der aktiven Stufen fest, Stufe 0 heißt
   keine.
 
+### Warum er trotz „Green“ läuft: die wahrscheinliche Erklärung
+
+Der Hausherr am 27.11.2026: Der Regler ist auf einen Warmwasserspeicher und einen direkt
+angeschlossenen Fußbodenkreis eingestellt; tatsächlich läuft beides über den Kombipuffer. Der
+Heizbetrieb steht auf Green, und der Heizstab ist trotzdem ständig an.
+
+Die Anleitung trennt zwei Einstellungen, die beide „Green“ heißen (M-R-Anleitung, Seiten 31
+und 32, Menütabelle 17.0.0 und 17.5.2):
+
+* **17.0.0 Heizbetrieb, Green:** „Betrieb ohne Elektroheizeinsatz“. Das gilt für das Heizen.
+* **17.5.2 Komfortfunktion Warmwasser, Green:** nur die Wärmepumpe „in den mit der
+  Programmierfunktion für die Zusatz-Warmwasserbereitung konfigurierten Zeiten“. Das ist eine
+  eigene Einstellung mit eigenem Zeitprogramm.
+* **17.5.3 Max WP Ladezeit:** Nach dieser Zeit (ab Werk 120 Minuten, höchstens 240) „werden
+  die Elektroheizeinsätze aktiviert“. Eine Ausnahme für Green nennt die Anleitung dort nicht.
+
+Daraus ergibt sich die Vermutung: Für den Regler ist der obere Teil des Kombipuffers ein
+Warmwasserspeicher. Eine Maschine mit 9 kW bringt 1000 l, aus denen zugleich die Heizung
+entnimmt und in die der Fühler irgendwo eintaucht, nicht in zwei Stunden auf den Sollwert. Die
+Ladezeit läuft ab, und der Heizstab schaltet zu, bei jedem Warmwasserzyklus aufs Neue. Dazu
+passt die Kennzahl 20 („Pufferheizung und Warmwasser“) im Lauf mit 5,7 kW am 14.11.2026.
+
+**Nicht belegt.** Es fehlen die Werte von 17.5.2, 17.5.3, 17.2.6 und 17.5.0 am Bediengerät, und
+es ist nicht ausgezählt, ob der Zusatz am Zähler immer in Läufen mit der Kennzahl 4 oder 20
+auftritt und immer erst nach der Ladezeit. Beides lässt sich prüfen: das erste am Gerät, das
+zweite an den Reihen `heat_pump_cycle_code`, `heat_pump_power_kw` und `heat_pump_bus_power_kw`.
+
+Was sich einstellen ließe, ist Sache des Hausherrn und des Heizungsbauers:
+
+| Einstellung | Wirkung | Preis |
+|---|---|---|
+| 17.2.6 auf Stufe 0 | Kein Heizstab, gleich aus welchem Grund. | Auch Legionellenprogramm und Frostschutz des Innengeräts haben ihn dann nicht. |
+| 17.5.3 auf 240 Minuten | Die Wärmepumpe hat doppelt so lange allein Zeit. | Bei 1000 l reicht auch das nicht sicher. |
+| 17.5.0 niedriger | Der Sollwert wird für die Wärmepumpe erreichbar, der Zyklus endet von selbst. | weniger heißes Wasser oben im Puffer |
+| 17.5.2 auf Green und das Zeitprogramm Warmwasser prüfen | Green gilt nur in den programmierten Zeiten. | keiner |
+
 Ob er läuft, zeigt der Regler selbst: je Stufe ein Ausgang (17.15.4 bis 17.15.6) und je Stufe
 ein Stundenzähler (17.9.2 bis 17.9.4). Der Zähler beantwortet die Frage aus `SENSORIK.md`
 („vermutlich der Heizstab“) ohne Rechnung, sobald seine Kennung gefunden ist.
