@@ -85,7 +85,8 @@ function Block({
     <>
       <span className="k">{kicker}</span>
       <span className="w">{wert}</span>
-      <span className="s">{satz}</span>
+      {/* Ohne Satz bleibt die Zeile weg: ein leerer Abstand unter dem Wort wäre eine Lücke. */}
+      {satz ? <span className="s">{satz}</span> : null}
     </>
   );
   return (

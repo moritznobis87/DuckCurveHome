@@ -104,7 +104,8 @@ export function kennzahlen(tag: Tag, summary: EnergySummary | null, preisJetzt: 
       {
         wert: de(morgen.waerme?.thermisch ?? null, 1),
         einheit: "kWh",
-        wort: morgen.waerme ? `Wärme erwartet · ${de(morgen.waerme.elektrisch, 1)} kWh Strom` : "Wärme erwartet",
+        // Ein Komma und „dafür“ statt eines Punktes in der Mitte: am Telefon bricht das Wort um, und die zweite Zeile begann mit dem Punkt.
+        wort: morgen.waerme ? `Wärme erwartet, dafür ${de(morgen.waerme.elektrisch, 1)} kWh Strom` : "Wärme erwartet",
       },
       { wert: de(mittel, 1), einheit: "ct", wort: ct.length ? "Strom im Mittel" : "Preise kommen gegen 13 Uhr" },
       {

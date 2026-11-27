@@ -369,12 +369,22 @@ struct Raumlegende: View {
                 Kicker(wort: "Abweichung")
                 HStack(spacing: 2) {
                     ForEach(Array(Self.marken.enumerated()), id: \.offset) { i, marke in
+                        // **Die Zahl unter dem Feld wird nie gekürzt.** „−0,5“ ist breiter als
+                        // die 26 Punkte des Feldes; die Reihe teilte den Platz gleich auf, und
+                        // unter drei der fünf Felder stand „−…“, „…“ und „+“ (Bild des
+                        // Hausherrn vom 27.11.2026). Die Zahl behält ihre Breite, und das Feld
+                        // wächst mit ihr, damit die Skala geschlossen bleibt.
                         VStack(spacing: 3) {
                             RoundedRectangle(cornerRadius: Marken.radius1)
                                 .fill(Farbe.abweichung[i])
-                                .frame(width: 26, height: 9)
-                            Text(marke).font(Schrift.achse).foregroundStyle(Farbe.text3)
+                                .frame(minWidth: 26, maxWidth: .infinity)
+                                .frame(height: 9)
+                            Text(marke)
+                                .font(Schrift.achse)
+                                .foregroundStyle(Farbe.text3)
+                                .fixedSize()
                         }
+                        .fixedSize()
                     }
                 }
             }

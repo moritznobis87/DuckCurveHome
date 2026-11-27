@@ -140,6 +140,29 @@ mit 0,1 kW sah aus wie ein Sommermittag.
   `gebaut/sonnenkraft-handy.png` am Telefon bei 0,5, 4 und 8 kW. Die Leistungen und der Stand
   der Sonne sind dafür im Browser gesetzt.
 
+## Die Legende der Tageskurve (27.11.2026, nach einem Bild vom iPhone)
+
+Der Hausherr mit dem Reiter „Morgen“ der App um 12:34 Uhr: „Die Legenden-Erklärung passt
+überhaupt nicht zu der Grafik.“ Im Bild standen zwei gestrichelte Linien und eine durchgezogene.
+In der Legende standen fünf Einträge, alle mit durchgezogenem Strich, zwei davon für etwas, das
+nicht im Bild war.
+
+- **Die Marken in der App sehen aus wie ihre Linien.** Die Ansicht zeichnete jeden Strich
+  durchgezogen, gleich was der Eintrag sagte. Jetzt ist die Marke gestrichelt, wo die Linie
+  gestrichelt ist, und trägt deren Farbe und Deckung. Das Dashboard konnte das schon.
+- **Die Legende nennt, was im Bild steht.** Strompreis und Preistief stehen nur da, wenn ein
+  Preis oder ein Band im Bild liegt; die erwartete Wärmepumpe nur, wenn ihre Linie da ist. Die
+  Preise für morgen veröffentlicht die Börse gegen 13 Uhr; bis dahin sagen das die Zahlen des
+  Tages („Preise kommen gegen 13 Uhr“), und die Legende nennt die Preise nicht. Sonne, Prognose
+  und Haus bleiben an jedem Tag stehen.
+- Die Regel steht einmal je Seite, im Dashboard in `tageslegende.ts` und im Kit in
+  `Kurvenlegende.swift`, mit denselben sieben Fällen in beiden Tests.
+- Im Dashboard am Telefon sind dabei drei Fehler derselben Karte behoben: Das Wort unter
+  „Wärme erwartet“ lief aus der Karte, die mittlere Marke der Preisachse stand als „22.5 ct“
+  abgeschnitten da, und die letzte Uhrzeit der Zeitachse war am Rand abgeschnitten.
+- `gebaut/legende-morgen-handy.png` zeigt das Dashboard am Telefon mit dem Reiter „Morgen“ vor
+  13 Uhr.
+
 ## Bilder der gebauten Seite
 
 `gebaut/` zeigt die Startseite des Dashboards im Demo-Betrieb am 25.11.2026: Bühne und Uhr, je an

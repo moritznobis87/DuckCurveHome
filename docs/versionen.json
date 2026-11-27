@@ -7,6 +7,18 @@
     {
       "bereich": "Updates",
       "text": "Der Kanal für veröffentlichte Versionen heißt jetzt stable. Ein Gerät, das noch auf dem alten Namen steht, stellt sich von selbst um."
+    },
+    {
+      "bereich": "Energie",
+      "text": "Die Ertragsprognose rechnet den Stand der Sonne genauer. Die erwartete Erzeugung liegt im Spätherbst nicht mehr eine Viertelstunde zu spät und im Februar nicht mehr eine Viertelstunde zu früh."
+    },
+    {
+      "bereich": "Jetzt",
+      "text": "Die Legende unter der Tageskurve nennt nur noch, was im Bild steht. In der App sehen ihre Marken jetzt aus wie die Linien: gestrichelt, wo die Linie gestrichelt ist."
+    },
+    {
+      "bereich": "Haus",
+      "text": "In der App sind die Kästen über der Raumliste gleich hoch, die Skala der Abweichung zeigt alle fünf Zahlen, und unter dem Wort des Alarms steht nicht mehr dasselbe Wort ein zweites Mal."
     }
   ],
   "versionen": [

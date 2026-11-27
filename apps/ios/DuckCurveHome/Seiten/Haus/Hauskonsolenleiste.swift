@@ -38,7 +38,14 @@ struct Hauskonsolenleiste: View {
     var body: some View {
         if waagrecht {
             ScrollView(.horizontal, showsIndicators: false) {
+                // **Alle Blöcke der Reihe sind gleich hoch**, wie im Dashboard, wo die Reihe
+                // ihre Kinder streckt (`globals.css`: `.haus-konsole` als Zeile). Bis zum
+                // 27.11.2026 stand jeder in seiner eigenen Höhe: der Alarm mit seinen zwei
+                // Knöpfen hoch, „Fenster und Türen“ daneben niedrig (Hausherr: „Warum haben
+                // die Boxen nicht die gleiche Höhe?“). Die Reihe nimmt die Höhe des höchsten
+                // Blocks, und jeder Block füllt sie (``block(_:wert:einheit:satz:farbe:klappe:flaeche:rand:dazu:)``).
                 HStack(alignment: .top, spacing: 6) { bloecke }
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 4)
             }
         } else {
@@ -92,11 +99,14 @@ struct Hauskonsolenleiste: View {
                         .tracking(1.7)
                         .foregroundStyle(Farbe.text3)
                     wertzeile(wert, einheit: einheit)
-                    Text(satz)
-                        .font(Schrift.sans(11.5))
-                        .foregroundStyle(Farbe.text2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
+                    // Ohne Satz bleibt die Zeile weg (`Konsole.tsx`, `Block`).
+                    if !satz.isEmpty {
+                        Text(satz)
+                            .font(Schrift.sans(11.5))
+                            .foregroundStyle(Farbe.text2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .multilineTextAlignment(.leading)
+                    }
                 }
                 Spacer(minLength: 4)
                 if ziel != nil {
@@ -124,6 +134,8 @@ struct Hauskonsolenleiste: View {
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minWidth: waagrecht ? mindestbreite(ziel) : nil, alignment: .leading)
+        // In der Reihe füllt jeder Block deren Höhe, der Inhalt bleibt oben.
+        .frame(maxHeight: waagrecht ? .infinity : nil, alignment: .topLeading)
         .background(flaeche ?? AnyShapeStyle(Farbe.flaeche1.opacity(0.72)), in: huelle)
         .overlay(huelle.strokeBorder(rand ?? Farbe.linie1, lineWidth: 1))
         .overlay(alignment: .leading) { streifen(farbe) }

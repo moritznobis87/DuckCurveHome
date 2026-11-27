@@ -10,6 +10,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { C, MONO } from "@/components/charts/palette";
 import { priceBounds } from "@/components/charts/dayBounds";
 import { TAGE, TAG_WORT, type Schatten, type Tag } from "./tage";
+import { tageslegende, type Kurveninhalt, type Legendenreihe } from "./tageslegende";
 
 /**
  * Die Kurve des Tages: die Marke selbst.
@@ -40,7 +41,7 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
   // als eigene niedrige Fläche darunter, an derselben Zeitachse; die Bänder laufen durch beide,
   // ihr Name steht in der Legende.
   const handy = useIsMobile();
-  const option = useMemo<EChartsCoreOption>(() => {
+  const { option, inhalt } = useMemo<{ option: EChartsCoreOption; inhalt: Kurveninhalt }>(() => {
     const hx = (ts: number) => (ts - start) / 3600000;
     const inDay = history.filter((p) => p.ts >= start && p.ts < end);
     const pv = inDay.map((p) => [hx(p.ts), p.pv]);
@@ -86,7 +87,16 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
     const { min: pMin, max: pMax, step: pStep } = priceBounds([...preisHist, ...preisVoraus]);
     const preisAchse = handy ? 1 : 0;
     const jetzt = tag === "heute" ? { symbol: "none", silent: true, lineStyle: { color: "var(--amber-soft)", type: "dashed", width: 1.2 }, label: { show: false }, data: [{ xAxis: hx(nowMs) }] } : undefined;
-    return {
+    // Was davon im Bild steht: danach richtet sich die Legende (`tageslegende.ts`).
+    const inhalt: Kurveninhalt = {
+      schattenwort: schatten ? schattenWort(schatten) : null,
+      waermepumpeGemessen: false,
+      waermepumpeErwartet: waerme.length > 0,
+      preisGemessen: preisHist.some((p) => p[1] != null),
+      preisErwartet: preisVoraus.some((p) => p[1] != null),
+      baender: baender.length > 0,
+    };
+    const option: EChartsCoreOption = {
       animation: false,
       backgroundColor: "transparent",
       textStyle: { fontFamily: MONO },
@@ -113,11 +123,11 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
             { left: 44, right: 10, height: PREIS_HOEHE, bottom: 22, outerBoundsMode: "none" },
           ]
         : { left: 40, right: 44, top: 10, bottom: 24 },
-      xAxis: [0, 1].slice(0, handy ? 2 : 1).map((gridIndex) => ({ type: "value" as const, gridIndex, min: 0, max: 24, interval: 6, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: !handy || gridIndex === 1, color: C.text, fontFamily: MONO, fontSize: handy ? 11 : 10, formatter: (v: number) => `${String(v % 24).padStart(2, "0")}:00` } })),
+      xAxis: [0, 1].slice(0, handy ? 2 : 1).map((gridIndex) => ({ type: "value" as const, gridIndex, min: 0, max: 24, interval: 6, axisLine: { lineStyle: { color: C.axis } }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: !handy || gridIndex === 1, color: C.text, fontFamily: MONO, fontSize: handy ? 11 : 10, ...(handy ? { alignMaxLabel: "right" as const } : {}), formatter: (v: number) => `${String(v % 24).padStart(2, "0")}:00` } })),
       yAxis: [
         { type: "value", gridIndex: 0, min: 0, max: powerMax, interval: powerMax / 2, splitLine: { lineStyle: { color: C.gridline } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: handy ? 11 : 10, formatter: (v: number) => `${v} kW` } },
         handy
-          ? { type: "value", gridIndex: 1, min: pMin, max: pMax, interval: Math.max(pStep, (pMax - pMin) / 2), splitLine: { lineStyle: { color: C.gridline } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11, formatter: (v: number) => `${v} ct` } }
+          ? { type: "value", gridIndex: 1, min: pMin, max: pMax, interval: Math.max(pStep, (pMax - pMin) / 2), splitLine: { lineStyle: { color: C.gridline } }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 11, formatter: ganzeCent } }
           : { type: "value", position: "right", min: pMin, max: pMax, interval: pStep, splitLine: { show: false }, axisLabel: { color: C.text, fontFamily: MONO, fontSize: 10, formatter: (v: number) => `${v} ct` } },
       ],
       series: [
@@ -130,23 +140,21 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
         { name: "Preis voraus", type: "line", step: "end", xAxisIndex: preisAchse, yAxisIndex: 1, data: preisVoraus, showSymbol: false, lineStyle: { color: C.price, width: 1.6, type: [5, 5], opacity: 0.8 }, z: 2 },
       ],
     };
+    return { option, inhalt };
   }, [tag, history, plan, heat, schatten, nowMs, start, end, handy]);
 
-  const Legende = ({ color, label, dashed = false, flaeche = false }: { color: string; label: string; dashed?: boolean; flaeche?: boolean }) => (
-    <span className="flex items-center gap-1.5 text-[12px] text-text-2">
-      <span className="inline-block w-[14px]" style={flaeche ? { height: 8, background: color, borderRadius: 2, opacity: 0.6 } : { borderTop: `2px ${dashed ? "dashed" : "solid"} ${color}` }} />
-      {label}
-    </span>
-  );
+  // Die Legende nennt, was im Bild steht, und jede Marke sieht aus wie ihre Linie (`tageslegende.ts`).
   const legende = (
     <>
-          {tag !== "morgen" ? <Legende color={C.pv} label="Sonne" flaeche /> : null}
-          {tag !== "gestern" ? <Legende color={C.pv} label={tag === "morgen" ? "Sonne erwartet" : "Prognose"} dashed /> : null}
-          {schatten ? <Legende color={C.pvSchatten} label={schattenWort(schatten)} /> : null}
-          {tag !== "morgen" ? <Legende color="rgba(255,255,255,.88)" label="Haus" /> : null}
-          {tag === "morgen" ? <Legende color={C.heatPump} label="Wärmepumpe" dashed /> : null}
-          <Legende color={C.price} label="Strompreis" dashed={tag === "morgen"} />
-          {tag !== "gestern" ? <Legende color={C.price} label="Preistief" flaeche /> : null}
+      {tageslegende(tag, inhalt).map((e) => (
+        <span key={e.reihe} className="flex items-center gap-1.5 text-[12px] text-text-2">
+          <span
+            className="inline-block"
+            style={e.form === "flaeche" ? { width: 14, height: 8, background: LEGENDENFARBE[e.reihe], borderRadius: 2, opacity: 0.6 } : { width: 18, borderTop: `2px ${e.form === "gestrichelt" ? "dashed" : "solid"} ${LEGENDENFARBE[e.reihe]}` }}
+          />
+          {e.wort}
+        </span>
+      ))}
     </>
   );
   return (
@@ -172,6 +180,25 @@ export function DayCurve({ tag, onTag, history, plan, heat, schatten, nowMs, sta
 
 /** Höhe der Preisfläche am Handy, in Punkten. */
 const PREIS_HOEHE = 58;
+
+/**
+ * Die Beschriftung der Preisachse am Telefon: nur ganze Cent. Die mittlere Marke liegt dort auf
+ * der Hälfte zwischen den Enden; bei 0 bis 45 ct stand „22.5 ct“ da, mit Punkt und links
+ * abgeschnitten (gesehen am 27.11.2026). Die Linie der Marke bleibt, nur ihr Wort entfällt.
+ */
+const ganzeCent = (v: number) => (Number.isInteger(v) ? `${v} ct` : "");
+
+/** Die Farbe der Marke je Reihe: dieselbe wie die der Linie im Bild. */
+const LEGENDENFARBE: Record<Legendenreihe, string> = {
+  sonne: C.pv,
+  sonneErwartet: C.pv,
+  schatten: C.pvSchatten,
+  haus: "rgba(255,255,255,.88)",
+  waermepumpe: C.heatPump,
+  waermepumpeErwartet: C.heatPump,
+  strompreis: C.price,
+  preistief: C.price,
+};
 
 /** „gestern 8,1 kWh": der Tag im Hintergrund und seine Sonne bis zur gleichen Uhrzeit. */
 function schattenWort(s: Schatten): string {

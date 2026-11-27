@@ -34,6 +34,19 @@ final class HauskonsolenfensterTests: XCTestCase {
         XCTAssertEqual(F.alarmsatz(da), "scharf, abwesend")
     }
 
+    /// Dieselben Fälle wie in `live.test.ts`, „Der Satz unter dem Wort des Alarms“.
+    func testDerAlarmsatzWiederholtDasWortNicht() {
+        let unscharf = AlarmOut(present: true, state: 0, stateDe: "unscharf", canArm: true)
+        XCTAssertEqual(F.stufe(unscharf).wort, "UNSCHARF")
+        XCTAssertEqual(F.alarmsatz(unscharf), "", "„UNSCHARF“ und darunter „unscharf“ ist zweimal dasselbe.")
+
+        let zuhause = AlarmOut(present: true, state: 1, stateDe: "zu Hause scharf", canArm: true)
+        XCTAssertEqual(F.alarmsatz(zuhause), "zu Hause scharf")
+
+        let gross = AlarmOut(present: true, state: 0, stateDe: " Unscharf ", canArm: true)
+        XCTAssertEqual(F.alarmsatz(gross), "")
+    }
+
     func testAlarmworte() {
         XCTAssertEqual(F.Alarmstufe.unscharf.wort, "UNSCHARF")
         XCTAssertEqual(F.Alarmstufe.zuhause.wort, "ZU HAUSE")

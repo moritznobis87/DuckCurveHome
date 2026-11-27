@@ -336,7 +336,10 @@ struct HausSeite: View {
     private var kopf: some View {
         VStack(alignment: .leading, spacing: 8) {
             if schmal {
-                herkunft
+                // **Am Telefon steht nicht, woher der Plan kommt.** Das Dashboard zeigt die
+                // Zeile erst ab der Breite eines Tablets (`AreaNav.tsx`: `hidden … md:block`);
+                // die App zeigte sie auch am Telefon, und dort standen zwei Zeilen Dateipfad
+                // in Großschrift über der Seite (Bild des Hausherrn vom 27.11.2026).
                 if let r = raeume, let at = Zeit.ausIso(r.at) {
                     Text("Stand \(Formate.hhmm(at))")
                         .font(Schrift.winzig)
