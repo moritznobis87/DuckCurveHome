@@ -92,7 +92,7 @@ final class TageskachelnTests: XCTestCase {
         XCTAssertEqual(k[0].wert, "6,3")
         XCTAssertEqual(k[1].wort, "Wärme erwartet")
         XCTAssertEqual(k[1].wert, "28,4")
-        XCTAssertEqual(k[1].dazu, "8,1 kWh Strom")
+        XCTAssertEqual(k[1].dazu, "dafür 8,1 kWh Strom")
         XCTAssertEqual(k[2].wort, "Strom im Mittel")
         XCTAssertEqual(k[2].wert, "19,0", "(18 - 2,5 + 41,5) / 3")
         XCTAssertEqual(k[3].wort, "günstigste Stunde ab 13:00")

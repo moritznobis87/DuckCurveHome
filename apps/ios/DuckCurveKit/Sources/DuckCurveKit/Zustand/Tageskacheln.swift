@@ -94,7 +94,8 @@ public enum Tageskacheln {
             Kennzahl(
                 wort: "Wärme erwartet", wert: Formate.zahl(m.waerme?.thermisch, stellen: 1),
                 einheit: "kWh",
-                dazu: m.waerme.map { "\(Formate.zahl($0.elektrisch, stellen: 1)) kWh Strom" }),
+                // Dieselben Worte wie im Dashboard (`tage.ts`: „Wärme erwartet, dafür 30,3 kWh Strom“).
+                dazu: m.waerme.map { "dafür \(Formate.zahl($0.elektrisch, stellen: 1)) kWh Strom" }),
             Kennzahl(
                 wort: ct.isEmpty ? "Preise kommen gegen 13 Uhr" : "Strom im Mittel",
                 wert: Formate.zahl(mittel, stellen: 1), einheit: "ct"),

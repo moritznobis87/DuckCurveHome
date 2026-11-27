@@ -88,7 +88,7 @@ describe("kennzahlen", () => {
       preise: [{ ts: start + 13 * 3600_000, ct: 9.2 }, { ts: start, ct: 30 }],
     });
     expect(k[0]).toMatchObject({ wert: "18,3", wort: "Sonne erwartet" });
-    expect(k[1]!.wort).toBe("Wärme erwartet · 12,8 kWh Strom");
+    expect(k[1]!.wort).toBe("Wärme erwartet, dafür 12,8 kWh Strom");
     expect(k[2]).toMatchObject({ wert: "19,6", wort: "Strom im Mittel" });
     expect(k[3]!.wort).toBe("günstigste Stunde ab 13:00");
   });

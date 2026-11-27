@@ -166,7 +166,7 @@ struct JetztSeite: View {
                         Text(k.wort)
                             .font(Schrift.sans(12))
                             .foregroundStyle(Farbe.text2)
-                        // **Der Zusatz fehlte an der Wand** (`tage.ts:107`: „Wärme erwartet ·
+                        // **Der Zusatz fehlte an der Wand** (`tage.ts`: „Wärme erwartet, dafür
                         // 4,2 kWh Strom“). Die Vorlage hat die Angabe im Wort selbst; der Kern
                         // fuellt sie als eigenes Feld, und das Telefon zeigt sie laengst. Hier
                         // stand nur die thermische Zahl, und wie viel Strom sie kostet, stand
