@@ -21,7 +21,10 @@ dem Haus zu den Listen der Anleitung passen (siehe unten).
   Statuslisten, Fehlerlisten, Klemmenbelegung des Reglers.
 * **Nicht übertragbar ohne das Typenschild:** alles, was an der Größe der Maschine hängt, also
   Durchflussschwellen, Nenndurchfluss, Stufen des Heizstabs und Kältemittelmenge.
-* **Offen:** welcher Typ wirklich im Haus steht. Das Typenschild der Inneneinheit entscheidet es.
+* **Der Typ:** Der Hausherr am 27.11.2026: „Ich habe die 9-kW-Anlage.“ Das passt zur Angabe
+  WH 09-11 und nicht zu dieser Anleitung, die bei 7 kW endet. Eine zweite Datei, die er dazu
+  hochlud, war dieselbe Anleitung noch einmal (gleicher Titel, Wort für Wort gleicher Text). Die
+  Anleitung der 9-kW-Anlage liegt also noch nicht vor.
 
 ## 1. Die Statuslisten der Anleitung passen zu den Zahlen aus dem Haus
 
@@ -61,8 +64,11 @@ Entfeuchtung (17) und Pump Down (18).
 * **Ein Widerspruch:** Die Kommentare in `aerotop_split.csv` und `waermepumpe.py` lesen die 3
   als Warmwasser. Nach der Anleitung ist Warmwasser die 4. Entschieden wird das beim ersten
   Warmwasserlauf, den das Haus mitschreibt.
-* **Eine Unstimmigkeit:** Eine PV-Einbindung (16) in der Nacht ergibt nur Sinn, wenn am Eingang
-  HV IN 3 Spannung lag. Parameter 17.14.8 zeigt den Zustand dieses Eingangs.
+* **Die 16 in der Nacht ist erklärt.** Der Hausherr am 27.11.2026: Der Shelly, über den die
+  Wärmepumpe angefordert wird (K1), liegt am Eingang für den PV-Überschuss. Der Planer schließt
+  ihn auch in günstigen Nachtstunden; der Regler meldet dann „Einbindung Photovoltaik“, gleich
+  woher der Strom kommt. Bestätigt ist die 16 damit, sobald ein Verlauf sie neben
+  `hp_release_contact` zeigt.
 * Die Liste endet bei 20. Die 22 aus dem Haus kennt sie nicht; der Regler im Haus ist also
   jünger als die Anleitung, und die Liste ist nicht vollständig.
 
@@ -131,9 +137,23 @@ die nichts schreiben:
 | 0 V | 230 V | Im Zeitprogramm gilt statt der abgesenkten die Komforttemperatur, Heizstäbe aus |
 | 230 V | 230 V | wie zuvor, Heizstäbe freigegeben |
 
-* Der dritte Zustand ist die Anforderung, die der Planer heute über K1 stellt: mehr Wärme, aber
-  nur mit dem Verdichter. Welcher Eingang K1 im Haus ist und wie 17.1.0 bis 17.1.2 stehen, ist
-  nicht bekannt; 17.14.6 bis 17.14.8 zeigen die Zustände der Eingänge.
+* **K1 ist im Haus der PV-Eingang** (Auskunft des Hausherrn, 27.11.2026; die Klemme selbst ist
+  nicht nachgesehen, nach der Anleitung wäre es HV IN 3 mit 17.1.2 auf „PV-Einbindung aktiv“).
+  Daraus folgt, was die Anforderung kann und was nicht:
+  * Sie wirkt nur, **wenn die Anlage in Bereitschaft steht** (Seite 30). Läuft gerade ein
+    Heizzyklus, ändert der Kontakt nichts. Die Ereignisstudie in `docs/K1_WIRKUNG.md` sollte
+    Schließvorgänge deshalb danach trennen, ob die Maschine beim Schließen stand.
+  * Sie hebt Sollwerte um einen Zuschlag, sie startet die Maschine nicht unmittelbar. Ab Werk
+    steht der Zuschlag für Warmwasser (17.0.5, Kennung `762d`) auf **0 K**; dann bewirkt der
+    Kontakt nichts. Die Seite „Regler“ liest den Wert schon.
+  * Für eine Anlage mit Pufferspeicher nennt die Menütabelle einen zweiten Zuschlag: „Puffer
+    OFFSET für PV-Einbindung“ (20.0.6, 0 bis 20 K, ab Werk 5 K), dazu die Speichersolltemperatur
+    Heizen (20.0.3) und die Art des Sollwerts (20.0.7). Am Kombipuffer des Hauses dürfte dieser
+    Wert der wirksame sein. Seine Kennung ist nicht bekannt und nicht gelesen.
+  * Die Heizstäbe gibt der PV-Eingang nach der Anleitung nicht frei; das tut nur SG-Ready mit
+    beiden Eingängen.
+* Der dritte Zustand von SG-Ready wäre die stärkere Anforderung: Komforttemperatur statt der
+  abgesenkten, nur mit dem Verdichter. Er braucht zwei Eingänge und einen zweiten Schaltkontakt.
 * Wird nur einer der beiden Eingänge auf SG-Ready gestellt, meldet der Regler den Fehler 2 P9
   und die Funktion bleibt aus.
 * Mit dem Zuschlag (`762d`, im Code `dhw_pv_delta_k`) wäre die Stärke der Anforderung selten und
@@ -201,8 +221,9 @@ Für die M-CRX; für die WH 09-11 erst nach dem Typenschild.
 2. **Drei Lesarten am Bediengerät vergleichen** (Seite „Regler“ gegen das Menü): Betriebsart
    Warmwasser, Komfortstufe, Spartemperatur. Danach die Wörter und Grenzen in `regler.py`
    berichtigen, in Dashboard und App zugleich.
-3. **Eingänge ansehen:** 17.1.0 bis 17.1.2 und 17.14.6 bis 17.14.8 am Bediengerät ablesen. Das
-   klärt, was K1 im Regler bewirkt und ob die 16 eine PV-Einbindung ist.
+3. **Zuschläge ablesen:** 17.0.5 (Warmwasser) und 20.0.6 (Puffer) am Bediengerät, dazu 20.0.0,
+   20.0.3 und 20.0.7. Sie bestimmen, wie viel eine Anforderung über K1 bewirkt. Steht beides
+   niedrig, ist das der billigste Hebel im ganzen Haus: ein Wert, einmal eingestellt.
 4. **Kennungen der Zähler suchen** (17.9 und 17.15 am Bediengerät öffnen, Add-on schreibt mit)
    und als Zeilen zum Lesen aufnehmen: Stunden des Heizstabs, Starts, Abtauen.
 5. **Entscheidung des Hausherrn:** ob die Startzeit des Legionellenprogramms auf den Mittag
