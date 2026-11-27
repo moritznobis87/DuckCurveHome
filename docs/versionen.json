@@ -1,6 +1,14 @@
 {
   "unveroeffentlicht": [
     {
+      "bereich": "Anmeldung",
+      "text": "Ist die Anmeldung im Browser abgelaufen, führt das Dashboard zur Anmeldung, statt beim Verbinden stehen zu bleiben."
+    },
+    {
+      "bereich": "Updates",
+      "text": "Der Kanal für veröffentlichte Versionen heißt jetzt stable. Ein Gerät, das noch auf dem alten Namen steht, stellt sich von selbst um."
+    },
+    {
       "bereich": "Energie",
       "text": "Die Ertragsprognose rechnet den Stand der Sonne genauer. Die erwartete Erzeugung liegt im Spätherbst nicht mehr eine Viertelstunde zu spät und im Februar nicht mehr eine Viertelstunde zu früh."
     }

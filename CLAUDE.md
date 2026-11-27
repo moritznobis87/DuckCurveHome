@@ -71,7 +71,7 @@ Satz in `docs/versionen.json`, und Versionen heißen nach Jahr, Monat und laufen
 - **Eine Version entsteht gebündelt und nur auf Wunsch des Hausherrn**, oder wenn du sie nach
   einer abgeschlossenen Arbeit vorschlägst und er zustimmt: `tools/version.py --veroeffentlichen`
   im eigenen PR. Nach dem Merge baut die CI die Images, setzt das Tag `v<version>`, legt die
-  Veröffentlichung auf GitHub an und gibt sie im Kanal `stabil` an die Hausgeräte.
+  Veröffentlichung auf GitHub an und gibt sie im Kanal `stable` an die Hausgeräte.
 
 ## Jede Änderung geht über einen Pull Request nach `main`
 

@@ -7,6 +7,22 @@ const STREAM_URL = "/api/dch/live/stream";
 const STALE_AFTER_MS = 15_000;
 
 /**
+ * Ob ein Fehler heißt, dass die Anmeldung nicht mehr gilt. Dann hilft kein Neuverbinden.
+ *
+ * Die Middleware prüft nur, *ob* ein Anmelde-Cookie da ist, nicht ob die Sitzung dahinter noch
+ * gilt. Ist sie abgelaufen, widerrufen oder nach einer Übernahme der Datenbank verschwunden, lädt
+ * die Seite trotzdem, der Strom antwortet 401, und EventSource sieht davon nur einen Fehler. Die
+ * Startseite stand dann für immer bei „Verbinde mit dem Haus …“ (gemeldet am 26.11.2026).
+ */
+function abgemeldet(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { status?: unknown }).status === 401;
+}
+
+function zurAnmeldung(): void {
+  window.location.assign("/anmeldung");
+}
+
+/**
  * Hält die SSE-Verbindung zum Backend: Reconnect mit Backoff, Erstladung von Zustand und Historie
  * nach jeder (Wieder-)Verbindung, Erkennung ausbleibender Frames. Kein Polling.
  */
@@ -44,8 +60,9 @@ export function startLiveClient(): () => void {
       const heute = isoDay(store().nowMs());
       const gezeigt = store().historyDay;
       if (!istTagIso(gezeigt) || gezeigt === heute) store().setHistory(history.rows.map(rowToPoint), heute);
-    } catch {
-      /* Stream liefert den Zustand ohnehin; Historie wird beim nächsten Reconnect nachgeladen */
+    } catch (e) {
+      // Sonst liefert der Strom den Zustand ohnehin, und die Historie kommt beim nächsten Verbinden.
+      if (abgemeldet(e)) zurAnmeldung();
     }
   };
 
@@ -72,6 +89,10 @@ export function startLiveClient(): () => void {
       source?.close();
       source = null;
       store().setConnection("reconnecting");
+      // EventSource verrät den Grund nicht. Eine gewöhnliche Anfrage zeigt, ob es die Anmeldung ist.
+      api.liveState().catch((e: unknown) => {
+        if (abgemeldet(e)) zurAnmeldung();
+      });
       reconnectTimer = setTimeout(connect, backoff + Math.random() * 500);
       backoff = Math.min(backoff * 2, 30_000);
     };

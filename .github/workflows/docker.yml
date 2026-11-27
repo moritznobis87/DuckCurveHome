@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
 # Hintereinander statt nebeneinander: Ob ein Push eine neue Version veroeffentlicht, haengt daran,
-# ob ihr Tag schon steht. Zwei Laeufe zugleich koennten beide "neu" sehen und beide `stabil` setzen.
+# ob ihr Tag schon steht. Zwei Laeufe zugleich koennten beide "neu" sehen und beide `stable` setzen.
 concurrency:
   group: docker-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   # Die Version kommt aus docs/versionen.json (tools/version.py, CLAUDE.md "Neuerungen schreiben,
   # Versionen buendeln"). Neu ist sie, wenn auf main ihr Tag `v<version>` noch nicht steht: Dann
-  # hebt `befoerdern` die eben gebauten Images auf `<version>` und `stabil`, und danach entsteht
+  # hebt `befoerdern` die eben gebauten Images auf `<version>` und `stable`, und danach entsteht
   # die Veroeffentlichung auf GitHub. Bis November 2026 loeste ein von Hand gesetztes Tag den Bau
   # aus; das entfaellt, damit es nur einen Weg zu einer Version gibt.
   version:
@@ -50,7 +50,7 @@ jobs:
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       # Veroeffentlicht wird bei jedem Push auf main (Tag `main` und `sha-<Commit>`); `<version>` und
-      # `stabil` setzt erst `befoerdern`, wenn beide Images gebaut und geprueft sind. Das Hausgeraet
+      # `stable` setzt erst `befoerdern`, wenn beide Images gebaut und geprueft sind. Das Hausgeraet
       # (deploy/haus) zieht diese Images, statt auf dem Pi zu bauen:
       # Ein Next.js-Build braucht dort Minuten und Speicher, den die Regelung nebenan braucht.
       - uses: docker/login-action@v3
@@ -133,26 +133,36 @@ jobs:
           fi
 
   # Erst wenn beide Images gebaut und geprueft sind (die ganze Matrix samt Pruefung des
-  # Web-Abbilds), zeigen `<version>` und `stabil` auf genau diese Images, umgetaggt ueber ihren
-  # unveraenderlichen Tag `sha-<Commit>`. Vorher setzte der Bau `stabil` selbst, und ein Geraet
+  # Web-Abbilds), zeigen `<version>` und `stable` auf genau diese Images, umgetaggt ueber ihren
+  # unveraenderlichen Tag `sha-<Commit>`. Vorher setzte der Bau den Kanal selbst, und ein Geraet
   # haette eine halb gebaute oder ungepruefte Version angeboten bekommen (Codex-Fund zu PR 52).
+  #
+  # Ohne neue Version richtet der Job `stable` auf die vorhandene `<version>` aus. Das kostet ein
+  # paar Sekunden und haelt den Kanal auch dann richtig, wenn ein Tag einmal verloren ging oder,
+  # wie am 26.11.2026, umbenannt wurde. Der Kanal hiess bis dahin `stabil`; der Name zieht fuer
+  # Geraete mit einem `dch` von davor mit, bis keines mehr ihn nutzt (`dch` schreibt ihn um).
   befoerdern:
     needs: [version, images]
-    if: needs.version.outputs.neu == 'true'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions: { contents: read, packages: write }
     steps:
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
-      - name: Version und stabil setzen
+      - name: Version und stable setzen
         env:
           VERSION: ${{ needs.version.outputs.version }}
+          NEU: ${{ needs.version.outputs.neu }}
           BESITZER: ${{ github.repository_owner }}
         run: |
           for name in api web; do
             bild="ghcr.io/$BESITZER/duckcurve-$name"
-            docker buildx imagetools create --tag "$bild:$VERSION" --tag "$bild:stabil" "$bild:sha-$GITHUB_SHA"
+            if [ "$NEU" = true ]; then
+              docker buildx imagetools create --tag "$bild:$VERSION" --tag "$bild:stable" --tag "$bild:stabil" "$bild:sha-$GITHUB_SHA"
+            else
+              docker buildx imagetools create --tag "$bild:stable" --tag "$bild:stabil" "$bild:$VERSION"
+            fi
           done
 
   # Danach Tag und Veroeffentlichung auf GitHub, mit den Neuerungen aus docs/versionen.json als

@@ -15,7 +15,7 @@ jedem Monat bei 1 und zählt ohne Lücke hoch.
 trägt seine Sätze unter `unveroeffentlicht` ein. Eine Version entsteht erst mit
 `--veroeffentlichen`: Das verschiebt die gesammelten Sätze in einen neuen Eintrag mit dem
 heutigen Datum. Ist dieser Stand auf `main`, baut die CI die Images, versieht sie mit der
-Version und dem Kanal `stabil`, setzt das Git-Tag `v<version>` und legt die Veröffentlichung auf
+Version und dem Kanal `stable`, setzt das Git-Tag `v<version>` und legt die Veröffentlichung auf
 GitHub an (`.github/workflows/docker.yml`).
 
     tools/version.py                      # aktuelle Version und was noch unveröffentlicht ist
