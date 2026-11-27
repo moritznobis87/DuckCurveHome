@@ -370,6 +370,15 @@ def _leser(zeilen: list[MinuteRow]) -> MinuteRows:
     return lesen
 
 
+class UnbrauchbarError(AssertionError):
+    """Eine Messung, aus der sich nichts ablesen lässt: zu wenige Schläge oder zu kurz.
+
+    Ein eigener Name, damit `_haelt_schritt` sie von einem Fehler im Prüfling unterscheiden und
+    die Messung wiederholen kann. Sie bleibt ein `AssertionError`: Wer `_mit_puls` ohne
+    `_haelt_schritt` ruft, fällt an ihr wie an jeder anderen Behauptung.
+    """
+
+
 async def _mit_puls(ruf: Callable[[], Awaitable[Any]]) -> tuple[Any, float, list[float]]:
     """Etwas rechnen lassen und daneben alle fünf Millisekunden anklopfen.
 
@@ -380,7 +389,7 @@ async def _mit_puls(ruf: Callable[[], Awaitable[Any]]) -> tuple[Any, float, list
     darunter ist die Rate aus zu wenigen Punkten geschätzt, um etwas zu bedeuten. Sie fängt den
     vollständigen Rückfall allerdings mit - steht die Übersetzung wieder in der Schleife, kommt
     der Puls gemessen null Mal durch, und dieser Satz ist dann die klarste Fehlermeldung, die
-    der Test geben kann.
+    der Test geben kann. Gemeldet wird sie als `UnbrauchbarError`.
 
     **Die Speicherbereinigung bleibt draußen.** Vor der Messung wird einmal ganz aufgeräumt,
     während der Messung ruht sie. Eine volle Bereinigung hält den GIL und damit den Puls an,
@@ -411,8 +420,10 @@ async def _mit_puls(ruf: Callable[[], Awaitable[Any]]) -> tuple[Any, float, list
     finally:
         if bereinigung_an:
             gc.enable()
-    assert len(schlaege) > 5, f"der Puls kam nur {len(schlaege)}-mal durch"
-    assert gesamt > 0.1, f"zu schnell für eine Aussage über Nebenläufigkeit ({gesamt:.3f} s)"
+    if len(schlaege) <= 5:
+        raise UnbrauchbarError(f"der Puls kam in {gesamt:.3f} s nur {len(schlaege)}-mal durch")
+    if gesamt <= 0.1:
+        raise UnbrauchbarError(f"zu schnell für eine Aussage über Nebenläufigkeit ({gesamt:.3f} s)")
     return ergebnis, gesamt, schlaege
 
 
@@ -476,9 +487,12 @@ async def _nulllinie_im_faden(dauer: float) -> float:
     aber der Prüflauf auf einer überlasteten Maschine unnötig lang (gemessen 38 bis 55 Schläge
     je Sekunde über 2,6 bis 3,5 s, 45 bis 55 über 1,2 bis 2,0 s: dieselbe Zahl).
     """
-    _wert, gesamt, schlaege = await _mit_puls(
-        lambda: asyncio.to_thread(_rechnen, min(max(dauer, 0.3), 2.0))
-    )
+    try:
+        _wert, gesamt, schlaege = await _mit_puls(
+            lambda: asyncio.to_thread(_rechnen, min(max(dauer, 0.3), 2.0))
+        )
+    except UnbrauchbarError as grund:
+        raise UnbrauchbarError(f"Nulllinie: {grund}") from grund
     return _schlagrate(gesamt, schlaege)
 
 
@@ -523,10 +537,24 @@ async def _haelt_schritt(
     drückt jede Messung, ein Aussetzer nur eine. Darum genügt eine bestandene von höchstens
     `MESSUNGEN`; die Schranken selbst bleiben, wie sie waren. Fällt der Test, nennt er alle
     Messungen.
+
+    **Auch eine unbrauchbare Messung wird wiederholt.** Am 27.11.2026 fiel der Test der Rechnung
+    in der CI an der Schranke der Messung selbst: Neben dem Vergleichsklotz der Nulllinie kam
+    der Puls in 0,3 s fünfmal durch, mit Pausen von 61 und 224 ms, wo sonst alle 10 ms ein
+    Schlag kommt. Der Prüfling war zu diesem Zeitpunkt fertig und lief nicht mehr. Die Schranke
+    stand als `assert` in `_mit_puls` und fiel durch diese Schleife hindurch, bevor etwas
+    wiederholt wurde. Eine gestörte Nulllinie darf nicht gelten, weil sie den Vergleich zu milde
+    macht, und sie darf den Test nicht fällen, weil sie über den Prüfling nichts sagt. Darum
+    zählt ein `UnbrauchbarError` als nicht bestandene Messung. Steht die Schleife wirklich, ist
+    jede Messung unbrauchbar, und der Test fällt nach der dritten mit diesem Grund.
     """
     gemessen: list[str] = []
     for _ in range(MESSUNGEN):
-        ergebnis, gesamt, rate, nulllinie = await messen(ruf)
+        try:
+            ergebnis, gesamt, rate, nulllinie = await messen(ruf)
+        except UnbrauchbarError as grund:
+            gemessen.append(f"unbrauchbar ({grund})")
+            continue
         if rate > nulllinie * anteil:
             return ergebnis
         gemessen.append(
@@ -566,6 +594,54 @@ async def test_ein_dauernder_rueckfall_faellt_in_jeder_messung() -> None:
     with pytest.raises(AssertionError, match=r"in 3 Messungen nie über 0\.25") as fehler:
         await _haelt_schritt(ruf, 1 / 4, messen=messen)
     assert str(fehler.value).count("20 Schläge/s") == MESSUNGEN
+
+
+async def test_eine_unbrauchbare_messung_wird_wiederholt() -> None:
+    """Die Nulllinie der ersten Messung kam nicht zustande, die zweite Messung besteht.
+
+    So gefallen am 27.11.2026 in der CI: Der Puls kam neben dem Vergleichsklotz in 0,3 s nur
+    fünfmal durch, und der Test fiel an der Schranke der Messung, bevor `_haelt_schritt` etwas
+    wiederholen konnte.
+    """
+    gerufen = 0
+
+    async def messen(_ruf: Callable[[], Awaitable[Any]]) -> Messung:
+        nonlocal gerufen
+        gerufen += 1
+        if gerufen == 1:
+            raise UnbrauchbarError("Nulllinie: der Puls kam in 0.300 s nur 5-mal durch")
+        return "zweite", 0.45, 50.0, 97.0
+
+    async def ruf() -> None:
+        return None
+
+    assert await _haelt_schritt(ruf, 1 / 3, messen=messen) == "zweite"
+    assert gerufen == 2
+
+
+async def test_nur_unbrauchbare_messungen_lassen_den_test_fallen() -> None:
+    """Steht die Schleife ganz, ist jede Messung unbrauchbar, und der Test nennt den Grund dreimal."""
+
+    async def messen(_ruf: Callable[[], Awaitable[Any]]) -> Messung:
+        raise UnbrauchbarError("der Puls kam in 0.700 s nur 1-mal durch")
+
+    async def ruf() -> None:
+        return None
+
+    with pytest.raises(AssertionError, match=r"in 3 Messungen nie über 0\.33") as fehler:
+        await _haelt_schritt(ruf, 1 / 3, messen=messen)
+    assert str(fehler.value).count("nur 1-mal durch") == MESSUNGEN
+    assert not isinstance(fehler.value, UnbrauchbarError)
+
+
+async def test_ein_stehender_puls_ist_eine_unbrauchbare_messung() -> None:
+    """Rechnet der Ruf in der Schleife selbst, kommt der Puls nicht durch: `UnbrauchbarError`."""
+
+    async def in_der_schleife() -> int:
+        return _rechnen(0.15)
+
+    with pytest.raises(UnbrauchbarError, match=r"nur \d-mal durch"):
+        await _mit_puls(in_der_schleife)
 
 
 async def test_die_rechnung_blockiert_die_ereignisschleife_nicht() -> None:
