@@ -543,6 +543,20 @@ struct Fahrplanzeichnung: View {
                 .interpolationMethod(.stepEnd)
             }
         }
+        // Die Leistung, mit der der Fahrplan von damals die Maschine zählte, neben dem, was sie
+        // zog (`Fahrplan.tsx`, „Wärmepumpe, damals geplant, kW“). Eine eigene Reihe wie beim
+        // Puffer: An der Jetzt-Linie endet der eine Plan und beginnt der andere.
+        ForEach(bild.wpDamals) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "wpDamals")
+                )
+                .foregroundStyle(Farbe.waermepumpe.opacity(0.75))
+                .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                .interpolationMethod(.stepEnd)
+            }
+        }
         ForEach(bild.wpGemessen) { p in
             if let kw = p.wert {
                 AreaMark(
@@ -617,7 +631,10 @@ struct Fahrplanzeichnung: View {
     }
 
     private var wpspanne: ClosedRange<Double> {
-        Fahrplanbild.spanne(0, bis: bild.wpGemessen.map(\.wert) + bild.wpGeplant.map(\.wert))
+        Fahrplanbild.spanne(
+            0,
+            bis: bild.wpGemessen.map(\.wert) + bild.wpGeplant.map(\.wert)
+                + bild.wpDamals.map(\.wert))
             ?? 0...3
     }
 

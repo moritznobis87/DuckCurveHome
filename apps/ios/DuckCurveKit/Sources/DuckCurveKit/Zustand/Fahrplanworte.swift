@@ -17,7 +17,7 @@ public enum Fahrplanworte {
     /// Die Zeile, die im zugeklappten Zustand dasteht.
     public static let methodeKurz =
         "Preis und Sonne sind Prognosen, der Wärmebedarf ist ein Modell · links der "
-        + "Jetzt-Linie stehen Messung und Regel nebeneinander"
+        + "Jetzt-Linie stehen Messung und der Plan von damals nebeneinander"
 
     public static let methodeTitel = "Woher die Zahlen kommen"
 
@@ -30,19 +30,22 @@ public enum Fahrplanworte {
             + "Wärmemengenzähler über den eBUS-Anschluss. Der COP folgt aus der "
             + "Außentemperatur, noch nicht aus der Vorlauftemperatur, denn die liefert "
             + "bislang kein Fühler.",
-        "Links der Jetzt-Linie stehen zwei verschiedene Dinge nebeneinander. Gemessen sind "
+        "Links der Jetzt-Linie stehen Messung und Erinnerung nebeneinander. Gemessen sind "
             + "die PV-Leistung, die Leistung der Wärmepumpe, die Anforderung an sie und der "
             + "Inhalt des Puffers; sie "
             + "enden an der letzten abgeschlossenen Viertelstunde, denn die laufende ist erst "
             + "zum Teil vorbei und sähe aus wie ein Einbruch. Der geplante Zustand der "
-            + "Wärmepumpe ist dort dagegen keine Erinnerung: der Optimierer rechnet ab jetzt, "
-            + "für die vergangenen Stunden greift die Preisregel, also steht da, was sie "
-            + "heute für diese Stunde sagen würde. Weicht der gemessene Kontakt davon ab, ist "
-            + "das deshalb kein Widerspruch, sondern der Abstand zwischen zwei verschiedenen "
-            + "Fragen.",
+            + "Wärmepumpe ist dort die Absicht von damals: Er stammt aus dem letzten "
+            + "Fahrplan, der vor der jeweiligen Viertelstunde aufbewahrt wurde, und kennt nur "
+            + "angefordert oder nicht. Wo jener Fahrplan nichts vorgab oder keiner aufbewahrt "
+            + "ist, bleibt der Streifen leer. Weicht der gemessene Kontakt davon ab, heißt "
+            + "das nicht sicher, dass die Anlage anders schaltete als geplant: Aufbewahrt "
+            + "wird jede Stunde ein Fahrplan, gerechnet wird jede Viertelstunde einer.",
         "Rechts der Jetzt-Linie steht im Streifen der Wärmepumpe gestrichelt die Leistung, "
             + "mit der der Optimierer sie zählt. Das ist ihr Nennwert und keine Prognose: die "
-            + "Maschine moduliert und zieht gemessen zeitweise deutlich mehr. Der gemessene "
+            + "Maschine moduliert und zieht gemessen zeitweise deutlich mehr. Links der "
+            + "Jetzt-Linie steht dieselbe Zahl aus dem Fahrplan von damals neben der Messung; "
+            + "sie fehlt, wo die Preisregel führte und nicht der Optimierer. Der gemessene "
             + "Pufferinhalt links der Jetzt-Linie ist aus den vier Fühlern gerechnet, so wie "
             + "der Startwert, mit dem der Optimierer beginnt; darum schließt die gestrichelte "
             + "Kurve an der Jetzt-Linie an die gemessene an. Der Wärmebedarf und der "
