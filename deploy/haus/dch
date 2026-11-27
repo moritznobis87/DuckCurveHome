@@ -11,7 +11,7 @@
 #   dch sicherungen             vorhandene Sicherungen auflisten
 #   dch wiederherstellen DATEI  Datenbank aus einer Sicherung wiederherstellen
 #   dch uebernehmen URL         Datenbank von Railway (oder einem anderen Postgres) uebernehmen
-#   dch koppeln                 Einstellungen fuer das Bridge-Add-on und Pairing-Links anzeigen
+#   dch koppeln                 Einstellungen fuer das Bridge-Add-on und den Weg zur Anmeldung zeigen
 #   dch pruefen                 nachsehen, ob ein Update bereitsteht (Statusdatei fuer die App)
 #   dch anfrage                 eine Anfrage aus der App bearbeiten (startet systemd von selbst)
 #   dch zustand                 Gesundheitsbericht fuer die App schreiben (jede Minute per Timer)
@@ -1134,6 +1134,7 @@ uebernehmen)
 
 koppeln)
 	name=$(wert DCH_HOSTNAME)
+	rp_id=$(wert DCH_PASSKEY_RP_ID)
 	ip=$(hostname -I 2>/dev/null | awk '{print $1}')
 	cat <<TEXT
 Bridge-Add-on in Home Assistant (Einstellungen -> Add-ons -> Duck Curve Home Bridge -> Konfiguration):
@@ -1146,9 +1147,17 @@ iPad oder Handy im Heimnetz:
      (iPad: Profil installieren, dann Einstellungen -> Allgemein -> Info ->
       Zertifikatsvertrauenseinstellungen -> fuer "Caddy Local Authority" einschalten)
   2. Anmelden:              https://${name}.local/anmeldung
-     Einen Zugang gibt es nur als Person mit Passkey; einen Link, der Zugang vergibt,
-     gibt es seit dem 23.11.2026 nicht mehr. Den ersten Hausherrn legt DCH_ERSTE_PERSON
-     beim Start an - sein Einladungslink steht einmalig im Protokoll (dch protokoll api).
+     Im Heimnetz geht das mit E-Mail-Adresse und Passwort oder mit einem
+     Wiederherstellungscode. Passkeys sind an ${rp_id:-home.duckcurve.de} gebunden und
+     funktionieren erst, wenn dieser Name ueber den Cloudflare Tunnel auf dieses Geraet
+     zeigt (README, Abschnitt 8). Nach "dch uebernehmen" gelten die Personen von Railway,
+     mit ihren Passwoertern und Wiederherstellungscodes.
+     Wer noch kein Passwort hat: DCH_NOTZUGANG=<E-Mail-Adresse> in ${ENVDATEI} setzen und
+     "sudo dch neustart" ausfuehren. Den Link zeigt "sudo dch logs api | grep -i link"
+     (beenden mit Strg+C). Im Link alles vor /anmeldung durch https://${name}.local
+     ersetzen, ihn oeffnen, dort "Passwort" waehlen und eines vergeben. Einen Passkey
+     kann man unter ${name}.local nicht anlegen. Danach DCH_NOTZUGANG wieder entfernen
+     und "sudo dch neustart" ausfuehren.
 TEXT
 	;;
 
