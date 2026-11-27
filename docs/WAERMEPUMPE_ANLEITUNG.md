@@ -9,22 +9,24 @@ Verglichen ist sie mit `addons/duckcurve_ebusd/*.csv`,
 `apps/api/src/dch_api/application/regler.py` und `waermepumpe.py` sowie `docs/SENSORIK.md`.
 **Geändert ist am Code nichts.** Jeder Fund nennt, was er im Haus noch braucht, bevor er gilt.
 
-## Vorweg: die Anleitung gehört zu einem Schwestermodell
+## Vorweg: zwei Anleitungen, ein Regler
 
-`docs/SENSORIK.md` führt die Anlage als AEROTOP SPLIT WH 09-11 an einem Kombipuffer von 1000 l.
-Die Anleitung beschreibt die M-CRX und M-CR: 4 bis 7 kW, Inneneinheit mit eingebautem
-Warmwasserspeicher. Regler (Energy Manager), Bediengerät (Remocon Plus), Bus (BridgeNet auf
-den Klemmen B und T) und das Menü 17 sind dieselbe Familie; dafür spricht, dass die Zahlen aus
-dem Haus zu den Listen der Anleitung passen (siehe unten).
+Im Haus steht die AEROTOP SPLIT der Baureihe M-R mit dem Außengerät 09 ODU (9 kW, 400 V) und
+dem Innengerät WH 09-11 an einem Kombipuffer von 1000 l (Auskunft des Hausherrn, 27.11.2026).
 
-* **Übertragbar mit guter Aussicht:** Menünummern, Wertebereiche, Reihenfolge der Auswahllisten,
-  Statuslisten, Fehlerlisten, Klemmenbelegung des Reglers.
-* **Nicht übertragbar ohne das Typenschild:** alles, was an der Größe der Maschine hängt, also
-  Durchflussschwellen, Nenndurchfluss, Stufen des Heizstabs und Kältemittelmenge.
-* **Der Typ:** Der Hausherr am 27.11.2026: „Ich habe die 9-kW-Anlage.“ Das passt zur Angabe
-  WH 09-11 und nicht zu dieser Anleitung, die bei 7 kW endet. Eine zweite Datei, die er dazu
-  hochlud, war dieselbe Anleitung noch einmal (gleicher Titel, Wort für Wort gleicher Text). Die
-  Anleitung der 9-kW-Anlage liegt also noch nicht vor.
+* **Zuerst gelesen** war die Anleitung der M-CRX und M-CR, 4 bis 7 kW mit eingebautem Speicher.
+  Aus ihr stammen die Abschnitte 1 bis 6, und ihre gedruckten Seitenzahlen stehen dort.
+* **Danach kam die richtige:** „AEROTOP SPLIT M-RX; M-R“, Dokument 420010759702, Ausgabe
+  10/2017, deutscher Teil auf den Seiten 2 bis 50. Sie nennt die WH 09-11 und die 09 ODU.
+* **Der Vergleich beider:** Die Menütabelle führt in beiden dieselben 245 Parameternummern in
+  derselben Reihenfolge (verglichen am ausgelesenen Text; wo der Wortlaut abweicht, sind es
+  Lesefehler des Auslesens). Auch die Tabelle zu SG-Ready, die Beschreibung der Eingänge und die Fehlerlisten
+  sind gleich. Die Abschnitte 1 bis 6 gelten damit für die Anlage des Hauses; die Seitenzahlen
+  liegen in der M-R-Anleitung stellenweise eine Seite weiter (Menütabelle ab Seite 37).
+* **Anders ist, was an der Größe hängt.** Das steht in Abschnitt 7 und ist aus der
+  M-R-Anleitung.
+* Die Anleitungen sind von 10/2017. Der Regler im Haus meldet die Kennzahl 22, die keine von
+  beiden kennt; seine Software ist also jünger.
 
 ## 1. Die Statuslisten der Anleitung passen zu den Zahlen aus dem Haus
 
@@ -95,10 +97,16 @@ Menütabelle Seiten 36 bis 41. Die Grenzen im Code stammen aus der fremden Bus-B
 ## 3. Der Heizstab: Stufen und die Gründe, aus denen er zuschaltet
 
 `docs/SENSORIK.md` hielt fest, dass in keiner Unterlage steht, welche Stufen der Heizstab hat.
-Für die M-CRX steht es hier (Parameter 17.8.6, Seite 33): 2 + 2 kW, wahlweise mit einer dritten
-Stufe von 2 kW, oder 2 + 4 kW. Die kleinste Stufe sind 2 kW; die gesetzte Schwelle
-`kennlinie.ZUSATZ_KW` von 1,5 kW liegt damit richtig darunter. Für die WH 09-11 ist das am
-Typenschild zu prüfen (Feld „Nennleistung der Heizwiderstände“).
+Es steht in beiden Anleitungen (Parameter 17.8.6): 2 + 2 kW, wahlweise mit einer dritten Stufe
+von 2 kW, oder 2 + 4 kW. Die kleinste Stufe sind 2 kW; die gesetzte Schwelle
+`kennlinie.ZUSATZ_KW` von 1,5 kW liegt damit richtig darunter.
+
+**Die WH 09-11 hat 6 kW Heizstab** (M-R-Anleitung, Seite 20: Nenneingangsleistung des
+Innengeräts 6 kW, bei den kleineren 4 kW). Am 14.11.2026 um 11:18 lagen am Zähler 8,84 kW,
+eine Stunde zuvor bei fast gleicher Verdichterfrequenz 3,16 kW: der Unterschied von 5,7 kW ist
+der ganze Heizstab. Die Vermutung aus `SENSORIK.md` ist damit so gut belegt, wie es ohne den
+Ausgang des Reglers geht. Der Regler meldete in dem Lauf die Kennzahl 20, „Pufferheizung und
+Warmwasser“.
 
 Wann er zuschaltet, und womit es sich verhindern lässt:
 
@@ -200,24 +208,38 @@ des Außengeräts (905 bis 957) und die Fehlercodes des Umrichters (17.11.1, 1 b
 * Die Diagnoseseiten und das Menü 17 liegen hinter dem Fachmannzugang des Bediengeräts
   (Seite 30). Wer dort nur liest, verstellt nichts.
 
-## 7. Grenzen der Maschine, an denen sich Werte prüfen lassen
+## 7. Die Zahlen der 9-kW-Anlage
 
-Für die M-CRX; für die WH 09-11 erst nach dem Typenschild.
+Aus der M-R-Anleitung, Spalte 09 ODU und WH 09-11.
 
-* **Einsatzbereich Heizen** (Seite 11): Vorlauf 20 bis 60 °C, unter −10 °C Außentemperatur
+| Größe | Wert | Seite | Was daraus folgt |
+|---|---|---|---|
+| Nenndurchfluss | 1440 l/h, also 24 l/min | 12 | Maßstab für `heat_pump_flow_l_min` im Lauf |
+| Durchfluss gilt als „aus“ unter | 630 l/h, also 10,5 l/min | 12 | `kennlinie.MIN_DURCHFLUSS` steht auf 2,0 l/min. Unter 10,5 l/min läuft die Maschine nicht; Werte dazwischen sind Anlauf oder Nachlauf. |
+| Durchfluss gilt als „an“ ab | 810 l/h, also 13,5 l/min | 12 | wie oben |
+| Verfügbarer Druck bei Nenndurchfluss | 630 mbar | 12 | |
+| Außengerät | 400 V, drei Phasen, 6 A Nennstrom und 8,4 A Höchststrom je Phase | 20 | Höchstens rund 5,8 kW Aufnahme des Außengeräts. Mehr am Zähler ist Heizstab. |
+| Innengerät | 6 kW Nenneingangsleistung | 20 | der Heizstab, Abschnitt 3 |
+| Kältemittel | R410A, 4300 g | 18 | |
+| Gewicht Außengerät | 110 kg | 8 | |
+
+Für alle Größen gleich:
+
+* **Einsatzbereich Heizen** (Seite 12): Vorlauf 20 bis 60 °C. Unter −10 °C Außentemperatur
   fällt die Obergrenze bis auf 45 °C bei −20 °C; oberhalb von 15 °C draußen steigt die
   Untergrenze bis auf 33 °C bei 35 °C.
-* **Durchfluss** (Seite 11): Der Durchflusssensor meldet „aus“ unter 280, 350 oder 490 l/h je
-  nach Größe (4,7, 5,8 oder 8,2 l/min). `kennlinie.MIN_DURCHFLUSS` steht auf 2,0 l/min und läge
-  damit unter jeder dieser Schwellen.
-* **Abtauen** braucht 9 l Anlagenvolumen je kW (Seite 18); mit dem Puffer des Hauses ist das
-  erfüllt.
+* **Abtauen** braucht 9 l Anlagenvolumen je kW; mit dem Puffer des Hauses ist das erfüllt.
 * **Verdichter** 18 bis 120 Hz im Handbetrieb (17.7.5).
+* **Hydraulikschema** (17.2.0): Für die M-R gibt es „Plus“ (nur Heizen und Kühlen) und „Flex“
+  (mit getrenntem Warmwasserspeicher). Welches im Haus eingestellt ist, bestimmt, ob der Regler
+  überhaupt einen Warmwasserzyklus kennt.
 
 ## Was daraus folgen sollte, in dieser Reihenfolge
 
-1. **Typenschild ablesen** und den Typ in `SENSORIK.md` bestätigen oder berichtigen. Davon hängt
-   ab, was aus den Abschnitten 3 und 7 gilt.
+1. **Heizstab im Blick behalten.** Mit 6 kW und der Arbeitszahl eins ist er der teuerste
+   Verbraucher im Haus. Am Bediengerät 17.0.0 (Heizbetrieb), 17.2.2 (Komfortstufe), 17.2.6
+   (aktive Stufen) und 17.5.3 (Ladezeit) ablesen; die ersten beiden liest die Seite „Regler“
+   schon.
 2. **Drei Lesarten am Bediengerät vergleichen** (Seite „Regler“ gegen das Menü): Betriebsart
    Warmwasser, Komfortstufe, Spartemperatur. Danach die Wörter und Grenzen in `regler.py`
    berichtigen, in Dashboard und App zugleich.

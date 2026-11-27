@@ -6,7 +6,7 @@ Was gemessen wird, was geschätzt wird und was zu kaufen wäre, um aus Schätzun
 
 | Gerät | Typ | Anmerkung |
 | --- | --- | --- |
-| Wärmepumpe | **ELCO AEROTOP SPLIT WH 09-11** (Luft/Wasser, 4-11 kW) | Regelung der Ariston-Gruppe mit BridgeNet-Bus (eBUS) auf den Klemmen B und T, am 13.11.2026 am Gerät bestätigt; die frühere Angabe „LOGON B WP61 = Siemens RVS 61.843“ war nie geprüft und trifft nicht zu, siehe „Warum kein Bus hilft“. Ansteuerung über K1-Kontakt (SG-Ready-ähnlich) |
+| Wärmepumpe | **ELCO AEROTOP SPLIT WH 09-11** (Luft/Wasser, 4-11 kW) | Baureihe M-R mit dem Außengerät 09 ODU (9 kW), Heizstab 6 kW; Zahlen und Anleitung in `docs/WAERMEPUMPE_ANLEITUNG.md`. Regelung der Ariston-Gruppe mit BridgeNet-Bus (eBUS) auf den Klemmen B und T, am 13.11.2026 am Gerät bestätigt; die frühere Angabe „LOGON B WP61 = Siemens RVS 61.843“ war nie geprüft und trifft nicht zu, siehe „Warum kein Bus hilft“. Ansteuerung über K1-Kontakt (SG-Ready-ähnlich) |
 | Pelletofen | **MCZ Star Hydromatic** (wasserführend) | speist denselben Puffer |
 | Pufferspeicher | 1000 l Kombipuffer | WP und Ofen speisen ein, Heizung und Warmwasser entnehmen |
 
@@ -881,9 +881,9 @@ des Verdichters. **Offen:** ob `hp_power` die ganze Aufnahme der Maschine ohne H
 Läge sie grundsätzlich weit unter dem Zähler, fielen alle Minuten heraus; die Zahl der
 ausgelassenen Minuten auf der Kennlinien-Seite zeigt das.
 
-**Nachtrag 27.11.2026:** Die Anleitung des Schwestermodells M-CRX nennt die Stufen des
-Heizstabs (2 kW je Stufe), die Gründe, aus denen er zuschaltet, und Stundenzähler je Stufe im
-Regler. Siehe `docs/WAERMEPUMPE_ANLEITUNG.md`, Abschnitt 3; dort stehen auch die Statuslisten
+**Nachtrag 27.11.2026:** Die Anleitung der Anlage nennt den Heizstab der WH 09-11 mit 6 kW in
+Stufen von 2 kW. Die knapp 6 kW neben dem Verdichter waren also der ganze Heizstab. Sie nennt
+auch die Gründe, aus denen er zuschaltet, und Stundenzähler je Stufe im Regler. Siehe `docs/WAERMEPUMPE_ANLEITUNG.md`, Abschnitt 3; dort stehen auch die Statuslisten
 des Reglers und die Abweichungen der Grenzen in `regler.py`.
 
 ### Wenn der Bus schweigt
