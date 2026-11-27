@@ -547,6 +547,15 @@ async def _haelt_schritt(
     macht, und sie darf den Test nicht fällen, weil sie über den Prüfling nichts sagt. Darum
     zählt ein `UnbrauchbarError` als nicht bestandene Messung. Steht die Schleife wirklich, ist
     jede Messung unbrauchbar, und der Test fällt nach der dritten mit diesem Grund.
+
+    **Woher diese Pause kam.** Aus den Tests weiter oben in dieser Datei: Vier von ihnen ließen
+    ihre SQLite-Verbindung offen, und zu Beginn des ersten Zeittests lebten noch zwei der Fäden,
+    die aiosqlite je Verbindung führt. Das `gc.collect()` vor der Messung gab sie frei, und sie
+    standen danach über eine halbe Sekunde im Schließen, neben dem Prüfling und neben der
+    Nulllinie. Jeder Faden, der den GIL will, nimmt dem Puls Schläge weg. Gemessen ist das in
+    einem ganzen Prüflauf mit einem Zensus der Fäden und in einer Gegenprobe; die Zahlen und
+    die Behebung stehen in `conftest.py` (`datenbanken_schliessen`). Fällt der Test trotzdem,
+    nennt er deshalb auch die Fäden, die neben der Messung lebten.
     """
     gemessen: list[str] = []
     for _ in range(MESSUNGEN):
@@ -560,8 +569,11 @@ async def _haelt_schritt(
         gemessen.append(
             f"{rate:.0f} Schläge/s während {gesamt:.3f} s gegen {nulllinie:.0f} der Nulllinie"
         )
+    daneben = sorted(t.name for t in threading.enumerate() if t is not threading.main_thread())
     raise AssertionError(
-        f"in {MESSUNGEN} Messungen nie über {anteil:.2f} der Nulllinie: " + "; ".join(gemessen)
+        f"in {MESSUNGEN} Messungen nie über {anteil:.2f} der Nulllinie: "
+        + "; ".join(gemessen)
+        + f". Fäden neben der Messung: {', '.join(daneben) or 'keine'}"
     )
 
 
