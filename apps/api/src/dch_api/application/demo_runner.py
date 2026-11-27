@@ -1273,7 +1273,7 @@ class DemoRunner:
             at=now,
             present=True,
             plan=demo_house.PLAN,
-            source_de="Vorfuehrung, erfundener Grundriss",
+            source_de="Vorführung mit erfundenem Grundriss",
             received_at=now,
             error_de="",
             contacts=kontakte,

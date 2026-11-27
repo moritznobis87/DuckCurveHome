@@ -17,11 +17,13 @@ Dieses Modul rechnet nur. Es liest nichts und kennt weder Datenbank noch HTTP.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import PurePosixPath
 
 from pydantic import ValidationError
 
 from hems_core.domain import Measurement
+from hems_core.domain.zeit import HAUS_ZONE
 from hems_core.house import Contact, HousePlan
 
 # Der Ereigniscode im Protokoll. Die Bruecke schickt `house.plan`; alles von ihr wird als
@@ -50,13 +52,14 @@ def plan_from_context(context: Mapping[str, object]) -> tuple[HousePlan | None, 
         return None, str(fehler)
     roh = context.get(CTX_PLAN)
     if not isinstance(roh, str) or not roh:
-        return None, "Das Ereignis der Bruecke enthaelt keinen Plan."
+        return None, "Die Meldung der Brücke enthält keinen Hausplan."
     try:
         return HousePlan.model_validate_json(roh), ""
     except ValidationError as exc:
         return (
             None,
-            f"Der Plan der Bruecke passt nicht zum Schema dieses Dienstes: {exc.error_count()} Fehler.",
+            "Der Hausplan der Brücke passt nicht zu dem, was dieser Dienst lesen kann "
+            f"({exc.error_count()} Fehler). Brücke und Dienst sind dann auf verschiedenem Stand.",
         )
 
 
@@ -69,14 +72,25 @@ def contact_open(m: Measurement) -> bool | None:
 
 
 def source_text(context: Mapping[str, object], at: datetime | None) -> str:
-    """Woher der Plan kommt, fuer die Anzeige: Datei und Zeitpunkt der Meldung."""
-    datei = str(context.get(CTX_FILE) or "")
-    wann = at.strftime("%d.%m.%Y %H:%M") if at is not None else ""
-    if datei and wann:
-        return f"Bruecke, {datei}, gemeldet {wann} UTC"
-    if datei:
-        return f"Bruecke, {datei}"
-    return "Bruecke"
+    """Woher der Plan kommt, für die Zeile über dem Hausmodell: Datei und Zeitpunkt der Meldung.
+
+    Die Zeile steht in Dashboard und App hinter dem Namen des Plans, also etwa „Zuhause · aus
+    haus.yaml, gemeldet am 26.11.2026 um 08:19 Uhr“. Sie beginnt deshalb klein und ist kein
+    eigener Satz.
+
+    Bis zum 27.11.2026 hieß sie „Bruecke, /config/duckcurve/haus.yaml, gemeldet 26.11.2026 07:19
+    UTC“: der ganze Pfad im Add-on, den auf der Seite niemand braucht, und die Uhrzeit in
+    Weltzeit, im Winter eine und im Sommer zwei Stunden vor der Uhr des Hauses. Genannt wird
+    jetzt nur der Name der Datei, weil er sagt, was zu bearbeiten ist, und die Zeit des Hauses
+    (`HAUS_ZONE`).
+    """
+    datei = PurePosixPath(str(context.get(CTX_FILE) or "")).name
+    woher = f"aus {datei}" if datei else "von der Brücke"
+    if at is None:
+        return woher if datei else f"{woher} gemeldet"
+    ortszeit = (at if at.tzinfo else at.replace(tzinfo=UTC)).astimezone(HAUS_ZONE)
+    wann = f"am {ortszeit:%d.%m.%Y} um {ortszeit:%H:%M} Uhr"
+    return f"{woher}, gemeldet {wann}" if datei else f"{woher} gemeldet {wann}"
 
 
 def contact_rooms(plan: HousePlan) -> dict[str, Contact]:
