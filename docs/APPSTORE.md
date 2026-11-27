@@ -112,8 +112,8 @@ Vier Dinge, die man vorher wissen muss:
   an wenige geht.
 - **Der Link ist kein Schloss.** Apple schreibt, die App sei für jeden verfügbar, der den Link
   hat, und rät zu einer Sperre in der App selbst. Diese App hat sie von Haus aus: ohne die
-  Adresse und das Zugangstoken eines Hauses zeigt sie keine Daten. Wer die App benutzen darf,
-  entscheidet also, wer ein Token bekommt, und nicht, wer den Link kennt.
+  Adresse und die Anmeldung eines Hauses zeigt sie nur das Demo-Haus. Wer ein echtes Haus sehen
+  darf, entscheidet also, wer dort einen Zugang bekommt, und nicht, wer den Link kennt.
 - **Die Freigabe von Hand einstellen.** Unter *Versionsfreigabe* „Diese Version manuell
   freigeben" wählen, damit die App nach bestandener Prüfung nicht von selbst öffentlich wird,
   bevor der Antrag entschieden ist. Das steht nicht auf Apples Seite; es ist die Vorsicht, die
@@ -138,10 +138,8 @@ Ein Prüfer hat weder Haus noch Token und sieht 29 leere Seiten – das ist Rich
 Zwei Auswege, und beide sind Arbeit, nicht Formulierung. Gewählt ist der erste; wie er
 eingerichtet wird, steht im nächsten Abschnitt.
 
-1. **Demo-Zugang.** Ein öffentlich erreichbarer Dienst mit Beispieldaten (`railway.json` liegt
-   im Repository, Railway liefert HTTPS) und ein Token dafür, eingetragen in den Angaben für die
-   Prüfung: Apple verlangt Anmeldedaten, sobald eine App eine Anmeldung braucht, und bietet
-   daneben ein Notizfeld.
+1. **Demo-Haus.** Ein öffentlich erreichbarer Dienst mit Beispieldaten (`railway.json` liegt
+   im Repository, Railway liefert HTTPS), den die App mit einem Tipp öffnet.
 2. **Schau-Modus in der App.** Die Beispieldaten liegen schon im Kern (`Vorschau` in
    DuckCurveKit, laufen in 211 Tests mit). Ein Schalter im Zugangsschirm, der das Beispielhaus
    zeigt, macht die App ohne jeden Dienst vollständig vorzeigbar – und ist auch sonst nützlich:
@@ -161,43 +159,48 @@ Weiter verlangt App Store Connect, bevor eingereicht werden kann:
 
 ## Das Demo-Haus für die Prüfung
 
-Der Hausherr hat am 27.11.2026 den ersten der beiden Auswege gewählt: Der Prüfer bekommt ein
-Demo-Haus. Das ist der Dienst im Demo-Modus, öffentlich erreichbar, mit einem Token davor.
+Der Hausherr hat am 27.11.2026 den ersten der beiden Auswege gewählt und ihn am selben Tag
+vereinfacht: Der Prüfer bekommt ein Demo-Haus, und er muss dafür nichts eintragen. Auf dem
+Einrichtungsschirm der App steht unter der Anmeldung der Knopf „Demo ansehen". Ein Tipp darauf
+verbindet die App mit dem Demo-Haus.
 
-**Ein Konto mit E-Mail-Adresse und Passwort gibt es dort nicht.** Der Demo-Modus läuft ohne
-Datenbank und hat darum keine Personen; die Anmeldung mit Passwort antwortet mit „Die Anmeldung
-braucht eine Datenbank; dieser Dienst läuft im Demo-Modus". Der Prüfer richtet die App deshalb
-mit dem API-Token ein und wählt dabei den Zugang „Gast".
+Das Demo-Haus ist der Dienst im Demo-Modus, bei Railway bereitgestellt, **offen und ohne
+Token**. Seine Adresse steht fest im Programm (`Zugang.demohaus`):
 
-Was die Instanz braucht, ist wenig:
+    https://duckcurvehome-production-7dd0cc79.up.railway.app
 
-| Variable | Wert |
-|---|---|
-| `DCH_MODE` | `demo`. Das ist auch die Vorgabe, steht hier aber ausdrücklich, damit niemand rätselt. |
-| `DCH_API_TOKEN` | ein zufälliges Token, zum Beispiel aus `openssl rand -hex 32`. **Ohne dieses Token ist die Instanz für jeden offen, der die Adresse kennt.** |
+Das ist die Adresse, die Railway dem Dienst selbst gegeben hat. Niemand tippt sie, also braucht
+sie keine eigene Domain. Der Preis dafür: Wird der Dienst bei Railway gelöscht und neu angelegt,
+bekommt er eine andere Adresse, und der Knopf zeigt ins Leere, bis eine neue Fassung der App
+ausgeliefert ist. Der Dienst wird darum nur neu ausgerollt und nie neu angelegt.
 
+Die Instanz braucht eine einzige Variable, `DCH_MODE=demo`, und auch die ist nur die Vorgabe.
 Keine Datenbank, keine Bridge, kein Tibber, kein zweiter Dienst für das Dashboard: die App
-spricht nur mit der API. Gebaut wird aus `apps/api/Dockerfile`, wie `railway.json` es vorgibt,
-und die Instanz gehört in ein eigenes Projekt, getrennt vom echten Haus. Sie muss laufen, wann
-immer Apple prüft, also bei jeder neuen Fassung.
+spricht nur mit der API. Gebaut wird aus `apps/api/Dockerfile`, wie `railway.json` es vorgibt.
+Sie muss laufen, wann immer Apple prüft, also bei jeder neuen Fassung.
 
-Nachgemessen am 27.11.2026 gegen den Dienst im Demo-Modus mit gesetztem Token:
+**Offen heißt offen, auch zum Stellen.** Ohne `DCH_API_TOKEN` lässt der Dienst jede Anfrage
+herein und behandelt sie wie den Betreiber (`dependencies.require_zugang`). Die App öffnet das
+Demo-Haus als Gast und bietet dort keine Stellgriffe an; wer die Adresse kennt und die
+Schnittstelle von Hand anspricht, kann im Demo-Haus trotzdem alles verstellen. Verloren geht
+dabei nichts, denn das Haus ist simuliert und beginnt bei jedem Neustart von vorn. Es kann aber
+vorkommen, dass ein Prüfer ein Haus sieht, das ein anderer gerade verstellt hat.
 
-| Anfrage | Antwort |
-|---|---|
-| `/health` ohne Token | 200 |
-| Live-Zustand ohne Token oder mit falschem Token | 401 |
-| Live-Zustand und Fahrplan mit Token, als Gast | 200 |
-| Ein Gast stellt die Solltemperatur eines Raums | 403, „Gastzugang: nur Ansicht." |
+Nachgemessen am 27.11.2026:
 
-Ein Prüfer kann also alles ansehen und nichts verstellen, und was er sähe, ist ohnehin ein
-simuliertes Haus. Nicht nachgemessen ist das Bereitstellen bei Railway selbst und der Weg durch
-die App am Gerät gegen diese Instanz.
+| Anfrage | Wo | Antwort |
+|---|---|---|
+| `/health` | Railway | 200, Modus `demo` |
+| Live-Zustand, Fahrplan und Tagesbilanz ohne Token, mit den Kopfzeilen der App als Gast | Railway | 200 |
+| Eine Solltemperatur stellen, ohne Token | lokale Kopie ohne Token | 200, der Raum steht danach auf dem neuen Wert |
+| Anmeldung mit Passwort | lokale Kopie | 503, „Die Anmeldung braucht eine Datenbank; dieser Dienst läuft im Demo-Modus." |
 
-In den Angaben für die Prüfung stehen die Adresse der Instanz und das Token, und in den Notizen
-die drei Handgriffe: Adresse eintragen, „Mit API-Token" wählen, Zugang „Gast" wählen. Die
-Voreinstellung der App ist die Anmeldung mit Passwort; ohne diesen Hinweis scheitert der Prüfer
-am ersten Schirm.
+Geschrieben wurde nur gegen die lokale Kopie, damit die Messung das öffentliche Demo-Haus nicht
+selbst verstellt. Nicht nachgemessen ist der Knopf am Gerät: ob er richtig aussieht und ob die
+App danach das Demo-Haus zeigt, lässt sich nur am iPhone und am iPad sehen.
+
+In den Angaben für die Prüfung steht damit, dass keine Anmeldung nötig ist, und in den Notizen
+ein Satz: auf dem ersten Schirm „Demo ansehen" tippen.
 
 ## Push
 

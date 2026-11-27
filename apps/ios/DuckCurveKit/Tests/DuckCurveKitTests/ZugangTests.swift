@@ -16,6 +16,45 @@ final class ZugangTests: XCTestCase {
         )
     }
 
+    // MARK: - Das Demo-Haus
+
+    /// Der Knopf „Demo ansehen" trägt nichts ein. Also muss dieser eine Wert alles enthalten,
+    /// was sonst drei Felder liefern: Adresse, Anmeldung, Rolle.
+    func testDemoZeigtAufDasDemohausUndBrauchtKeinToken() {
+        let demo = Zugang.demo(geraetename: "iPhone")
+        XCTAssertEqual(
+            demo.adresse("/live/state")?.absoluteString,
+            "https://duckcurvehome-production-7dd0cc79.up.railway.app/api/v1/live/state"
+        )
+        // Außerhalb des Heimnetzes lässt iOS nur https zu (Info.plist, NSAppTransportSecurity).
+        XCTAssertEqual(Zugang.demohaus.scheme, "https")
+        XCTAssertTrue(demo.token.isEmpty)
+        XCTAssertNil(demo.kopfzeilen["authorization"], "ohne Token keine Anmeldezeile")
+        XCTAssertFalse(demo.istPerson)
+    }
+
+    /// Das Demo-Haus teilen sich alle. Die App bietet dort darum keine Stellgriffe an.
+    func testDemoIstEinGast() {
+        let demo = Zugang.demo(geraetename: "iPhone")
+        XCTAssertEqual(demo.rolle, .gast)
+        XCTAssertFalse(demo.rolle.darfStellen)
+        XCTAssertEqual(demo.kopfzeilen["x-dch-urheber-rolle"], "guest")
+    }
+
+    /// Ein eingerichteter Zugang, sonst überspränge die App das Demo-Haus wie den Platzhalter.
+    func testDemoGiltAlsEingerichtetUndErkenntSich() {
+        let demo = Zugang.demo(geraetename: "iPhone")
+        XCTAssertTrue(demo.istEingerichtet)
+        XCTAssertTrue(demo.istDemohaus)
+        XCTAssertFalse(zugang.istDemohaus)
+        XCTAssertFalse(Zugang(grund: Zugang.nichtEingerichtet).istDemohaus)
+    }
+
+    /// Der Gerätename reist mit, damit das Protokoll des Demo-Hauses nicht nur „Gerät" kennt.
+    func testDemoTraegtDenGeraetenamen() {
+        XCTAssertEqual(Zugang.demo(geraetename: "iPad Flur").kopfzeilen["x-dch-urheber-name"], "iPad Flur")
+    }
+
     func testAdresseSetztDenPraefix() {
         XCTAssertEqual(zugang.adresse("/live/state")?.absoluteString, "https://dch.beispiel.net/api/v1/live/state")
         XCTAssertEqual(zugang.adresse("live/state")?.absoluteString, "https://dch.beispiel.net/api/v1/live/state")

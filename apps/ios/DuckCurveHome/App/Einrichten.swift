@@ -63,6 +63,12 @@ struct Einrichten: View {
                         Stoerung(fehler: fehler)
                     }
                     knopf
+                    // Nur, wo noch kein echtes Haus verbunden ist. Wer sein Haus eingerichtet
+                    // hat und hier nur das Passwort erneuert, soll es nicht mit einem Tipp
+                    // gegen das Demo-Haus tauschen.
+                    if !haus.zugang.istEingerichtet || haus.zugang.istDemohaus {
+                        demo
+                    }
                     hinweise
                 }
                 .padding(20)
@@ -208,6 +214,33 @@ struct Einrichten: View {
         .opacity(unvollstaendig ? 0.5 : 1)
     }
 
+    /// Der zweite Weg hinein: das Demo-Haus, ohne Adresse und ohne Anmeldung.
+    ///
+    /// Leiser als der Knopf darüber, weil er nicht der Normalfall ist: wer ein Haus hat, soll
+    /// zuerst die Felder sehen. Der Satz steht über dem Knopf und nicht darunter, damit klar ist,
+    /// was der Tipp bewirkt, bevor man ihn macht.
+    private var demo: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(Anmeldeworte.demoerklaerung)
+                .font(Schrift.winzig)
+                .foregroundStyle(Farbe.text3)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                oeffneDemo()
+            } label: {
+                Text(Anmeldeworte.demoknopf)
+                    .font(Schrift.karte)
+                    .foregroundStyle(Farbe.text1)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Farbe.flaeche3)
+                    .clipShape(RoundedRectangle(cornerRadius: Marken.radius3, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(pruefe)
+        }
+    }
+
     /// Ob noch etwas fehlt, ohne das die Anfrage gar nicht erst hinausgehen muss.
     private var unvollstaendig: Bool {
         adresse.isEmpty || (weg == .passwort && (email.isEmpty || passwort.isEmpty))
@@ -283,16 +316,7 @@ struct Einrichten: View {
                     neu.email = angemeldet.ausweis.email ?? adresseDerPerson
                     neu.rolle = Zugang.rolle(derPerson: angemeldet.ausweis.rolle)
                 }
-                // Eine Anfrage, die alles prueft: Adresse, Netz, Anmeldung, Schema.
-                let zustand = try await Api(zugang: neu).liveZustand()
-                geprueft =
-                    "Verbunden: \(zustand.system.mode == "demo" ? "Demo" : "Live"), "
-                    + "Fassung \(zustand.system.version)."
-                Schluesselbund.speichere(neu)
-                passwort = ""
-                haus.zugang = neu
-                haus.abgemeldet = false
-                haus.starte()
+                try await uebernimm(neu)
             } catch let f as ApiFehler {
                 fehler = f
             } catch {
@@ -300,6 +324,43 @@ struct Einrichten: View {
             }
             pruefe = false
         }
+    }
+
+    /// Das Demo-Haus öffnen: nichts einzutragen, aber dieselbe Prüfung wie bei einem echten Haus.
+    ///
+    /// Ist das Demo-Haus nicht zu erreichen, steht der Grund hier auf dem Schirm, und es wird
+    /// nichts gespeichert. Sonst säße jemand vor einer leeren App und wüsste nicht, warum.
+    @MainActor private func oeffneDemo() {
+        fehler = nil
+        geprueft = nil
+        let neu = Zugang.demo(geraetename: geraetename.isEmpty ? Geraet.vorschlag : geraetename)
+        pruefe = true
+        Task {
+            do {
+                try await uebernimm(neu)
+            } catch let f as ApiFehler {
+                fehler = f
+            } catch {
+                fehler = .netz(error.localizedDescription)
+            }
+            pruefe = false
+        }
+    }
+
+    /// Prüfen, verwahren, starten: der gemeinsame Schluss beider Wege.
+    ///
+    /// Eine Anfrage, die alles prüft: Adresse, Netz, Anmeldung, Schema. Erst wenn sie durchgeht,
+    /// wird der Zugang gespeichert und die App gestartet.
+    @MainActor private func uebernimm(_ neu: Zugang) async throws {
+        let zustand = try await Api(zugang: neu).liveZustand()
+        geprueft =
+            "Verbunden: \(zustand.system.mode == "demo" ? "Demo" : "Live"), "
+            + "Fassung \(zustand.system.version)."
+        Schluesselbund.speichere(neu)
+        passwort = ""
+        haus.zugang = neu
+        haus.abgemeldet = false
+        haus.starte()
     }
 }
 

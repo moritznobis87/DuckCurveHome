@@ -28,6 +28,16 @@ public enum Anmeldeworte {
         "Mit dem API-Token aus DCH_API_TOKEN spricht die App als Gerät und nicht als Person. "
         + "Das Token darf am Dienst alles; es ist der Weg für den, der den Dienst betreibt."
 
+    // MARK: - Das Demo-Haus
+
+    /// Der Knopf unter der Anmeldung, der das Demo-Haus öffnet (`Zugang.demo`).
+    public static let demoknopf = "Demo ansehen"
+
+    /// Der Satz über dem Knopf. Er sagt, was man bekommt und dass nichts einzutragen ist.
+    public static let demoerklaerung =
+        "Wer noch kein eigenes Haus verbunden hat, sieht sich die App an einem Beispielhaus mit "
+        + "simulierten Werten an. Dafür ist keine Anmeldung nötig."
+
     // MARK: - Mein Passwort
 
     public static let ueberschrift = "Mein Passwort"
