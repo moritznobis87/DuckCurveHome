@@ -68,10 +68,16 @@ public enum Hauskonsolenfenster {
     }
 
     /// Der Satz unter dem Wort: was der Dienst sagt, sonst „nicht eingerichtet“
-    /// (`house/live.ts:61`).
+    /// (`house/live.ts`, `alarmSatz`).
+    ///
+    /// **Leer, wenn er nur das Wort wiederholt.** Ist die Anlage unscharf, meldet der Dienst
+    /// „unscharf“, und im Block stand „UNSCHARF“ und darunter noch einmal „unscharf“ (Bild des
+    /// Hausherrn vom 27.11.2026). Bei „zu Hause scharf“ unter „ZU HAUSE“ sagt der Satz etwas
+    /// dazu und bleibt.
     public static func alarmsatz(_ alarm: AlarmOut?) -> String {
         guard let alarm, alarm.present else { return "nicht eingerichtet" }
-        return alarm.stateDe
+        let gemeldet = alarm.stateDe.trimmingCharacters(in: .whitespaces)
+        return gemeldet.lowercased() == stufe(alarm).wort.lowercased() ? "" : alarm.stateDe
     }
 
     // MARK: - Orte im Plan

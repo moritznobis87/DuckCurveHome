@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { House, HouseContact, LiveState, RoomLive } from "@/lib/api/models";
-import { alarmStufe, hausLive, offenSatz } from "./live";
+import { alarmSatz, alarmStufe, hausLive, offenSatz } from "./live";
 
 const kontakt = (key: string, open: boolean | null, door = false): HouseContact => ({ key, name: key, room: null, door, open, observed_at: null, quality: open == null ? "unavailable" : "ok" });
 
@@ -47,6 +47,23 @@ describe("Das Bild des Augenblicks", () => {
     expect(live.alarm).toBe("unbekannt");
     expect(live.alarmSatz).toBe("nicht eingerichtet");
     expect(live.pufferTemps).toEqual([]);
+  });
+});
+
+describe("Der Satz unter dem Wort des Alarms", () => {
+  // Dieselben Fälle wie in `HauskonsolenfensterTests.swift`.
+  it("wiederholt das Wort nicht", () => {
+    // „UNSCHARF“ und darunter „unscharf“ ist zweimal dasselbe.
+    expect(alarmSatz({ present: true, state_de: "unscharf" }, "unscharf")).toBe("");
+    expect(alarmSatz({ present: true, state_de: " Unscharf " }, "unscharf")).toBe("");
+  });
+  it("sagt, was die Anlage dazu meldet", () => {
+    expect(alarmSatz({ present: true, state_de: "zu Hause scharf" }, "zuhause")).toBe("zu Hause scharf");
+    expect(alarmSatz({ present: true, state_de: "scharf, abwesend" }, "unterwegs")).toBe("scharf, abwesend");
+  });
+  it("sagt ohne Anlage, dass keine eingerichtet ist", () => {
+    expect(alarmSatz({ present: false, state_de: "unscharf" }, "unbekannt")).toBe("nicht eingerichtet");
+    expect(alarmSatz(null, "unbekannt")).toBe("nicht eingerichtet");
   });
 });
 

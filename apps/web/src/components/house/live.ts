@@ -46,6 +46,19 @@ export const ALARM_WORT: Record<AlarmStufe, string> = {
   unbekannt: "KEINE MELDUNG",
 };
 
+/**
+ * Der Satz unter dem Wort des Alarms: was die Anlage meldet, ohne Anlage „nicht eingerichtet“.
+ *
+ * **Leer, wenn er nur das Wort wiederholt.** Ist die Anlage unscharf, meldet der Dienst
+ * „unscharf“, und im Block stand „UNSCHARF“ und darunter noch einmal „unscharf“ (Bild des
+ * Hausherrn vom 27.11.2026). Bei „zu Hause scharf“ unter „ZU HAUSE“ sagt der Satz etwas dazu
+ * und bleibt.
+ */
+export function alarmSatz(alarm: { present: boolean; state_de: string } | null | undefined, stufe: AlarmStufe): string {
+  if (!alarm?.present) return "nicht eingerichtet";
+  return alarm.state_de.trim().toLowerCase() === ALARM_WORT[stufe].toLowerCase() ? "" : alarm.state_de;
+}
+
 export function hausLive(rooms: RoomLive[] | null, house: House | null, state: LiveState | null): HausLive {
   const raeume = new Map<number, RoomLive>();
   for (const r of rooms ?? []) raeume.set(r.id, r);
@@ -58,7 +71,7 @@ export function hausLive(rooms: RoomLive[] | null, house: House | null, state: L
     raeume,
     kontakte,
     alarm,
-    alarmSatz: state?.alarm.present ? state.alarm.state_de : "nicht eingerichtet",
+    alarmSatz: alarmSatz(state?.alarm, alarm),
     pufferSoc: state?.buffer.soc ?? null,
     pufferTemps: temps.map((m) => m.value ?? null),
     waermepumpeKw: s?.heat_pump_power_kw.value ?? null,
