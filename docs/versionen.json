@@ -11,6 +11,10 @@
     {
       "bereich": "Energie",
       "text": "Die Ertragsprognose rechnet den Stand der Sonne genauer. Die erwartete Erzeugung liegt im Spätherbst nicht mehr eine Viertelstunde zu spät und im Februar nicht mehr eine Viertelstunde zu früh."
+    },
+    {
+      "bereich": "Jetzt",
+      "text": "Die Legende unter der Tageskurve nennt nur noch, was im Bild steht. In der App sehen ihre Marken jetzt aus wie die Linien: gestrichelt, wo die Linie gestrichelt ist."
     }
   ],
   "versionen": [

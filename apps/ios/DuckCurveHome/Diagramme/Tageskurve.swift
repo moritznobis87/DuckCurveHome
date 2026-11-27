@@ -452,11 +452,15 @@ struct TageskurveBild: View {
 
     // MARK: - Legende
 
-    /// Die Legende nennt, was zu sehen ist - und die Kilowattstunden, damit der Vergleich mit
-    /// dem Vortag eine Zahl hat.
+    /// Die Legende nennt, was im Bild steht - und die Kilowattstunden des Vortags, damit der
+    /// Vergleich eine Zahl hat.
     ///
-    /// `DayCurve.tsx`: „Eine Kurve allein sagt nicht, ob der Tag gut war; erst der Vortag macht
-    /// aus 13,4 kWh eine Auskunft."
+    /// **Jede Marke sieht aus wie ihre Linie.** Bis zum 27.11.2026 stand vor jedem Wort ein
+    /// durchgezogener Strich, auch vor „Sonne erwartet“ und „Wärmepumpe“, die im Bild
+    /// gestrichelt sind; unter „Morgen“ ließ sich damit keine Linie ihrem Namen zuordnen
+    /// (Hausherr: „Die Legenden-Erklärung passt überhaupt nicht zu der Grafik“). Was dasteht
+    /// und in welcher Form, rechnet der Kern (``Tageskurve/legende(_:)``), mit denselben
+    /// Fällen wie das Dashboard (`tageslegende.ts`).
     private var legende: some View {
         // **Sie darf umbrechen** (`handy.css:266`: `flex-wrap: wrap`). Sechs Einträge auf
         // 390 Punkten sind zwei Zeilen; in einer Zeile sind es sechs abgeschnittene Wörter.
@@ -466,19 +470,9 @@ struct TageskurveBild: View {
                     .font(Schrift.zahlKlein)
                     .foregroundStyle(Farbe.amber)
             } else {
-                ForEach(eintraege, id: \.wort) { e in
+                ForEach(kurve.legende(tag)) { e in
                     HStack(spacing: 6) {
-                        if e.flaeche {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(e.farbe)
-                                .frame(width: 14, height: 8)
-                                .opacity(0.6)
-                        } else {
-                            Rectangle()
-                                .fill(e.farbe)
-                                .frame(width: 14, height: 2)
-                                .opacity(e.gestrichelt ? 0.8 : 1)
-                        }
+                        Legendenmarke(form: e.form, farbe: legendenfarbe(e.reihe))
                         Text(e.wort)
                             .font(Schrift.winzig)
                             .foregroundStyle(Farbe.text3)
@@ -489,75 +483,18 @@ struct TageskurveBild: View {
         .frame(minHeight: 16)
     }
 
-    private struct Legendeneintrag {
-        let wort: String
-        let farbe: Color
-        var gestrichelt = false
-        /// Eine Fläche statt eines Strichs: die Sonne und die Preisbänder sind Flächen im
-        /// Bild, und ihre Marke soll aussehen wie das, was sie benennt (`DayCurve.tsx:230`).
-        var flaeche = false
-    }
-
-    /// **Die Legende haengt am Tag und nicht an den Reihen** (`DayCurve.tsx:143-149`).
-    ///
-    /// Hier stand ueberall `isEmpty`, und das hatte zwei sichtbare Folgen. An einem Tag ohne
-    /// Messwerte verschwand „Sonne“ aus der Legende, obwohl die Achse stand - die Legende sagt
-    /// dann nicht mehr, was das Bild zeigen wuerde, sondern was zufaellig angekommen ist. Und
-    /// „Preistief“ stand nur da, solange gerade ein Band im Bild lag: sobald das Fenster vorbei
-    /// war, blieb eine getoente Flaeche ohne Namen. Die Vorlage nennt es ausser gestern immer.
-    ///
-    /// Zwei Eintraege haengen weiter am Inhalt, und zu Recht: der Schatten, weil es ihn ohne
-    /// Vortagsreihe nicht gibt (`:145`: `schatten ? …`), und die gemessene Waermepumpe, die die
-    /// Vorlage gar nicht zeichnet.
-    private var eintraege: [Legendeneintrag] {
-        var aus: [Legendeneintrag] = []
-        if tag != .morgen {
-            // **Die Kilowattstunden stehen nur am Vortag.** Das ist die ganze Begründung für
-            // den Schatten: „Eine Kurve allein sagt nicht, ob der Tag gut war; erst der Vortag
-            // macht aus 13,4 kWh eine Auskunft." Zweimal eine Zahl, und der Vergleich geht
-            // verloren (`DayCurve.tsx:143`).
-            aus.append(Legendeneintrag(wort: "Sonne", farbe: Farbe.pv, flaeche: true))
+    /// Die Farbe der Marke: dieselbe Farbe und Deckung wie die Linie im Bild darüber.
+    private func legendenfarbe(_ reihe: Kurvenlegende.Reihe) -> Color {
+        switch reihe {
+        case .sonne: return Farbe.pv
+        case .sonneErwartet: return Farbe.pv.opacity(0.7)
+        case .schatten: return Farbe.pvSchatten.opacity(0.75)
+        case .haus: return Self.hausfarbe
+        case .waermepumpe: return Farbe.waermepumpe.opacity(0.85)
+        case .waermepumpeErwartet: return Farbe.waermepumpe.opacity(0.75)
+        case .strompreis: return Farbe.preis
+        case .preistief: return bandfarbe(.guenstig)
         }
-        if tag != .gestern {
-            aus.append(
-                Legendeneintrag(
-                    wort: tag == .morgen ? "Sonne erwartet" : "Prognose",
-                    farbe: Farbe.pv, gestrichelt: true))
-        }
-        if !kurve.schatten.isEmpty {
-            let kwh = kurve.schattenKwh.map { " \(Formate.kwh($0))" } ?? ""
-            aus.append(
-                Legendeneintrag(wort: "\(kurve.schattenwort ?? "Vortag")\(kwh)", farbe: Farbe.pvSchatten))
-        }
-        if tag != .morgen {
-            aus.append(Legendeneintrag(wort: "Haus", farbe: Self.hausfarbe))
-        }
-        // Die gemessene Waermepumpe zeichnet die Vorlage nicht; es gibt sie nur hier, und nur
-        // an einem Tag, an dem gemessen wurde. `tag != .morgen` haelt sie vom gestrichelten
-        // Eintrag darunter getrennt - zwei Eintraege gleichen Wortes waeren derselbe Schluessel.
-        if tag != .morgen, !kurve.waermepumpe.isEmpty {
-            aus.append(Legendeneintrag(wort: "Wärmepumpe", farbe: Farbe.waermepumpe))
-        }
-        if tag == .morgen {
-            aus.append(
-                Legendeneintrag(wort: "Wärmepumpe", farbe: Farbe.waermepumpe, gestrichelt: true)
-            )
-        }
-        // **Der Strompreis gehört in die Legende.** Er fehlte: eine zweite Achse rechts und
-        // eine Linie im Bild, die niemand benennt (`DayCurve.tsx:148`).
-        aus.append(
-            Legendeneintrag(wort: "Strompreis", farbe: Farbe.preis, gestrichelt: tag == .morgen))
-        if tag != .gestern {
-            // **Ein Name, unbedingt** (`DayCurve.tsx:149`): immer „Preistief“, immer in der
-            // Preisfarbe, gleich welche Fenster gerade im Bild liegen - sonst bleibt eine
-            // getoente Flaeche ohne Namen. „NEGATIV“ ist in der Vorlage die Beschriftung im
-            // Band selbst (`:82`) und kein Eintrag der Legende; eine Wahl zwischen beiden
-            // liesse an einem windigen Mittag, an dem ein guenstiges und ein negatives
-            // Fenster zugleich im Bild liegen, die guenstige Flaeche unbenannt.
-            aus.append(
-                Legendeneintrag(wort: "Preistief", farbe: bandfarbe(.guenstig), flaeche: true))
-        }
-        return aus
     }
 
     /// Was unter dem Finger steht, wenn jemand zieht.
@@ -592,6 +529,42 @@ struct TageskurveBild: View {
         case .negativ: return Farbe.amber
         case .teuer: return Farbe.alarm
         }
+    }
+}
+
+/// Die Marke vor einem Wort der Legende: eine Fläche, ein Strich oder ein gestrichelter Strich,
+/// so wie die Reihe im Bild gezeichnet ist.
+private struct Legendenmarke: View {
+    let form: Kurvenlegende.Form
+    let farbe: Color
+
+    var body: some View {
+        switch form {
+        case .flaeche:
+            RoundedRectangle(cornerRadius: 2)
+                .fill(farbe)
+                .frame(width: 14, height: 8)
+                .opacity(0.6)
+        case .linie:
+            Legendenstrich()
+                .stroke(farbe, style: StrokeStyle(lineWidth: 2))
+                .frame(width: 18, height: 8)
+        case .gestrichelt:
+            // Zwei Striche mit einer Lücke: fünf Punkte, vier frei, fünf, vier.
+            Legendenstrich()
+                .stroke(farbe, style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                .frame(width: 18, height: 8)
+        }
+    }
+}
+
+/// Ein waagerechter Strich durch die Mitte seines Feldes.
+private struct Legendenstrich: Shape {
+    func path(in feld: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: feld.minX, y: feld.midY))
+        p.addLine(to: CGPoint(x: feld.maxX, y: feld.midY))
+        return p
     }
 }
 

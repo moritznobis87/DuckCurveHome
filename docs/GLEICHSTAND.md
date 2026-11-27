@@ -44,6 +44,7 @@ Behoben am 24.11.2026, nach der ersten Fassung dieser Liste:
 | Startseite (seit dem 25.11.2026) | An der Wand stehen Tageskurve und Schalter in je einer Karte, die vier Zahlen des Tages im Kopf der Tageskarte. | Kurve, vier Zahlen und Schalter stehen an der Wand wie bisher ohne Karten in zwei Reihen. Der Inhalt ist derselbe. | `components/home/Home.tsx`, `Seiten/Jetzt/JetztSeite.swift` |
 | Startseite (seit dem 25.11.2026) | Der Lüfter der Wärmepumpe dreht sich auf der Bühne, solange sie läuft. | Der Lüfter steht; die Bänder bewegen sich in beiden. | `components/home/Buehne.tsx`, `Seiten/Jetzt/Buehnenbild.swift` |
 | Startseite | Auf dem Lichtkegel von der Sonne zum Dach laufen Lichtpunkte, solange die Anlage erzeugt. | Der Lichtkegel steht still. Gefunden am 26.11.2026 beim Umbau der Sonne. | `components/home/Buehne.tsx`, `Seiten/Jetzt/Buehnenbild.swift` |
+| Startseite, Tageskurve | Die gemessene Wärmepumpe ist keine eigene Linie; sie steckt in der Linie des Hauses. | Die gemessene Wärmepumpe steht gestern und heute als eigene Linie im Bild und in der Legende. Gefunden am 27.11.2026 beim Umbau der Legende. | `components/home/DayCurve.tsx`, `Diagramme/Tageskurve.swift` |
 | Startseite | Ein Tipp auf den Speicher führt auf seine Seite. | Ein Tipp öffnet das Blatt des Speichers. Das war schon vor dem neuen Bild so. | `components/home/Buehne.tsx`, `Seiten/Jetzt/Buehnenbild.swift` |
 
 **Entschieden am 24.11.2026:** überall das Blockschaltbild, keine Liste. Die App zeigt seitdem
