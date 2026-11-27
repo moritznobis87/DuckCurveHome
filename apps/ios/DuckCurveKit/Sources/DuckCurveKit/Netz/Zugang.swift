@@ -250,12 +250,15 @@ extension Zugang {
     /// **Ohne Token**, weil das Demo-Haus keines verlangt: ein Dienst ohne `DCH_API_TOKEN` lässt
     /// jede Anfrage herein (`dependencies.require_zugang`).
     ///
-    /// **Als Gast**, obwohl der Dienst dort nichts sperrt. Die Rolle bestimmt hier, was die App
-    /// anbietet, und ein Gast bekommt keine Stellgriffe. Das Demo-Haus teilen sich alle, die es
-    /// gerade ansehen; was einer verstellt, sähen die anderen. Zusehen ist die Richtung, in der
-    /// das harmlos bleibt.
+    /// **Als Hausherr, also mit vollem Umfang.** Der Hausherr hat das am 27.11.2026 so
+    /// entschieden: wer das Demo-Haus öffnet, soll die ganze App sehen, auch die Stellgriffe
+    /// und die Seiten, die sonst dem Hausherrn bleiben. Zuerst stand hier `gast`.
+    ///
+    /// Der Preis dafür: Das Demo-Haus teilen sich alle, die es gerade ansehen, und was einer
+    /// verstellt, sehen die anderen. Verloren geht dabei nichts, das Haus ist simuliert und
+    /// beginnt bei jedem Neustart des Dienstes von vorn.
     public static func demo(geraetename: String) -> Zugang {
-        Zugang(grund: demohaus, token: "", geraetename: geraetename, rolle: .gast)
+        Zugang(grund: demohaus, token: "", geraetename: geraetename, rolle: .hausherr)
     }
 
     /// Ob dieser Zugang auf das Demo-Haus zeigt.

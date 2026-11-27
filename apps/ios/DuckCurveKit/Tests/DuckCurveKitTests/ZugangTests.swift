@@ -33,12 +33,14 @@ final class ZugangTests: XCTestCase {
         XCTAssertFalse(demo.istPerson)
     }
 
-    /// Das Demo-Haus teilen sich alle. Die App bietet dort darum keine Stellgriffe an.
-    func testDemoIstEinGast() {
+    /// Wer das Demo-Haus öffnet, sieht die ganze App: Stellgriffe und die Seiten des Hausherrn.
+    /// Das ist eine Entscheidung des Hausherrn und kein Versehen; als Gast fehlte beides.
+    func testDemoHatDenVollenUmfang() {
         let demo = Zugang.demo(geraetename: "iPhone")
-        XCTAssertEqual(demo.rolle, .gast)
-        XCTAssertFalse(demo.rolle.darfStellen)
-        XCTAssertEqual(demo.kopfzeilen["x-dch-urheber-rolle"], "guest")
+        XCTAssertEqual(demo.rolle, .hausherr)
+        XCTAssertTrue(demo.rolle.darfStellen)
+        XCTAssertTrue(demo.rolle.hatVollzugriff)
+        XCTAssertEqual(demo.kopfzeilen["x-dch-urheber-rolle"], "owner")
     }
 
     /// Ein eingerichteter Zugang, sonst überspränge die App das Demo-Haus wie den Platzhalter.
