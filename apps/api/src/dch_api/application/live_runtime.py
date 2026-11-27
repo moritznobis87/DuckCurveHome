@@ -926,9 +926,9 @@ class LiveRuntime:
     async def _damals_nachschlag(self, now: datetime) -> Callable[[datetime], Damalspunkt | None]:
         """Der Plan von damals für den laufenden Ortstag, aus dem Prognosearchiv.
 
-        Je Größe eine Abfrage, also zwei je Fahrplan und damit acht in der Stunde. Wie bei der
-        Messung darf ein Fehler den Fahrplan nicht aufhalten: ohne Archiv bleiben die Streifen
-        links der Jetzt-Linie so leer, wie sie vorher waren.
+        Je Größe eine Abfrage, also vier je Fahrplan und damit sechzehn in der Stunde. Wie bei
+        der Messung darf ein Fehler den Fahrplan nicht aufhalten: ohne Archiv bleiben die
+        Streifen links der Jetzt-Linie so leer, wie sie vorher waren.
         """
         start = now.astimezone(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -944,7 +944,12 @@ class LiveRuntime:
                 return None
             return stand_vor(punkte, raster_min=15) if punkte else None
 
-        return damals_nachschlag(await groesse("heat_kw"), await groesse("buffer_kwh"))
+        return damals_nachschlag(
+            await groesse("heat_kw"),
+            await groesse("buffer_kwh"),
+            await groesse("hp_release"),
+            await groesse("hp_kw"),
+        )
 
     async def refresh_plan(self) -> None:
         now = self.now

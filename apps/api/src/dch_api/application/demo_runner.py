@@ -345,7 +345,9 @@ class DemoRunner:
             ]
             return stand_vor(punkte, raster_min=15) if punkte else None
 
-        return damals_nachschlag(groesse("heat_kw"), groesse("buffer_kwh"))
+        return damals_nachschlag(
+            groesse("heat_kw"), groesse("buffer_kwh"), groesse("hp_release"), groesse("hp_kw")
+        )
 
     def _record_forecast_run(self, now: datetime) -> None:
         start = now - timedelta(hours=1)

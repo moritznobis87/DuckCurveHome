@@ -15925,6 +15925,28 @@
               }
             ],
             "title": "Past Plan Buffer Kwh"
+          },
+          "past_plan_hp_release": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Past Plan Hp Release"
+          },
+          "past_plan_hp_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Past Plan Hp Kw"
           }
         },
         "type": "object",

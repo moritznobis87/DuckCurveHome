@@ -87,24 +87,42 @@ class Damalspunkt:
     waerme_kw: float | None = None
     #: Der Pufferinhalt, den er am Ende der Viertelstunde erwartete.
     puffer_kwh: float | None = None
+    #: Ob er die Wärmepumpe freigab (`hp_release`). `None`, wo er nichts vorgab.
+    freigabe: bool | None = None
+    #: Die elektrische Leistung, mit der der Optimierer sie zählte (`hp_kw`).
+    wp_kw: float | None = None
 
 
 def damals_nachschlag(
     waerme: Callable[[datetime], float | None] | None,
     puffer: Callable[[datetime], float | None] | None,
+    freigabe: Callable[[datetime], float | None] | None = None,
+    wp_kw: Callable[[datetime], float | None] | None = None,
 ) -> Callable[[datetime], Damalspunkt | None]:
-    """Zwei Nachschlagewerke des Prognosearchivs zu einem für den Fahrplan fügen.
+    """Die Nachschlagewerke des Prognosearchivs zu einem für den Fahrplan fügen.
 
-    `waerme` und `puffer` sind je eine Rückgabe von `stand_vor`: der Wert des jüngsten Laufs vor
-    einem Zeitpunkt. `None` heißt, das Archiv kannte die Größe gar nicht.
+    Jedes ist eine Rückgabe von `stand_vor`: der Wert des jüngsten Laufs vor einem Zeitpunkt.
+    `None` heißt, das Archiv kannte die Größe gar nicht.
+
+    **Die Freigabe ist im Archiv eine Zahl**, eins oder null, weil es nur Zahlen ablegt
+    (`plan_als_lauf`). Hier wird sie wieder zu Ja oder Nein, mit der Hälfte als Grenze.
+
+    **Eine Grenze dieses Wegs.** „Der Fahrplan sagt nichts“ wird nicht abgelegt. Sagte ein
+    früherer Lauf Ja und der jüngste nichts mehr, steht hier das Ja des früheren. Das kommt vor,
+    wenn der Optimierer zwischen zwei Läufen ausfällt und die Preisregel übernimmt; die
+    Wiedergabe der Anlage liest die Absicht auf demselben Weg und hat dieselbe Grenze.
     """
 
     def nachschlag(t: datetime) -> Damalspunkt | None:
         w = waerme(t) if waerme else None
         p = puffer(t) if puffer else None
-        if w is None and p is None:
+        f = freigabe(t) if freigabe else None
+        k = wp_kw(t) if wp_kw else None
+        if w is None and p is None and f is None and k is None:
             return None
-        return Damalspunkt(waerme_kw=w, puffer_kwh=p)
+        return Damalspunkt(
+            waerme_kw=w, puffer_kwh=p, freigabe=None if f is None else f >= 0.5, wp_kw=k
+        )
 
     return nachschlag
 
@@ -370,6 +388,8 @@ def build_plan(
                 actual_buffer_kwh=gemessen.puffer_kwh if gemessen else None,
                 past_plan_heat_kw=erinnert.waerme_kw if erinnert else None,
                 past_plan_buffer_kwh=erinnert.puffer_kwh if erinnert else None,
+                past_plan_hp_release=erinnert.freigabe if erinnert else None,
+                past_plan_hp_kw=erinnert.wp_kw if erinnert else None,
             )
         )
         t += timedelta(minutes=15)
@@ -454,6 +474,7 @@ def plan_als_lauf(plan: PlanOut, now: datetime) -> Lauf | None:
             "buffer_kwh": i.buffer_kwh,
             "heat_kw": waerme,
             "cost_eur": i.planned_cost_eur,
+            "hp_kw": i.planned_hp_kw,
         }
 
     return plan_lauf(

@@ -331,6 +331,10 @@ def test_der_fahrplan_wird_ein_lauf_mit_drei_zustaenden() -> None:
     assert frei[NOW] == 1.0 and frei[NOW + timedelta(minutes=105)] == 1.0
     assert frei[laeuft_bis] == 0.0, "nach dem Fenster sagt der Optimierer ausdrücklich nein"
     assert min(frei) == NOW, "nichts vor der laufenden Viertelstunde: das wäre keine Absicht"
+    # Seit dem 27.11.2026 bleibt auch die Leistung, mit der der Optimierer zählte.
+    leistung = {p.ts: p.wert for p in lauf.punkte if p.variable == "hp_kw"}
+    nennwert = HemsConfig().heat_pump.nominal_electric_power_kw
+    assert leistung[NOW] == nennwert and leistung[laeuft_bis] == 0.0
 
 
 def test_die_ablage_ist_stuendlich_und_beim_ersten_mal() -> None:
@@ -587,3 +591,49 @@ def test_der_plan_von_damals_ist_der_juengste_lauf_vor_der_viertelstunde() -> No
     assert viertel_nach is not None and viertel_nach.waerme_kw == 3.4
     assert nachschlag(DAY_START) is None, "vor dem ersten Lauf weiß das Archiv nichts"
     assert damals_nachschlag(None, None)(fuenf) is None
+
+
+def test_die_absicht_der_waermepumpe_von_damals_steht_links_der_jetzt_linie() -> None:
+    """Der Streifen „Wärmepumpe geplant“ zeigte dort die Preisregel von heute.
+
+    Für vergangene Viertelstunden hat der Optimierer keinen Fahrplan mehr, also griff die Regel,
+    und sie antwortet mit den Fenstern von heute. Was man damals vorhatte, steht im Archiv: die
+    Freigabe als eins oder null und die Leistung, mit der der Optimierer zählte.
+    """
+    from dch_api.application.plan_service import damals_nachschlag
+    from hems_core.forecasting import stand_vor
+
+    jetzt = DAY_START + timedelta(hours=6, minutes=7)
+    lauf = DAY_START - timedelta(minutes=57)
+    vier, fuenf = DAY_START + timedelta(hours=4), DAY_START + timedelta(hours=5)
+    freigabe = stand_vor([(lauf, vier, 1.0), (lauf, fuenf, 0.0)], raster_min=15)
+    leistung = stand_vor([(lauf, vier, 4.5), (lauf, fuenf, 0.0)], raster_min=15)
+
+    plan = build_plan(
+        _pv,
+        _hourly_prices(24),
+        jetzt,
+        HemsConfig(),
+        damals=damals_nachschlag(None, None, freigabe, leistung),
+    )
+    je_ts = {i.ts: i for i in plan.intervals}
+
+    assert je_ts[vier].past_plan_hp_release is True and je_ts[vier].past_plan_hp_kw == 4.5
+    assert je_ts[fuenf].past_plan_hp_release is False and je_ts[fuenf].past_plan_hp_kw == 0.0
+    ohne = je_ts[vier + timedelta(minutes=15)]
+    assert ohne.past_plan_hp_release is None and ohne.past_plan_hp_kw is None, (
+        "wo der Fahrplan von damals nichts vorgab, steht nichts und kein Nein"
+    )
+    assert all(
+        i.past_plan_hp_release is None and i.past_plan_hp_kw is None
+        for i in plan.intervals
+        if i.ts >= DAY_START + timedelta(hours=6)
+    ), "die laufende Viertelstunde und alles danach gehört dem Plan von jetzt"
+
+
+def test_die_freigabe_ohne_leistung_ist_die_preisregel() -> None:
+    """Eine Freigabe der Regel ist eine Erlaubnis; eine Leistung hat nur der Optimierer gezählt."""
+    from dch_api.application.plan_service import damals_nachschlag
+
+    punkt = damals_nachschlag(None, None, lambda _t: 1.0, lambda _t: None)(DAY_START)
+    assert punkt is not None and punkt.freigabe is True and punkt.wp_kw is None
