@@ -1,16 +1,21 @@
 # Die App ausliefern
 
 Wie aus dem Xcode-Projekt in `apps/ios/` etwas wird, das auf einem Gerät liegt, das nicht am
-Kabel hängt. Drei Wege, und der erste ist für dieses Haus meist der richtige.
+Kabel hängt. Vier Wege:
 
 | Weg | Wofür | Was er kostet |
 |---|---|---|
 | **Direkt aus Xcode** | Das iPad an der Wand, das eigene Telefon | Nichts. Mit bezahltem Konto hält das Profil ein Jahr statt sieben Tage. |
-| **TestFlight** | Mehrere Geräte, Familie, Updates ohne Kabel | Ein Upload je Fassung. Interne Tester bekommen den Build **ohne Prüfung** durch Apple. |
-| **App Store** | Öffentlich | Prüfung durch Apple, Datenschutzerklärung, Screenshots, Fragebogen – und ein Zugang, mit dem ein Prüfer die App benutzen kann. Siehe unten. |
+| **TestFlight** | Eingeladene Tester, Updates ohne Kabel, keine Store-Seite | Ein Upload je Fassung. Der erste Build einer Fassung geht für externe Tester durch eine Beta-Prüfung. |
+| **App Store, nicht gelistet** | Eine echte Store-Seite, die nur über ihren Link erreichbar ist | Die volle Prüfung durch Apple und ein Antrag. Siehe unten. |
+| **App Store, öffentlich** | Jeder findet und lädt die App | Dieselbe Prüfung, ohne Antrag. |
 
-Technisch ist der Upload für TestFlight und Store **derselbe**. Es unterscheidet sich nur, was
-danach in App Store Connect passiert.
+**Gewählt ist der dritte Weg.** Der Hausherr hat am 27.11.2026 festgelegt: Die App bekommt eine
+Store-Seite mit allen Angaben und geht zuerst an eine Handvoll eingeladener Nutzer, aber sie
+soll nicht für jeden auffindbar sein, solange sie kein Produkt ist.
+
+Technisch ist der Upload für alle drei Wege über App Store Connect **derselbe**. Es
+unterscheidet sich nur, was danach dort passiert.
 
 ## Einmalig einzurichten
 
@@ -67,15 +72,61 @@ Archivieren und nicht danach.
 
 Nach dem Upload dauert die Verarbeitung Minuten bis zu einer Stunde. Dann:
 
-- **Interne Tester** (bis 100, alles Benutzer des eigenen App-Store-Connect-Zugangs) bekommen
-  den Build sofort, ohne Prüfung durch Apple.
-- **Externe Tester** (bis 10 000, per Link) brauchen eine Beta-App-Prüfung – schneller und
-  milder als die Store-Prüfung, aber eine Prüfung.
-- Jeder Build läuft nach **90 Tagen** ab. Danach ein neuer Upload.
+- **Interne Tester** (bis 100) sind Mitglieder des eigenen Entwicklerteams mit einer Rolle in
+  App Store Connect. Sie bekommen den Build sofort, ohne Prüfung durch Apple. Für Freunde taugt
+  das nicht: jeder bräuchte einen Zugang zum Entwicklerkonto.
+- **Externe Tester** (bis 10 000) werden per E-Mail eingeladen oder kommen über einen
+  öffentlichen Link. Der erste Build einer Fassung geht dafür durch eine Beta-Prüfung; Apple
+  schreibt, spätere Builds derselben Fassung bräuchten sie womöglich nicht. Pflicht sind eine
+  Beta-App-Beschreibung und die Angaben für die Prüfung.
+- **Der öffentliche Link ist kein geschlossener Kreis.** Apple sagt es selbst: Jeder kann ihn
+  weitergeben, und so kommen Tester in die Gruppe, die niemand eingeladen hat. Wer nur bestimmte
+  Personen will, lädt per E-Mail ein und legt keinen Link an.
+- Jeder Build ist **90 Tage** lang testbar. Danach ein neuer Upload.
 
 Nach Export-Compliance fragt App Store Connect nicht: `ITSAppUsesNonExemptEncryption: false`
 steht schon in `project.yml`, und das ist richtig – die App verschlüsselt nichts selbst, sie
 benutzt nur HTTPS.
+
+## App Store, nicht gelistet
+
+Apple nennt das *Unlisted App Distribution*. Eine nicht gelistete App hat eine gewöhnliche
+Store-Seite und einen gewöhnlichen Link, erscheint aber in keiner Suche, keiner Kategorie,
+keiner Bestenliste und keiner Empfehlung. Wer den Link hat, lädt sie; wer ihn nicht hat, findet
+sie nicht.
+
+So kommt man dorthin:
+
+1. Die Store-Seite ausfüllen und die Fassung mit einem Build **zur Prüfung einreichen**. In die
+   Notizen für die Prüfung gehört der Satz, dass die App für die nicht gelistete Verteilung
+   gedacht ist.
+2. Den **Antrag** stellen: [developer.apple.com/contact/request/unlisted-app](https://developer.apple.com/contact/request/unlisted-app/).
+   Apple verlangt, dass die App dann schon bei der Prüfung liegt oder im Store ist.
+3. Nach der Zusage steht die Verteilungsart unter *Preise und Verfügbarkeit* auf „Nicht
+   gelistete App" und gilt auch für alle späteren Fassungen.
+
+Vier Dinge, die man vorher wissen muss:
+
+- **Eine Vorabfassung lehnt Apple ab.** Der Antrag wird abgewiesen, wenn die App als Beta oder
+  als unfertig auftritt. Sie muss als fertige App eingereicht werden, auch wenn sie zuerst nur
+  an wenige geht.
+- **Der Link ist kein Schloss.** Apple schreibt, die App sei für jeden verfügbar, der den Link
+  hat, und rät zu einer Sperre in der App selbst. Diese App hat sie von Haus aus: ohne die
+  Adresse und das Zugangstoken eines Hauses zeigt sie keine Daten. Wer die App benutzen darf,
+  entscheidet also, wer ein Token bekommt, und nicht, wer den Link kennt.
+- **Die Freigabe von Hand einstellen.** Unter *Versionsfreigabe* „Diese Version manuell
+  freigeben" wählen, damit die App nach bestandener Prüfung nicht von selbst öffentlich wird,
+  bevor der Antrag entschieden ist. Das steht nicht auf Apples Seite; es ist die Vorsicht, die
+  sich aus der Reihenfolge ergibt.
+- **Ob sich die Wahl zurücknehmen lässt, sagt Apples Seite nicht.** Vor dem Schritt zum
+  öffentlichen Produkt ist das bei Apple zu erfragen.
+
+Verworfen wurde der Weg über Promo-Codes für eine geprüfte, aber noch nicht freigegebene
+Fassung. Apples Hilfe lässt ihn zu, aber im Entwicklerforum häufen sich Berichte, dass sich die
+Codes für eine erste Fassung in diesem Zustand nicht einlösen lassen.
+
+Die volle Prüfung gilt für diesen Weg genauso wie für den öffentlichen, und damit auch der
+nächste Abschnitt.
 
 ## App Store: das Zugangsproblem
 
@@ -87,8 +138,9 @@ Ein Prüfer hat weder Haus noch Token und sieht 29 leere Seiten – das ist Rich
 Zwei Auswege, und beide sind Arbeit, nicht Formulierung:
 
 1. **Demo-Zugang.** Ein öffentlich erreichbarer Dienst mit Beispieldaten (`railway.json` liegt
-   im Repository, Railway liefert HTTPS) und ein Token dafür, eingetragen unter *App Review
-   Information* ▸ Demo-Account und in den Notizen.
+   im Repository, Railway liefert HTTPS) und ein Token dafür, eingetragen in den Angaben für die
+   Prüfung: Apple verlangt Anmeldedaten, sobald eine App eine Anmeldung braucht, und bietet
+   daneben ein Notizfeld.
 2. **Schau-Modus in der App.** Die Beispieldaten liegen schon im Kern (`Vorschau` in
    DuckCurveKit, laufen in 211 Tests mit). Ein Schalter im Zugangsschirm, der das Beispielhaus
    zeigt, macht die App ohne jeden Dienst vollständig vorzeigbar – und ist auch sonst nützlich:
@@ -124,14 +176,20 @@ und in der `.app` die Berechtigungen ansehen.
 bleibt byte-identisch zu dem, was XcodeGen schreibt, und `tools/xcodeproj-pruefen.py` bleibt
 grün. Das lief auf Linux.
 
-Von `tools/ios-ausliefern.sh` ist geprüft, **was es aufruft**, nicht **dass es ankommt**: mit
-einem vorgeschobenen `xcodebuild`, das nur seine Argumente ausgibt, sind die fünf Wege
-nachgemessen – ohne Schlüssel, mit Schlüsseln (die dann in beiden Aufrufen stehen),
-`--hochladen` ohne Schlüssel (bricht ab, **bevor** archiviert wird), `--hochladen` mit
-Schlüsseln (`destination: upload`), und ein Schlüsselpfad, der ins Leere zeigt.
+**Am 27.11.2026 ist es auf einem Mac gelaufen, ohne `--hochladen`**, und zwar durch:
+`ARCHIVE SUCCEEDED`, dann `EXPORT SUCCEEDED`, am Ende eine `DuckCurveHome.ipa` mit 10,7 MiB in
+`apps/ios/build/export/`. Gebaut gegen das iPhoneOS-27.2-SDK, `arm64-apple-ios17.0`, Swift 6,
+Fassung 1.0 (Bau 1), automatische Signierung mit einem bezahlten Team. Zwei Dinge sind dabei
+aufgefallen und behoben: dem `python3` der Shell fehlte PyYAML (jetzt sagt die Wache das in
+einem Satz), und `xcodebuild` schrieb ein paar tausend Zeilen, in denen das Ergebnis unterging
+(jetzt `-quiet`).
 
-Das echte `xcodebuild` hat es nie gesehen – das gibt es nur auf einem Mac. Was dort schiefgehen
-kann, sind Signierung, Berechtigungen und die Annahme durch App Store Connect, also genau die
-Dinge, die niemand simulieren kann. Der erste Lauf gehört darum ohne `--hochladen` gemacht: dann
-entsteht eine `.ipa` in `apps/ios/build/export/` und es geht nichts zu Apple, was man nicht
-zurückholen kann.
+**Nicht gelaufen ist der Upload.** `--hochladen` mit echten API-Schlüsseln hat nie jemand
+ausprobiert; geprüft ist davon nur, *was* aufgerufen würde – mit einem vorgeschobenen
+`xcodebuild`, das seine Argumente ausgibt: ohne Schlüssel, mit Schlüsseln (die dann in beiden
+Aufrufen stehen), `--hochladen` ohne Schlüssel (bricht ab, **bevor** archiviert wird),
+`--hochladen` mit Schlüsseln (`destination: upload`), und ein Schlüsselpfad, der ins Leere
+zeigt.
+
+Ebenfalls offen und nicht durch ein Skript zu prüfen: ob App Store Connect den Build annimmt,
+und alles, was danach dort von Hand ausgefüllt wird.

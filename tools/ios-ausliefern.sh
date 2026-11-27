@@ -122,12 +122,17 @@ blau "3/5  Archivieren (Release, echtes Geraet)"
 # `generic/platform=iOS` ist das allgemeine Geraeteziel: kein angeschlossenes Telefon noetig,
 # aber arm64 und kein Simulator. `-allowProvisioningUpdates` laesst die automatische
 # Signierung das Verteilprofil anlegen, wenn es noch keines gibt.
+# **`-quiet`, wie in `tools/ios-pruefen.sh`.** Ohne das schreibt xcodebuild jeden
+# Hilfsdateinamen und jede Compilerzeile hin - ein paar tausend Zeilen, in denen die eine
+# Zeile, auf die es ankommt, untergeht. Fehler und das Ergebnis kommen trotzdem durch. Wer
+# das ganze Protokoll will, nimmt das Flag heraus oder leitet in eine Datei um.
 xcodebuild archive \
     -project apps/ios/DuckCurveHome.xcodeproj \
     -scheme DuckCurveHome \
     -destination 'generic/platform=iOS' \
     -archivePath "$ARCHIV" \
     -allowProvisioningUpdates \
+    -quiet \
     "${SCHLUESSEL[@]+"${SCHLUESSEL[@]}"}" \
     DEVELOPMENT_TEAM="$TEAM"
 gruen "Archiv liegt in apps/ios/build/"
@@ -166,6 +171,7 @@ xcodebuild -exportArchive \
     -exportOptionsPlist "$BAU/ExportOptions.plist" \
     -exportPath "$AUSGANG" \
     -allowProvisioningUpdates \
+    -quiet \
     "${SCHLUESSEL[@]+"${SCHLUESSEL[@]}"}"
 
 blau "5/5  Fertig"
