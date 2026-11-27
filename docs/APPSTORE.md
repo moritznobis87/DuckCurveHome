@@ -179,12 +179,21 @@ Keine Datenbank, keine Bridge, kein Tibber, kein zweiter Dienst für das Dashboa
 spricht nur mit der API. Gebaut wird aus `apps/api/Dockerfile`, wie `railway.json` es vorgibt.
 Sie muss laufen, wann immer Apple prüft, also bei jeder neuen Fassung.
 
+**Die App öffnet das Demo-Haus mit vollem Umfang.** Der Hausherr hat das am 27.11.2026 so
+entschieden: Der Prüfer soll alles sehen, also auch die Stellgriffe und die Seiten, die sonst
+dem Hausherrn bleiben. Zuerst öffnete die App das Demo-Haus als Gast.
+
 **Offen heißt offen, auch zum Stellen.** Ohne `DCH_API_TOKEN` lässt der Dienst jede Anfrage
-herein und behandelt sie wie den Betreiber (`dependencies.require_zugang`). Die App öffnet das
-Demo-Haus als Gast und bietet dort keine Stellgriffe an; wer die Adresse kennt und die
-Schnittstelle von Hand anspricht, kann im Demo-Haus trotzdem alles verstellen. Verloren geht
-dabei nichts, denn das Haus ist simuliert und beginnt bei jedem Neustart von vorn. Es kann aber
-vorkommen, dass ein Prüfer ein Haus sieht, das ein anderer gerade verstellt hat.
+herein und behandelt sie wie den Betreiber (`dependencies.require_zugang`). Wer im Demo-Haus
+etwas verstellt, in der App oder von Hand über die Schnittstelle, verstellt es für alle, die
+gerade zusehen. Verloren geht dabei nichts, denn das Haus ist simuliert und beginnt bei jedem
+Neustart von vorn. Es kann aber vorkommen, dass ein Prüfer ein Haus sieht, das ein anderer
+gerade verstellt hat.
+
+Was die Seiten des Hausherrn im Demo-Haus zeigen, nachgesehen am 27.11.2026 an der Instanz:
+Die PV-Abrechnung hat Werte. Das Protokoll der Haustür und die Rechnungen sind leer und sagen
+das in einem Satz. Die Personenverwaltung antwortet mit 503, weil der Demo-Modus keine Personen
+kennt; die App hat diese Seite nicht.
 
 Nachgemessen am 27.11.2026:
 
