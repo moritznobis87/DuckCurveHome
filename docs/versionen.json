@@ -1,5 +1,10 @@
 {
-  "unveroeffentlicht": [],
+  "unveroeffentlicht": [
+    {
+      "bereich": "Anmeldung",
+      "text": "Die App zeigt auf Wunsch ein Beispielhaus mit simulierten Werten. Wer noch kein eigenes Haus verbunden hat, tippt beim Einrichten auf „Demo ansehen“ und muss nichts eintragen."
+    }
+  ],
   "versionen": [
     {
       "version": "2026.11.2",

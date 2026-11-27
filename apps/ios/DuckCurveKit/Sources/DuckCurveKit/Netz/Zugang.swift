@@ -224,6 +224,47 @@ public struct Zugang: Sendable, Hashable, Codable {
 }
 
 // =====================================================================================
+//  Das Demo-Haus
+// =====================================================================================
+
+extension Zugang {
+    /// Die Adresse des Demo-Hauses: der Dienst im Demo-Modus, öffentlich und ohne Token.
+    ///
+    /// Der Hausherr hat am 27.11.2026 festgelegt, dass die App ein Beispielhaus zeigen kann, ohne
+    /// dass jemand etwas einträgt, und dass es unter dieser Adresse steht. Der Anlass ist Apples
+    /// Prüfung (`docs/APPSTORE.md`): ein Prüfer hat kein Haus und soll trotzdem eine volle App
+    /// sehen. Dasselbe gilt für jeden, der die App zum ersten Mal öffnet.
+    ///
+    /// **Fest im Programm und nicht einstellbar**, weil der Knopf genau das leisten soll: ein
+    /// Griff, kein Feld. Wer ein anderes Haus meint, trägt dessen Adresse von Hand ein.
+    ///
+    /// **Es ist die Adresse, die Railway dem Dienst selbst gegeben hat**, und keine eigene Domain:
+    /// niemand tippt sie, also braucht sie keinen Namen, den man sich merkt. Der Preis dafür steht
+    /// hier, damit er nicht überrascht: legt jemand den Dienst bei Railway neu an, bekommt er
+    /// eine andere Adresse, und der Knopf zeigt ins Leere, bis eine neue Fassung der App
+    /// ausgeliefert ist. Der Dienst gehört darum nicht gelöscht, sondern nur neu ausgerollt.
+    public static let demohaus = URL(string: "https://duckcurvehome-production-7dd0cc79.up.railway.app")!
+
+    /// Der Zugang zum Demo-Haus.
+    ///
+    /// **Ohne Token**, weil das Demo-Haus keines verlangt: ein Dienst ohne `DCH_API_TOKEN` lässt
+    /// jede Anfrage herein (`dependencies.require_zugang`).
+    ///
+    /// **Als Gast**, obwohl der Dienst dort nichts sperrt. Die Rolle bestimmt hier, was die App
+    /// anbietet, und ein Gast bekommt keine Stellgriffe. Das Demo-Haus teilen sich alle, die es
+    /// gerade ansehen; was einer verstellt, sähen die anderen. Zusehen ist die Richtung, in der
+    /// das harmlos bleibt.
+    public static func demo(geraetename: String) -> Zugang {
+        Zugang(grund: demohaus, token: "", geraetename: geraetename, rolle: .gast)
+    }
+
+    /// Ob dieser Zugang auf das Demo-Haus zeigt.
+    public var istDemohaus: Bool {
+        grund.host == Zugang.demohaus.host
+    }
+}
+
+// =====================================================================================
 //  Die Sicherung: Adressen, die nicht JSON liefern
 // =====================================================================================
 
