@@ -124,14 +124,20 @@ und in der `.app` die Berechtigungen ansehen.
 bleibt byte-identisch zu dem, was XcodeGen schreibt, und `tools/xcodeproj-pruefen.py` bleibt
 grün. Das lief auf Linux.
 
-Von `tools/ios-ausliefern.sh` ist geprüft, **was es aufruft**, nicht **dass es ankommt**: mit
-einem vorgeschobenen `xcodebuild`, das nur seine Argumente ausgibt, sind die fünf Wege
-nachgemessen – ohne Schlüssel, mit Schlüsseln (die dann in beiden Aufrufen stehen),
-`--hochladen` ohne Schlüssel (bricht ab, **bevor** archiviert wird), `--hochladen` mit
-Schlüsseln (`destination: upload`), und ein Schlüsselpfad, der ins Leere zeigt.
+**Am 27.11.2026 ist es auf einem Mac gelaufen, ohne `--hochladen`**, und zwar durch:
+`ARCHIVE SUCCEEDED`, dann `EXPORT SUCCEEDED`, am Ende eine `DuckCurveHome.ipa` mit 10,7 MiB in
+`apps/ios/build/export/`. Gebaut gegen das iPhoneOS-27.2-SDK, `arm64-apple-ios17.0`, Swift 6,
+Fassung 1.0 (Bau 1), automatische Signierung mit einem bezahlten Team. Zwei Dinge sind dabei
+aufgefallen und behoben: dem `python3` der Shell fehlte PyYAML (jetzt sagt die Wache das in
+einem Satz), und `xcodebuild` schrieb ein paar tausend Zeilen, in denen das Ergebnis unterging
+(jetzt `-quiet`).
 
-Das echte `xcodebuild` hat es nie gesehen – das gibt es nur auf einem Mac. Was dort schiefgehen
-kann, sind Signierung, Berechtigungen und die Annahme durch App Store Connect, also genau die
-Dinge, die niemand simulieren kann. Der erste Lauf gehört darum ohne `--hochladen` gemacht: dann
-entsteht eine `.ipa` in `apps/ios/build/export/` und es geht nichts zu Apple, was man nicht
-zurückholen kann.
+**Nicht gelaufen ist der Upload.** `--hochladen` mit echten API-Schlüsseln hat nie jemand
+ausprobiert; geprüft ist davon nur, *was* aufgerufen würde – mit einem vorgeschobenen
+`xcodebuild`, das seine Argumente ausgibt: ohne Schlüssel, mit Schlüsseln (die dann in beiden
+Aufrufen stehen), `--hochladen` ohne Schlüssel (bricht ab, **bevor** archiviert wird),
+`--hochladen` mit Schlüsseln (`destination: upload`), und ein Schlüsselpfad, der ins Leere
+zeigt.
+
+Ebenfalls offen und nicht durch ein Skript zu prüfen: ob App Store Connect den Build annimmt,
+und alles, was danach dort von Hand ausgefüllt wird.
