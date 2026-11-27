@@ -15,9 +15,12 @@ echter Fehler an `e.protokoll` blieb unentdeckt, weil zwei Ansichten ein `@State
 protokoll: DoorLogOut?` haben und der Name damit irgendwo wahlfrei ist. Diese Lücke zu
 schließen heißt, Typen aufzulösen, und das ist ein Compiler. Dafür ist der Mac da.
 
-Dieses Skript ist kein Compiler und gibt sich nicht dafür aus. Es prüft die **sechs
-Fehlerarten**, die in zwei Läufen tatsächlich aufgetreten sind, mechanisch gegen
-`Schema.swift`. Sein Test ist, dass es die 33 bekannten Fehler findet.
+Dieses Skript ist kein Compiler und gibt sich nicht dafür aus. Es prüft die Fehlerarten, die
+in den Übersetzungsläufen tatsächlich aufgetreten sind, mechanisch gegen `Schema.swift` und
+gegen die Erklärungen des Projekts. Sein erster Test war, dass es die 33 bekannten Fehler der
+ersten beiden Läufe findet. Die ersten neun Arten stehen unten; die späteren sind an ihrer
+Stelle im Code beschrieben, zuletzt Regel 17: ein Typname, den das Ziel zweimal auf oberster
+Ebene erklärt.
 
     tools/ios-typpruefen.py
 
@@ -1025,6 +1028,44 @@ def main() -> int:
                                       f"anders heissen; kommt er von draussen: "
                                       f"tools/ios-bekannte-namen.txt)"))
 
+    # 17. Ein Typname, den das Ziel zweimal auf oberster Ebene erklaert.
+    #
+    # **Der Fehler vom 27.11.2026.** Die Legenden von Tageskurve und Fahrplan bekamen eine
+    # gemeinsame Strichmarke in einer eigenen Datei, und `Kennlinienbilder.swift` fuehrte seit
+    # Wochen eine dateieigene Ansicht desselben Namens. Der Mac sagte "invalid redeclaration of
+    # 'Strichmarke'" und brach ab. Wer einen Baustein neu anlegt, sucht nach dem, was er
+    # braucht, und nicht nach dem Namen, den er vergeben will.
+    #
+    # **Was als Doppel zaehlt.** Zwei Erklaerungen auf oberster Ebene mit demselben Namen, von
+    # denen wenigstens eine ueber ihre Datei hinaus sichtbar ist, oder zwei in derselben Datei.
+    # Zwei `private` Typen gleichen Namens in zwei Dateien sind erlaubt und bleiben still.
+    # Oberste Ebene heisst hier: die Erklaerung beginnt in der ersten Spalte. So schreibt das
+    # Projekt sie durchgehend, und verschachtelte Typen stehen eingerueckt.
+    oberste = re.compile(
+        r"^(?:@\w+(?:\([^)\n]*\))?\s+)*"
+        r"((?:(?:public|internal|private|fileprivate|final|indirect)\s+)*)"
+        r"(?:struct|class|enum|protocol|actor|typealias)\s+(\w+)",
+        re.M)
+    erklaerungen: dict[str, list[tuple[str, int, bool]]] = {}
+    for pfad in dateien:
+        kurz = os.path.relpath(pfad, APP)
+        text = code[pfad]
+        for m in oberste.finditer(text):
+            eigen = bool(re.search(r"\b(?:private|fileprivate)\b", m.group(1)))
+            nr = text[:m.start()].count("\n") + 1
+            erklaerungen.setdefault(m.group(2), []).append((kurz, nr, eigen))
+    for name, stellen in erklaerungen.items():
+        if len(stellen) < 2:
+            continue
+        orte = [kurz for kurz, _, _ in stellen]
+        sichtbar = any(not eigen for _, _, eigen in stellen)
+        if not sichtbar and len(set(orte)) == len(orte):
+            continue
+        for kurz, nr, _ in stellen:
+            andere = ", ".join(f"{k}:{n}" for k, n, _ in stellen if (k, n) != (kurz, nr))
+            maengel.append((kurz, nr, f"`{name}` ist auf oberster Ebene noch einmal erklaert "
+                                      f"({andere}) - Swift meldet \"invalid redeclaration\""))
+
     print(f"{len(dateien)} Dateien geprüft, {len(felder)} Schemafelder und "
           f"{len(bausteine)} Bausteine als Maßstab.")
     if maengel:
@@ -1032,7 +1073,7 @@ def main() -> int:
         for kurz, nr, satz in sorted(set(maengel)):
             print(f"  {kurz}:{nr}  {satz}", file=sys.stderr)
         return 1
-    print("Keine der sechzehn geprüften Fehlerarten gefunden.")
+    print("Keine der siebzehn geprüften Fehlerarten gefunden.")
     return 0
 
 

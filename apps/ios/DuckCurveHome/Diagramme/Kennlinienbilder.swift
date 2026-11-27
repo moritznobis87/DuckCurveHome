@@ -252,13 +252,13 @@ struct Kennlinienstreubild: View {
             // mit den Punkten nicht vergleichbar: sie gilt für einen Vorlauf, der nicht der
             // gemessene sein muss.
             if !kennlinie.annahme.isEmpty {
-                Strichmarke(
+                Linieneintrag(
                     wort: Kennlinienbild.annahmehinweis(kennlinie),
                     farbe: Kennlinienfarben.annahme,
                     gestrichelt: true)
             }
             ForEach(geraden) { g in
-                Strichmarke(wort: g.id, farbe: g.farbe, gestrichelt: false, wortfarbe: g.farbe)
+                Linieneintrag(wort: g.id, farbe: g.farbe, gestrichelt: false, wortfarbe: g.farbe)
             }
         }
     }
@@ -380,7 +380,7 @@ struct Vorlaufstreubild: View {
         Umbruchzeile(abstand: 14, zeilenabstand: 5) {
             Punktmarke(wort: Kennlinienbild.messpunktwort, farbe: Farbe.waermepumpe)
             if !Kennlinienbild.vorlaufgerade(kennlinie).isEmpty {
-                Strichmarke(
+                Linieneintrag(
                     wort: Kennlinienbild.vorlaufgeradenname(kennlinie),
                     farbe: Kennlinienfarben.ausgleich, gestrichelt: false)
             }
@@ -462,7 +462,7 @@ struct Hubstreubild: View {
             Punktmarke(
                 wort: Kennlinienbild.messpunktwort, farbe: Color(Marken.wasserfarbe(40)))
             if !Kennlinienbild.hubgerade(kennlinie).isEmpty {
-                Strichmarke(
+                Linieneintrag(
                     wort: Kennlinienbild.ausgleichswort,
                     farbe: Kennlinienfarben.ausgleich, gestrichelt: false)
             }
@@ -733,7 +733,12 @@ private struct Punktmarke: View {
 /// in der Legende und nicht am Kurvenende, also muss die Zuordnung dort geschehen. Bei
 /// „Annahme des Fahrplans“ bleibt das Wort in ``Farbe/text3``: die Linie ist dort kein Name,
 /// sondern eine Art, und die eigene Farbe wäre heller als jeder Text der Karte.
-private struct Strichmarke: View {
+///
+/// **Der Strich selbst ist die ``Strichmarke`` aller Legenden.** Bis zum 27.11.2026 zeichnete
+/// dieser Eintrag ihn als eigenes Rechteck und nahm ihm für „gestrichelt“ nur ein Viertel der
+/// Deckung: die Annahmelinie ist im Bild gestrichelt, in der Legende war sie durchgezogen und
+/// etwas blasser. Sechzehn Punkte breit wie in der Vorlage (`itemWidth: 16`, `kennlinie.ts:150`).
+private struct Linieneintrag: View {
     let wort: String
     let farbe: Color
     let gestrichelt: Bool
@@ -741,17 +746,9 @@ private struct Strichmarke: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            strich
+            Strichmarke(farbe: farbe, gestrichelt: gestrichelt, breite: 16)
             Text(wort).font(Schrift.winzig).foregroundStyle(wortfarbe)
         }
-    }
-
-    /// Sechzehn Punkte breit wie in der Vorlage (`itemWidth: 16`, `kennlinie.ts:150`).
-    private var strich: some View {
-        Rectangle()
-            .fill(farbe)
-            .frame(width: 16, height: 2)
-            .opacity(gestrichelt ? 0.75 : 1)
     }
 }
 
