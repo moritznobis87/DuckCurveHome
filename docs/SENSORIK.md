@@ -881,6 +881,11 @@ des Verdichters. **Offen:** ob `hp_power` die ganze Aufnahme der Maschine ohne H
 Läge sie grundsätzlich weit unter dem Zähler, fielen alle Minuten heraus; die Zahl der
 ausgelassenen Minuten auf der Kennlinien-Seite zeigt das.
 
+**Nachtrag 27.11.2026:** Die Anleitung des Schwestermodells M-CRX nennt die Stufen des
+Heizstabs (2 kW je Stufe), die Gründe, aus denen er zuschaltet, und Stundenzähler je Stufe im
+Regler. Siehe `docs/WAERMEPUMPE_ANLEITUNG.md`, Abschnitt 3; dort stehen auch die Statuslisten
+des Reglers und die Abweichungen der Grenzen in `regler.py`.
+
 ### Wenn der Bus schweigt
 
 Am Morgen des 14.11.2026 stand im Haus an jedem Buswert der Seite ein Fragezeichen, obwohl beide
