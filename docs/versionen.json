@@ -19,6 +19,10 @@
     {
       "bereich": "Haus",
       "text": "In der App sind die Kästen über der Raumliste gleich hoch, die Skala der Abweichung zeigt alle fünf Zahlen, und unter dem Wort des Alarms steht nicht mehr dasselbe Wort ein zweites Mal."
+    },
+    {
+      "bereich": "Anlage",
+      "text": "Der Fahrplan zeigt jetzt, mit welcher elektrischen Leistung die Wärmepumpe geplant ist, und für die vergangenen Stunden des Tages den gemessenen Inhalt des Puffers."
     }
   ],
   "versionen": [

@@ -7112,6 +7112,8 @@ export interface components {
             planned_hp_cost_eur?: number | null;
             /** Planned Pellet Cost Eur */
             planned_pellet_cost_eur?: number | null;
+            /** Planned Hp Kw */
+            planned_hp_kw?: number | null;
             /** Actual Pv Kw */
             actual_pv_kw?: number | null;
             /** Actual Hp Kw */
@@ -7120,6 +7122,8 @@ export interface components {
             actual_hp_release?: boolean | null;
             /** Actual Hp Run Min */
             actual_hp_run_min?: number | null;
+            /** Actual Buffer Kwh */
+            actual_buffer_kwh?: number | null;
         };
         /** PlanOut */
         PlanOut: {

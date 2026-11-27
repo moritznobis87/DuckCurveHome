@@ -82,8 +82,9 @@ struct Fahrplanzeichnung: View {
                 pufferbild
             }
             flaeche(
-                "Wärmepumpe · kW elektrisch gemessen", hoehe: 72, spanne: wpspanne,
-                leer: bild.hatWpMessung ? nil : "keine Messung der Wärmepumpe"
+                "Wärmepumpe · kW elektrisch · gemessen und geplant", hoehe: 72, spanne: wpspanne,
+                leer: bild.hatWpMessung || bild.hatWpPlan
+                    ? nil : "weder Messung noch Plan der Wärmepumpe"
             ) {
                 wpbild
             }
@@ -430,17 +431,47 @@ struct Fahrplanzeichnung: View {
         }
         // Die Decke ist in der Vorlage die Achse selbst (`Fahrplan.tsx:302`), keine Linie im
         // Bild: eine gestrichelte Waagerechte dort sieht aus wie eine zweite Reserve.
+        //
+        // Jede Fläche trägt ihre eigene Reihe und ist nicht gestapelt: Messung und Plan sind
+        // zwei Kurven auf derselben Achse und keine Summe.
+        //
+        // **Gemessen gefüllt, geplant gestrichelt**, wie bei der PV zwei Flächen darüber
+        // (`Fahrplan.tsx`, „Pufferinhalt geplant“ und „Pufferinhalt gemessen“). Bis zum
+        // 27.11.2026 war der geplante Inhalt die einzige Kurve hier, und links der Jetzt-Linie
+        // stand nichts (Hausherr: „Die Diagramme sind ja da leer“).
         ForEach(bild.puffer) { p in
             if let kwh = p.wert {
-                AreaMark(x: .value("Zeit", p.zeit), y: .value("kWh", kwh))
-                    .foregroundStyle(Farbe.puffer.opacity(0.14))
+                AreaMark(
+                    x: .value("Zeit", p.zeit), y: .value("kWh", kwh),
+                    series: .value("Reihe", "pufferPlanFlaeche"), stacking: .unstacked
+                )
+                .foregroundStyle(Farbe.puffer.opacity(0.07))
             }
         }
         ForEach(bild.puffer) { p in
             if let kwh = p.wert {
                 LineMark(
                     x: .value("Zeit", p.zeit), y: .value("kWh", kwh),
-                    series: .value("Reihe", "puffer")
+                    series: .value("Reihe", "pufferPlan")
+                )
+                .foregroundStyle(Farbe.puffer)
+                .lineStyle(StrokeStyle(lineWidth: 1.8, dash: [5, 4]))
+            }
+        }
+        ForEach(bild.pufferGemessen) { p in
+            if let kwh = p.wert {
+                AreaMark(
+                    x: .value("Zeit", p.zeit), y: .value("kWh", kwh),
+                    series: .value("Reihe", "pufferIstFlaeche"), stacking: .unstacked
+                )
+                .foregroundStyle(Farbe.puffer.opacity(0.20))
+            }
+        }
+        ForEach(bild.pufferGemessen) { p in
+            if let kwh = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kWh", kwh),
+                    series: .value("Reihe", "pufferIst")
                 )
                 .foregroundStyle(Farbe.puffer)
                 .lineStyle(StrokeStyle(lineWidth: 2))
@@ -448,12 +479,40 @@ struct Fahrplanzeichnung: View {
         }
     }
 
+    /// Was die Maschine gezogen hat, und rechts der Jetzt-Linie gestrichelt, womit der
+    /// Optimierer sie zählt: ihr Nennwert, wo er sie laufen lässt (`Fahrplan.tsx`,
+    /// „Wärmepumpe geplant, kW“). Der Hausherr fragte am 27.11.2026, warum es keinen
+    /// geplanten elektrischen Bedarf gibt.
     @ChartContentBuilder private var wpbild: some ChartContent {
+        ForEach(bild.wpGeplant) { p in
+            if let kw = p.wert {
+                AreaMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "wpPlanFlaeche"), stacking: .unstacked
+                )
+                .foregroundStyle(Farbe.waermepumpe.opacity(0.08))
+                .interpolationMethod(.stepEnd)
+            }
+        }
+        ForEach(bild.wpGeplant) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "wpPlan")
+                )
+                .foregroundStyle(Farbe.waermepumpe)
+                .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                .interpolationMethod(.stepEnd)
+            }
+        }
         ForEach(bild.wpGemessen) { p in
             if let kw = p.wert {
-                AreaMark(x: .value("Zeit", p.zeit), y: .value("kW", kw))
-                    .foregroundStyle(Farbe.waermepumpe.opacity(0.22))
-                    .interpolationMethod(.stepEnd)
+                AreaMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "wpIstFlaeche"), stacking: .unstacked
+                )
+                .foregroundStyle(Farbe.waermepumpe.opacity(0.22))
+                .interpolationMethod(.stepEnd)
             }
         }
         ForEach(bild.wpGemessen) { p in
@@ -510,11 +569,14 @@ struct Fahrplanzeichnung: View {
     }
 
     private var pufferspanne: ClosedRange<Double> {
-        Fahrplanbild.spanne(0, bis: bild.puffer.map(\.wert) + [bild.pufferDecke]) ?? 0...10
+        Fahrplanbild.spanne(
+            0, bis: bild.puffer.map(\.wert) + bild.pufferGemessen.map(\.wert) + [bild.pufferDecke])
+            ?? 0...10
     }
 
     private var wpspanne: ClosedRange<Double> {
-        Fahrplanbild.spanne(0, bis: bild.wpGemessen.map(\.wert)) ?? 0...3
+        Fahrplanbild.spanne(0, bis: bild.wpGemessen.map(\.wert) + bild.wpGeplant.map(\.wert))
+            ?? 0...3
     }
 
     private func farbe(_ r: Fahrplanbild.Rolle) -> Color { r.bildfarbe }
@@ -580,9 +642,14 @@ struct Fahrplanlegende: View {
         Umbruchzeile(abstand: 20, zeilenabstand: 8) {
             ForEach(stuecke) { s in
                 HStack(spacing: 5) {
-                    RoundedRectangle(cornerRadius: s.dick <= 2 ? 0 : 1.5)
-                        .fill(s.rolle.bildfarbe.opacity(s.blass ? 0.32 : 1))
-                        .frame(width: 14, height: s.dick)
+                    // Was im Bild gestrichelt ist, ist es auch hier (``Strichmarke``).
+                    if s.gestrichelt {
+                        Strichmarke(farbe: s.rolle.bildfarbe, gestrichelt: true)
+                    } else {
+                        RoundedRectangle(cornerRadius: s.dick <= 2 ? 0 : 1.5)
+                            .fill(s.rolle.bildfarbe.opacity(s.blass ? 0.32 : 1))
+                            .frame(width: 14, height: s.dick)
+                    }
                     Text(s.wort)
                         .font(breite == .compact ? Schrift.sans(12) : Schrift.winzig)
                         .foregroundStyle(Farbe.text3)

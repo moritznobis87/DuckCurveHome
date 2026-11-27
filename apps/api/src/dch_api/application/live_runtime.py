@@ -914,7 +914,12 @@ class LiveRuntime:
         except Exception as exc:
             log.warning("plan actuals not read", error=repr(exc)[:200])
             return lambda _t: None
-        return ist_nachschlag(rows, now, laeuft_ab_kw=self.hems.heat_pump.running_threshold_kw)
+        return ist_nachschlag(
+            rows,
+            now,
+            laeuft_ab_kw=self.hems.heat_pump.running_threshold_kw,
+            puffer=self.hems.buffer,
+        )
 
     async def refresh_plan(self) -> None:
         now = self.now

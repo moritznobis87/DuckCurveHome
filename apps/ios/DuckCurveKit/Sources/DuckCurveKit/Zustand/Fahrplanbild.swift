@@ -70,14 +70,20 @@ public struct Fahrplanbild: Sendable {
         public let dick: Double
         /// Blass wie das Band hinter der Preiskurve, nicht voll wie eine Fläche.
         public let blass: Bool
+        /// Ein gestrichelter Strich: so ist im Bild gezeichnet, was geplant oder erwartet und
+        /// noch nicht gemessen ist. Die Marke sieht aus wie ihre Linie.
+        public let gestrichelt: Bool
 
         public var id: String { wort }
 
-        public init(wort: String, rolle: Rolle, dick: Double, blass: Bool = false) {
+        public init(
+            wort: String, rolle: Rolle, dick: Double, blass: Bool = false, gestrichelt: Bool = false
+        ) {
             self.wort = wort
             self.rolle = rolle
             self.dick = dick
             self.blass = blass
+            self.gestrichelt = gestrichelt
         }
     }
 
@@ -114,10 +120,16 @@ public struct Fahrplanbild: Sendable {
             Legendenstueck(wort: "Ofen brennt", rolle: .ofenAn, dick: 10),
             Legendenstueck(wort: "Heizen", rolle: .heizen, dick: 10),
             Legendenstueck(wort: "Warmwasser", rolle: .warmwasser, dick: 10),
-            // Der Pufferinhalt ist in der Vorlage eine Linie, kein Band - drei Punkte.
-            Legendenstueck(wort: "Pufferinhalt", rolle: .puffer, dick: 3),
+            // **Gemessen gefüllt, geplant gestrichelt**, bei Puffer und Wärmepumpe wie bei der
+            // PV (`Fahrplan.tsx`, Legende). Seit dem 27.11.2026 stehen beide Reihen je zweimal
+            // im Bild: links der Jetzt-Linie die Messung, rechts der Plan.
+            Legendenstueck(wort: "Pufferinhalt gemessen", rolle: .puffer, dick: 10),
+            Legendenstueck(wort: "Pufferinhalt geplant", rolle: .puffer, dick: 2, gestrichelt: true),
+            Legendenstueck(wort: "Wärmepumpe gemessen, kW", rolle: .wpGemessen, dick: 10),
+            Legendenstueck(
+                wort: "Wärmepumpe geplant, kW", rolle: .wpGemessen, dick: 2, gestrichelt: true),
             Legendenstueck(wort: "PV gemessen", rolle: .pv, dick: 10),
-            Legendenstueck(wort: "PV erwartet", rolle: .vorhersage, dick: 2),
+            Legendenstueck(wort: "PV erwartet", rolle: .vorhersage, dick: 2, gestrichelt: true),
             Legendenstueck(wort: "Preistief", rolle: .vorhersage, dick: 10, blass: true),
         ]
         if negativesFenster {
@@ -138,8 +150,14 @@ public struct Fahrplanbild: Sendable {
     /// gezeichnet, die untere darüber. Das sieht aus wie ein Stapel und braucht keine Summe
     /// in der Ansicht - und eine Summe in der Ansicht war schon zweimal die falsche.
     public var waermeSumme: [Punkt] = []
+    /// Der geplante Pufferinhalt am Ende jeder Viertelstunde.
     public var puffer: [Punkt] = []
+    /// Der gemessene Pufferinhalt am Ende jeder vergangenen Viertelstunde, auf derselben Skala.
+    public var pufferGemessen: [Punkt] = []
     public var wpGemessen: [Punkt] = []
+    /// Die elektrische Leistung, mit der der Optimierer die Wärmepumpe zählt: ihr Nennwert,
+    /// wo er sie laufen lässt, null, wo nicht. Eine Lücke, wo er nicht geplant hat.
+    public var wpGeplant: [Punkt] = []
     public var zustandsstreifen: [Feld] = []
     public var anforderung: [Feld] = []
     public var ofenstreifen: [Feld] = []
@@ -160,6 +178,8 @@ public struct Fahrplanbild: Sendable {
 
     public var hatMessung = false
     public var hatWpMessung = false
+    /// Der Optimierer nennt für mindestens eine Viertelstunde eine Leistung der Wärmepumpe.
+    public var hatWpPlan = false
     public var hatAnforderung = false
     public var hatWaerme = false
     public var hatPuffer = false
@@ -186,7 +206,9 @@ public struct Fahrplanbild: Sendable {
             return Punkt(zeit: t, wert: h + (i.dhwDemandKw ?? 0))
         }
         b.puffer = iv.map { Punkt(zeit: $0.1, wert: $0.0.bufferKwh) }
+        b.pufferGemessen = iv.map { Punkt(zeit: $0.1, wert: $0.0.actualBufferKwh) }
         b.wpGemessen = iv.map { Punkt(zeit: $0.1, wert: $0.0.actualHpKw) }
+        b.wpGeplant = iv.map { Punkt(zeit: $0.1, wert: $0.0.plannedHpKw) }
 
         b.zustandsstreifen = iv.map { i, t in
             let z = zustand(i.plannedHpState)
@@ -231,9 +253,11 @@ public struct Fahrplanbild: Sendable {
 
         b.hatMessung = iv.contains { $0.0.actualPvKw != nil || $0.0.actualHpKw != nil }
         b.hatWpMessung = iv.contains { $0.0.actualHpKw != nil }
+        b.hatWpPlan = iv.contains { $0.0.plannedHpKw != nil }
         b.hatAnforderung = !b.anforderung.isEmpty
         b.hatWaerme = iv.contains { $0.0.heatDemandKw != nil }
-        b.hatPuffer = iv.contains { $0.0.bufferKwh != nil }
+        // Gemessen oder geplant: der Streifen ist erst leer, wenn beides fehlt.
+        b.hatPuffer = iv.contains { $0.0.bufferKwh != nil || $0.0.actualBufferKwh != nil }
         b.hatOfenfahrplan = !b.ofenstreifen.isEmpty
         return b
     }
@@ -323,7 +347,10 @@ public struct Fahrplanbild: Sendable {
             zeile("Warmwasser", Formate.kwMitEinheit(warm), .warmwasser, eingerueckt: true)
         }
         if let puffer = i.bufferKwh {
-            zeile("Puffer danach", Formate.kwh(puffer), .puffer)
+            zeile("Puffer danach, geplant", Formate.kwh(puffer), .puffer)
+        }
+        if let puffer = i.actualBufferKwh {
+            zeile("Puffer danach, gemessen", Formate.kwh(puffer), .puffer)
         }
         if let aussen = i.outdoorTempC {
             let cop = i.cop.map { " · COP \(Formate.zahl($0, stellen: 2))" } ?? ""
@@ -331,6 +358,11 @@ public struct Fahrplanbild: Sendable {
         }
         let zustand = zustand(i.plannedHpState)
         zeile("Wärmepumpe geplant", zustand.wort, zustand.rolle)
+        // Womit der Optimierer sie in dieser Viertelstunde zählt. Nur wo er sie laufen lässt:
+        // „mit 0,0 kW gezählt“ unter „aus“ sagt nichts.
+        if let kw = i.plannedHpKw, kw > 0 {
+            zeile("", "mit \(Formate.zahl(kw, stellen: 1)) kW gezählt", .wpGemessen, eingerueckt: true)
+        }
         if let an = i.actualHpRelease {
             zeile("Anforderung gemessen", an ? "ja" : "nein", an ? .angefordert : .neutral)
         }

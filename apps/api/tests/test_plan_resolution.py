@@ -3,6 +3,7 @@ feiner sind als eine Stunde - die Strombörse rechnet seit Oktober 2025 in Viert
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 from dch_api.application.plan_service import (
@@ -428,3 +429,101 @@ def test_der_plan_traegt_den_sonnenlauf_seiner_beiden_tage() -> None:
 
 def test_ohne_ort_bleibt_der_sonnenlauf_leer() -> None:
     assert build_plan(lambda t: 0.0, [], NOW, HemsConfig()).sun == []
+
+
+def test_der_plan_nennt_die_elektrische_leistung_mit_der_er_die_waermepumpe_zaehlt() -> None:
+    """Rechts der Jetzt-Linie stand nur, ob sie laufen soll, nicht mit wie viel.
+
+    Der Optimierer rechnet die Maschine mit ihrem Nennwert. Wo er sie laufen lässt, steht dieser
+    Wert im Plan, wo er sie stehen lässt, eine Null, und wo er nicht geplant hat, nichts: die
+    Regel kennt keine Leistung.
+    """
+    cfg = HemsConfig()
+    laeuft_bis = NOW + timedelta(hours=2)
+    horizont_ende = NOW + timedelta(hours=6)
+
+    def hp_on(t: datetime) -> bool | None:
+        return (t < laeuft_bis) if NOW <= t < horizont_ende else None
+
+    plan = build_plan(_pv, _hourly_prices(24), NOW, cfg, hp_on=hp_on)
+
+    laeuft = [i for i in plan.intervals if NOW <= i.ts < laeuft_bis]
+    steht = [i for i in plan.intervals if laeuft_bis <= i.ts < horizont_ende]
+    ungeplant = [i for i in plan.intervals if i.ts < NOW or i.ts >= horizont_ende]
+    assert laeuft and all(
+        i.planned_hp_kw == cfg.heat_pump.nominal_electric_power_kw for i in laeuft
+    )
+    assert steht and all(i.planned_hp_kw == 0.0 for i in steht)
+    assert ungeplant and all(i.planned_hp_kw is None for i in ungeplant)
+
+    ohne_optimierer = build_plan(_pv, _hourly_prices(24), NOW, cfg)
+    assert all(i.planned_hp_kw is None for i in ohne_optimierer.intervals)
+
+
+def _pufferzeilen(
+    minuten: int, schichten: Callable[[int], tuple[float | None, ...]]
+) -> list[dict[str, float | str | None]]:
+    rows: list[dict[str, float | str | None]] = []
+    for minute in range(minuten):
+        oben, mitte_oben, mitte_unten, unten = schichten(minute)
+        rows.append(
+            {
+                "ts": (DAY_START + timedelta(minutes=minute)).isoformat(),
+                "buffer_temp_top_c": oben,
+                "buffer_temp_mid_top_c": mitte_oben,
+                "buffer_temp_mid_bottom_c": mitte_unten,
+                "buffer_temp_bottom_c": unten,
+            }
+        )
+    return rows
+
+
+def test_der_gemessene_pufferinhalt_steht_am_ende_der_viertelstunde() -> None:
+    """Links der Jetzt-Linie war der Streifen „Pufferinhalt“ leer.
+
+    Gezeigt wird der Inhalt aus der letzten Minute der Viertelstunde, nicht ihr Mittel: der Plan
+    nennt den Inhalt am Ende des Schritts, und die Messung steht an derselben Stelle.
+    """
+    from dch_api.application.plan_service import ist_nachschlag
+    from hems_core.thermal import nutzbarer_inhalt_kwh
+
+    cfg = HemsConfig()
+    jetzt = DAY_START + timedelta(minutes=30)
+    # Der Puffer wird über die halbe Stunde wärmer: jede Minute ein Zehntelgrad in jeder Schicht.
+    rows = _pufferzeilen(30, lambda m: tuple(t + m * 0.1 for t in (55.0, 50.0, 42.0, 36.0)))
+
+    nachschlag = ist_nachschlag(rows, jetzt, laeuft_ab_kw=0.5, puffer=cfg.buffer)
+    erste = nachschlag(DAY_START)
+    zweite = nachschlag(DAY_START + timedelta(minutes=15))
+    assert erste is not None and zweite is not None
+
+    ende_erste = [t + 14 * 0.1 for t in (55.0, 50.0, 42.0, 36.0)]
+    ende_zweite = [t + 29 * 0.1 for t in (55.0, 50.0, 42.0, 36.0)]
+    assert erste.puffer_kwh == round(nutzbarer_inhalt_kwh(ende_erste, cfg.buffer), 3)
+    assert zweite.puffer_kwh == round(nutzbarer_inhalt_kwh(ende_zweite, cfg.buffer), 3)
+    assert zweite.puffer_kwh > erste.puffer_kwh
+
+    plan = build_plan(_pv, _hourly_prices(24), jetzt, cfg, ist=nachschlag)
+    gemessen = [i for i in plan.intervals if i.actual_buffer_kwh is not None]
+    assert [i.ts for i in gemessen] == [DAY_START, DAY_START + timedelta(minutes=15)]
+    assert gemessen[1].actual_buffer_kwh == zweite.puffer_kwh
+
+
+def test_ohne_einstellung_oder_mit_einem_stummen_fuehler_gibt_es_keinen_pufferinhalt() -> None:
+    from dch_api.application.plan_service import ist_nachschlag
+
+    cfg = HemsConfig()
+    jetzt = DAY_START + timedelta(minutes=15)
+    voll = _pufferzeilen(15, lambda m: (55.0, 50.0, 42.0, 36.0))
+    ohne_einstellung = ist_nachschlag(voll, jetzt, laeuft_ab_kw=0.5)(DAY_START)
+    assert ohne_einstellung is not None and ohne_einstellung.puffer_kwh is None
+
+    # Der unterste Fühler schweigt die ganze Viertelstunde: aus drei Temperaturen wird kein Inhalt.
+    stumm = _pufferzeilen(15, lambda m: (55.0, 50.0, 42.0, None))
+    punkt = ist_nachschlag(stumm, jetzt, laeuft_ab_kw=0.5, puffer=cfg.buffer)(DAY_START)
+    assert punkt is not None and punkt.puffer_kwh is None
+
+    # Schweigt er nur in der letzten Minute, gilt die letzte Minute, in der alle vier sprachen.
+    fast = _pufferzeilen(15, lambda m: (55.0, 50.0, 42.0, None if m == 14 else 36.0))
+    punkt = ist_nachschlag(fast, jetzt, laeuft_ab_kw=0.5, puffer=cfg.buffer)(DAY_START)
+    assert punkt is not None and punkt.puffer_kwh is not None

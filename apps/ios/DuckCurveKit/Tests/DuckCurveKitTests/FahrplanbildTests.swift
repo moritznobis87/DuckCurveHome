@@ -18,6 +18,8 @@ final class FahrplanbildTests: XCTestCase {
         heizen: (Int) -> Double? = { _ in nil },
         warmwasser: (Int) -> Double? = { _ in nil },
         puffer: (Int) -> Double? = { _ in nil },
+        pufferIst: (Int) -> Double? = { _ in nil },
+        hpPlan: (Int) -> Double? = { _ in nil },
         cop: (Int) -> Double? = { _ in nil },
         zustand: (Int) -> PlanIntervalOutPlannedHpStateWahl = { _ in .off },
         ofen: (Int) -> Bool? = { _ in nil },
@@ -30,8 +32,9 @@ final class FahrplanbildTests: XCTestCase {
                 priceCtKwh: preis(i), plannedHpState: zustand(i), plannedStoveOn: ofen(i),
                 reasonCode: "planned_optimizer", heatDemandKw: heizen(i),
                 dhwDemandKw: warmwasser(i), bufferKwh: puffer(i), cop: cop(i),
+                plannedHpKw: hpPlan(i),
                 actualPvKw: pvIst(i), actualHpKw: hpIst(i), actualHpRelease: anforderung(i),
-                actualHpRunMin: laufMin(i))
+                actualHpRunMin: laufMin(i), actualBufferKwh: pufferIst(i))
         }
         return PlanOut(
             createdAt: Zeit.iso(ab), planner: "greedy_v1", hpActuation: schaltet,
@@ -197,6 +200,46 @@ final class FahrplanbildTests: XCTestCase {
         XCTAssertTrue(b.hatPuffer)
     }
 
+    /// Links der Jetzt-Linie war der Streifen leer (Bild des Hausherrn vom 27.11.2026).
+    func testDerGemessenePufferinhaltStehtNebenDemGeplanten() {
+        let b = Fahrplanbild.baue(
+            plan(anzahl: 8, puffer: { $0 >= 4 ? 9.5 : nil }, pufferIst: { $0 < 4 ? 8.0 : nil }))
+        XCTAssertEqual(b.pufferGemessen.prefix(4).compactMap(\.wert), [8.0, 8.0, 8.0, 8.0])
+        XCTAssertTrue(b.pufferGemessen.suffix(4).allSatisfy { $0.wert == nil })
+        XCTAssertEqual(b.puffer.suffix(4).compactMap(\.wert), [9.5, 9.5, 9.5, 9.5])
+        XCTAssertTrue(b.hatPuffer)
+        // Auch die Messung allein füllt den Streifen.
+        XCTAssertTrue(Fahrplanbild.baue(plan(anzahl: 4, pufferIst: { _ in 8.0 })).hatPuffer)
+    }
+
+    // MARK: - Die geplante Leistung der Wärmepumpe
+
+    /// Rechts der Jetzt-Linie endete die Kurve; jetzt steht dort, womit der Optimierer zählt.
+    func testDieGeplanteLeistungIstDerNennwertUndEineLueckeWoNichtGeplantWurde() {
+        let b = Fahrplanbild.baue(
+            plan(anzahl: 8, hpPlan: { $0 < 2 ? nil : ($0 < 5 ? 4.5 : 0) }))
+        XCTAssertEqual(b.wpGeplant.map(\.wert), [nil, nil, 4.5, 4.5, 4.5, 0, 0, 0])
+        XCTAssertTrue(b.hatWpPlan)
+        XCTAssertFalse(b.hatWpMessung)
+        XCTAssertFalse(Fahrplanbild.baue(plan(anzahl: 4)).hatWpPlan)
+    }
+
+    func testDieAuskunftNenntDieGeplanteLeistungNurWoDieWaermepumpeLaufenSoll() {
+        let an = plan(anzahl: 2, hpPlan: { _ in 4.5 }, zustand: { _ in .release })
+        let zeilenAn = Fahrplanbild.auskunft(an, zeit: ab, jetzt: ab)!.zeilen
+        XCTAssertTrue(zeilenAn.contains { $0.wert == "mit 4,5 kW gezählt" && $0.eingerueckt })
+
+        let aus = plan(anzahl: 2, hpPlan: { _ in 0 }, zustand: { _ in .off })
+        let zeilenAus = Fahrplanbild.auskunft(aus, zeit: ab, jetzt: ab)!.zeilen
+        XCTAssertFalse(zeilenAus.contains { $0.wert.contains("gezählt") })
+    }
+
+    func testDieAuskunftNenntDenGemessenenPufferinhalt() {
+        let p = plan(anzahl: 2, pufferIst: { _ in 13.2 })
+        let paare = Fahrplanbild.auskunft(p, zeit: ab, jetzt: ab)!.zeilen.map { "\($0.wort)=\($0.wert)" }
+        XCTAssertTrue(paare.contains("Puffer danach, gemessen=\(Formate.kwh(13.2))"), "\(paare)")
+    }
+
     // MARK: - Die Auskunft zu einer Viertelstunde
 
     func testDieAuskunftNenntAlleswasZurViertelstundeImPlanSteht() {
@@ -220,7 +263,7 @@ final class FahrplanbildTests: XCTestCase {
         XCTAssertEqual(
             a.zeilen.filter(\.eingerueckt).map(\.rolle), [.neutral, .heizen, .warmwasser],
             "Jede Zahl traegt ihre eigene Farbe.")
-        XCTAssertTrue(paare.contains("Puffer danach=\(Formate.kwh(6.2))"))
+        XCTAssertTrue(paare.contains("Puffer danach, geplant=\(Formate.kwh(6.2))"))
         XCTAssertTrue(paare.contains("Wärmepumpe geplant=angefordert"))
         XCTAssertTrue(paare.contains("Anforderung gemessen=ja"))
         XCTAssertTrue(paare.contains("Wärmepumpe gemessen=1,75 kW"))
@@ -385,16 +428,25 @@ final class FahrplanbildTests: XCTestCase {
 
     // MARK: - Die Legende
 
-    func testDieLegendeHatDieElfStueckeDerVorlage() {
+    func testDieLegendeHatDieVierzehnStueckeDerVorlage() {
         let b = Fahrplanbild.baue(plan(anzahl: 8, preis: { _ in 30 }))
         let woerter = b.legende.map(\.wort)
         XCTAssertEqual(
             woerter,
             [
                 "Wärmepumpe angefordert", "Wärmepumpe gemieden", "Wärmepumpe frei",
-                "Wärmepumpe aus", "Ofen brennt", "Heizen", "Warmwasser", "Pufferinhalt",
-                "PV gemessen", "PV erwartet", "Preistief",
+                "Wärmepumpe aus", "Ofen brennt", "Heizen", "Warmwasser",
+                "Pufferinhalt gemessen", "Pufferinhalt geplant", "Wärmepumpe gemessen, kW",
+                "Wärmepumpe geplant, kW", "PV gemessen", "PV erwartet", "Preistief",
             ])
+    }
+
+    /// Was geplant oder erwartet ist, steht im Bild gestrichelt, und seine Marke auch.
+    func testGeplantesUndErwartetesIstInDerLegendeGestrichelt() {
+        let b = Fahrplanbild.baue(plan(anzahl: 8, preis: { _ in 30 }))
+        XCTAssertEqual(
+            b.legende.filter(\.gestrichelt).map(\.wort),
+            ["Pufferinhalt geplant", "Wärmepumpe geplant, kW", "PV erwartet"])
     }
 
     func testDasZwoelfteStueckStehtNurBeiNegativemPreis() {
@@ -408,7 +460,7 @@ final class FahrplanbildTests: XCTestCase {
         XCTAssertEqual(
             Fahrplanbild.legende(nil).map(\.wort),
             Fahrplanbild.legende(ohneIntervalle).map(\.wort))
-        XCTAssertEqual(Fahrplanbild.legende(nil).count, 11)
+        XCTAssertEqual(Fahrplanbild.legende(nil).count, 14)
         XCTAssertFalse(Fahrplanbild.legende(nil).contains { $0.wort == "negativer Preis" })
     }
 
@@ -424,7 +476,7 @@ final class FahrplanbildTests: XCTestCase {
                     labelDe: "negativer Preis")
             ])
         XCTAssertTrue(Fahrplanbild.legende(mit).contains { $0.wort == "negativer Preis" })
-        XCTAssertEqual(Fahrplanbild.legende(mit).count, 12)
+        XCTAssertEqual(Fahrplanbild.legende(mit).count, 15)
     }
 
     func testDieKlotzhoehenFolgenDenBalkenhoehen() {
@@ -434,17 +486,21 @@ final class FahrplanbildTests: XCTestCase {
         XCTAssertEqual(dick["Wärmepumpe gemieden"], 6)
         XCTAssertEqual(dick["Wärmepumpe frei"], 3, "0,3 mal 10 gerundet waere 3")
         XCTAssertEqual(dick["Wärmepumpe aus"], 3, "unter drei Punkten sieht man nichts mehr")
-        XCTAssertEqual(dick["Pufferinhalt"], 3, "eine Linie, keine Flaeche")
+        XCTAssertEqual(dick["Pufferinhalt gemessen"], 10, "eine Flaeche")
+        XCTAssertEqual(dick["Pufferinhalt geplant"], 2, "ein gestrichelter Strich")
         XCTAssertEqual(dick["PV erwartet"], 2, "ein gestrichelter Strich")
     }
 
     // MARK: - Die festen Saetze
 
-    func testDieMethodeHatDreiAbsaetzeUndNennteBusUndPreisregel() {
-        XCTAssertEqual(Fahrplanworte.methode.count, 3)
+    func testDieMethodeHatVierAbsaetzeUndNennteBusPreisregelUndNennwert() {
+        XCTAssertEqual(Fahrplanworte.methode.count, 4)
         XCTAssertTrue(Fahrplanworte.methode[0].contains("eBUS"))
         XCTAssertTrue(Fahrplanworte.methode[1].contains("Preisregel"))
-        XCTAssertTrue(Fahrplanworte.methode[2].contains("Rückblick"))
+        XCTAssertTrue(Fahrplanworte.methode[1].contains("Inhalt des Puffers"))
+        // Der Absatz zur geplanten Leistung: sie ist der Nennwert und keine Prognose.
+        XCTAssertTrue(Fahrplanworte.methode[2].contains("Nennwert"))
+        XCTAssertTrue(Fahrplanworte.methode[3].contains("Rückblick"))
         XCTAssertFalse(Fahrplanworte.methodeKurz.isEmpty)
     }
 }

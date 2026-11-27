@@ -327,6 +327,7 @@ class DemoRunner:
             self.history.series(start.astimezone(UTC), now),
             now,
             laeuft_ab_kw=self.hems.heat_pump.running_threshold_kw,
+            puffer=self.hems.buffer,
         )
 
     def _record_forecast_run(self, now: datetime) -> None:

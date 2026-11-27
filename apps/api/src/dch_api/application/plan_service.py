@@ -8,7 +8,7 @@ from datetime import UTC, date, datetime, timedelta
 
 from dch_api.application.stove_planner import Zwillingspunkt
 from dch_api.schemas import PlanIntervalOut, PlanOut, PriceWindowOut, SunDayOut
-from hems_core.domain import HemsConfig
+from hems_core.domain import BufferConfig, HemsConfig
 from hems_core.forecasting import GeoPoint, Lauf, plan_lauf, sonnenzeiten
 from hems_core.planning import (
     PricePoint,
@@ -20,6 +20,7 @@ from hems_core.planning import (
     next_window_after,
 )
 from hems_core.simulation import BERLIN
+from hems_core.thermal import nutzbarer_inhalt_kwh
 
 LABELS = {
     "cheap": "günstiges Preisfenster",
@@ -41,7 +42,20 @@ def _out(w: PriceWindow | tuple[datetime, datetime, str]) -> PriceWindowOut:
 PvExpected = Callable[[datetime], float]
 
 #: Welche Messreihen der Fahrplan neben seine Absicht legt.
-IST_REIHEN: tuple[str, ...] = ("pv_power_kw", "heat_pump_power_kw", "hp_release_contact")
+#: Die vier Fühler des Puffers, von oben nach unten, in der Reihenfolge von `buffer.layers`.
+PUFFER_REIHEN: tuple[str, ...] = (
+    "buffer_temp_top_c",
+    "buffer_temp_mid_top_c",
+    "buffer_temp_mid_bottom_c",
+    "buffer_temp_bottom_c",
+)
+
+IST_REIHEN: tuple[str, ...] = (
+    "pv_power_kw",
+    "heat_pump_power_kw",
+    "hp_release_contact",
+    *PUFFER_REIHEN,
+)
 
 
 @dataclass(frozen=True)
@@ -59,6 +73,10 @@ class Istpunkt:
     #: Schwelle der Konfiguration, nicht aus dem Viertelstundenmittel geschlossen: fünf Minuten
     #: bei 3 kW sind fünf Minuten Lauf, und ihr Mittel von 1 kW sähe aus wie eine Viertelstunde.
     laufminuten: float | None = None
+    #: Der nutzbare Pufferinhalt am Ende der Viertelstunde, aus den vier Fühlern der letzten
+    #: Minute, in der alle vier einen Wert hatten. Nicht das Mittel: der Plan nennt den Inhalt
+    #: am Ende des Schritts, und die Messung soll auf derselben Stelle der Zeitachse stehen.
+    puffer_kwh: float | None = None
 
 
 def ist_nachschlag(
@@ -66,8 +84,13 @@ def ist_nachschlag(
     jetzt: datetime,
     *,
     laeuft_ab_kw: float,
+    puffer: BufferConfig | None = None,
 ) -> Callable[[datetime], Istpunkt | None]:
     """Minutenwerte zu einem Nachschlagewerk über Viertelstunden verdichten.
+
+    **Der Pufferinhalt braucht die Einstellung des Puffers.** Aus vier Temperaturen wird erst
+    mit Volumen, Schichtanteilen und Nutzgrenze eine Energie. Ohne `puffer` bleibt
+    `puffer_kwh` leer.
 
     **Nur abgeschlossene Viertelstunden.** Die laufende wird weggelassen, obwohl ihre ersten
     Minuten schon vorliegen. Sonst zeigte die jüngste Spalte ein Drittel der Leistung und sähe aus
@@ -85,6 +108,8 @@ def ist_nachschlag(
     Viertelstunde. Zwei Schwellen für dasselbe Wort sind zwei Wahrheiten.
     """
     eimer: dict[datetime, dict[str, list[float]]] = {}
+    # Je Viertelstunde die Temperaturen der spätesten Minute, in der alle vier Fühler sprachen.
+    schichten: dict[datetime, tuple[datetime, list[float]]] = {}
     grenze = jetzt.astimezone(UTC).replace(second=0, microsecond=0)
     grenze = grenze.replace(minute=(grenze.minute // 15) * 15)
     for row in rows:
@@ -100,6 +125,15 @@ def ist_nachschlag(
             wert = row.get(key)
             if isinstance(wert, (int, float)) and not isinstance(wert, bool):
                 fach.setdefault(key, []).append(float(wert))
+        temperaturen = [
+            float(t)
+            for t in (row.get(key) for key in PUFFER_REIHEN)
+            if isinstance(t, (int, float)) and not isinstance(t, bool)
+        ]
+        if len(temperaturen) == len(PUFFER_REIHEN):
+            bisher = schichten.get(slot)
+            if bisher is None or ts >= bisher[0]:
+                schichten[slot] = (ts, temperaturen)
 
     def mittel(fach: dict[str, list[float]], key: str) -> float | None:
         werte = fach.get(key)
@@ -111,12 +145,18 @@ def ist_nachschlag(
         pv = mittel(fach, "pv_power_kw")
         wp = mittel(fach, "heat_pump_power_kw")
         leistungen = fach.get("heat_pump_power_kw")
+        letzte = schichten.get(slot)
         punkte[slot] = Istpunkt(
             pv_kw=None if pv is None else round(pv, 3),
             waermepumpe_kw=None if wp is None else round(wp, 3),
             anforderung=None if kontakt is None else kontakt > 0.5,
             laufminuten=(
                 None if not leistungen else float(sum(1 for w in leistungen if w >= laeuft_ab_kw))
+            ),
+            puffer_kwh=(
+                None
+                if puffer is None or letzte is None
+                else round(nutzbarer_inhalt_kwh(letzte[1], puffer), 3)
             ),
         )
 
@@ -278,10 +318,17 @@ def build_plan(
                 planned_cost_eur=z.kosten_eur if z and geplant is not None else None,
                 planned_hp_cost_eur=z.strom_eur if z and geplant is not None else None,
                 planned_pellet_cost_eur=z.pellet_eur if z and geplant is not None else None,
+                # Der Nennwert, mit dem der Optimierer zählt; siehe `PlanIntervalOut`.
+                planned_hp_kw=(
+                    None
+                    if geplant is None
+                    else (cfg.heat_pump.nominal_electric_power_kw if geplant else 0.0)
+                ),
                 actual_pv_kw=gemessen.pv_kw if gemessen else None,
                 actual_hp_kw=gemessen.waermepumpe_kw if gemessen else None,
                 actual_hp_release=gemessen.anforderung if gemessen else None,
                 actual_hp_run_min=gemessen.laufminuten if gemessen else None,
+                actual_buffer_kwh=gemessen.puffer_kwh if gemessen else None,
             )
         )
         t += timedelta(minutes=15)
