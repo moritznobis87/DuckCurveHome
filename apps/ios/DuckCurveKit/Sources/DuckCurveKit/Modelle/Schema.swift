@@ -8482,6 +8482,8 @@ public struct PlanIntervalOut: Codable, Sendable, Hashable {
     public var actualHpRelease: Bool?
     public var actualHpRunMin: Double?
     public var actualBufferKwh: Double?
+    public var pastPlanHeatKw: Double?
+    public var pastPlanBufferKwh: Double?
 
     public enum CodingKeys: String, CodingKey {
         case ts
@@ -8505,9 +8507,11 @@ public struct PlanIntervalOut: Codable, Sendable, Hashable {
         case actualHpRelease = "actual_hp_release"
         case actualHpRunMin = "actual_hp_run_min"
         case actualBufferKwh = "actual_buffer_kwh"
+        case pastPlanHeatKw = "past_plan_heat_kw"
+        case pastPlanBufferKwh = "past_plan_buffer_kwh"
     }
 
-    public init(ts: String, expectedPvKw: Double, priceCtKwh: Double? = nil, plannedHpState: PlanIntervalOutPlannedHpStateWahl, plannedStoveOn: Bool? = nil, reasonCode: String, noteDe: String? = nil, heatDemandKw: Double? = nil, dhwDemandKw: Double? = nil, bufferKwh: Double? = nil, outdoorTempC: Double? = nil, cop: Double? = nil, plannedCostEur: Double? = nil, plannedHpCostEur: Double? = nil, plannedPelletCostEur: Double? = nil, plannedHpKw: Double? = nil, actualPvKw: Double? = nil, actualHpKw: Double? = nil, actualHpRelease: Bool? = nil, actualHpRunMin: Double? = nil, actualBufferKwh: Double? = nil) {
+    public init(ts: String, expectedPvKw: Double, priceCtKwh: Double? = nil, plannedHpState: PlanIntervalOutPlannedHpStateWahl, plannedStoveOn: Bool? = nil, reasonCode: String, noteDe: String? = nil, heatDemandKw: Double? = nil, dhwDemandKw: Double? = nil, bufferKwh: Double? = nil, outdoorTempC: Double? = nil, cop: Double? = nil, plannedCostEur: Double? = nil, plannedHpCostEur: Double? = nil, plannedPelletCostEur: Double? = nil, plannedHpKw: Double? = nil, actualPvKw: Double? = nil, actualHpKw: Double? = nil, actualHpRelease: Bool? = nil, actualHpRunMin: Double? = nil, actualBufferKwh: Double? = nil, pastPlanHeatKw: Double? = nil, pastPlanBufferKwh: Double? = nil) {
         self.ts = ts
         self.expectedPvKw = expectedPvKw
         self.priceCtKwh = priceCtKwh
@@ -8529,6 +8533,8 @@ public struct PlanIntervalOut: Codable, Sendable, Hashable {
         self.actualHpRelease = actualHpRelease
         self.actualHpRunMin = actualHpRunMin
         self.actualBufferKwh = actualBufferKwh
+        self.pastPlanHeatKw = pastPlanHeatKw
+        self.pastPlanBufferKwh = pastPlanBufferKwh
     }
 
     public init(from decoder: any Decoder) throws {
@@ -8554,6 +8560,8 @@ public struct PlanIntervalOut: Codable, Sendable, Hashable {
         self.actualHpRelease = try c.decodeIfPresent(Bool.self, forKey: .actualHpRelease)
         self.actualHpRunMin = try c.decodeIfPresent(Double.self, forKey: .actualHpRunMin)
         self.actualBufferKwh = try c.decodeIfPresent(Double.self, forKey: .actualBufferKwh)
+        self.pastPlanHeatKw = try c.decodeIfPresent(Double.self, forKey: .pastPlanHeatKw)
+        self.pastPlanBufferKwh = try c.decodeIfPresent(Double.self, forKey: .pastPlanBufferKwh)
     }
 }
 

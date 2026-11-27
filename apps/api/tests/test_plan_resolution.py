@@ -527,3 +527,63 @@ def test_ohne_einstellung_oder_mit_einem_stummen_fuehler_gibt_es_keinen_pufferin
     fast = _pufferzeilen(15, lambda m: (55.0, 50.0, 42.0, None if m == 14 else 36.0))
     punkt = ist_nachschlag(fast, jetzt, laeuft_ab_kw=0.5, puffer=cfg.buffer)(DAY_START)
     assert punkt is not None and punkt.puffer_kwh is not None
+
+
+def test_links_der_jetzt_linie_steht_der_plan_von_damals() -> None:
+    """Die Streifen „Wärmebedarf“ und „Pufferinhalt“ waren in der Vergangenheit leer.
+
+    Der Optimierer rechnet ab jetzt; was er für die Stunden davor vorhatte, weiß nur das Archiv.
+    Es wird für jede Viertelstunde vor der laufenden gefragt und für keine danach: rechts der
+    Jetzt-Linie gilt der Plan von jetzt, und eine Erinnerung dort wäre ein zweiter Plan daneben.
+    """
+    from dch_api.application.plan_service import Damalspunkt
+
+    jetzt = DAY_START + timedelta(hours=6, minutes=7)
+    gefragt: list[datetime] = []
+
+    def damals(t: datetime) -> Damalspunkt | None:
+        gefragt.append(t)
+        return Damalspunkt(waerme_kw=3.5, puffer_kwh=12.0)
+
+    plan = build_plan(_pv, _hourly_prices(24), jetzt, HemsConfig(), damals=damals)
+
+    erinnert = [i for i in plan.intervals if i.past_plan_heat_kw is not None]
+    assert [i.ts for i in erinnert] == [DAY_START + timedelta(minutes=15 * n) for n in range(24)]
+    assert all(i.past_plan_heat_kw == 3.5 and i.past_plan_buffer_kwh == 12.0 for i in erinnert)
+    assert max(gefragt) == DAY_START + timedelta(hours=5, minutes=45), (
+        "die laufende Viertelstunde und alles danach wird nicht gefragt"
+    )
+
+    ohne = build_plan(_pv, _hourly_prices(24), jetzt, HemsConfig())
+    assert all(
+        i.past_plan_heat_kw is None and i.past_plan_buffer_kwh is None for i in ohne.intervals
+    )
+
+
+def test_der_plan_von_damals_ist_der_juengste_lauf_vor_der_viertelstunde() -> None:
+    """Nie ein Lauf von danach: gefragt ist die Absicht, mit der man in die Stunde hineinging."""
+    from dch_api.application.plan_service import damals_nachschlag
+    from hems_core.forecasting import stand_vor
+
+    fuenf = DAY_START + timedelta(hours=5)
+    lauf_frueh = DAY_START + timedelta(hours=4, minutes=3)
+    lauf_spaet = DAY_START + timedelta(hours=5, minutes=3)
+    waerme = stand_vor(
+        [
+            (lauf_frueh, fuenf, 3.0),
+            (lauf_frueh, fuenf + timedelta(minutes=15), 3.1),
+            # Der spätere Lauf kennt 5:00 auch, entstand aber erst um 5:03.
+            (lauf_spaet, fuenf, 9.9),
+            (lauf_spaet, fuenf + timedelta(minutes=15), 3.4),
+        ],
+        raster_min=15,
+    )
+    nachschlag = damals_nachschlag(waerme, None)
+
+    um_fuenf = nachschlag(fuenf)
+    viertel_nach = nachschlag(fuenf + timedelta(minutes=15))
+    assert um_fuenf is not None and um_fuenf.waerme_kw == 3.0
+    assert um_fuenf.puffer_kwh is None
+    assert viertel_nach is not None and viertel_nach.waerme_kw == 3.4
+    assert nachschlag(DAY_START) is None, "vor dem ersten Lauf weiß das Archiv nichts"
+    assert damals_nachschlag(None, None)(fuenf) is None

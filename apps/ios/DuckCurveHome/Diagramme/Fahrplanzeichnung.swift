@@ -382,6 +382,31 @@ struct Fahrplanzeichnung: View {
     /// Viertelstunde lang unverändert, ein Wärmebedarf ist ein Modellwert, der sich stetig
     /// ändert. Hier stand `stepEnd` an allen vier Marken.
     @ChartContentBuilder private var waermebild: some ChartContent {
+        // Links der Jetzt-Linie der Bedarf, mit dem der letzte aufbewahrte Fahrplan davor
+        // rechnete: eine Linie für Heizen und Warmwasser zusammen, blasser als der Stapel rechts
+        // (`Fahrplan.tsx`, „Wärmebedarf, damals geplant“). Bis zum 27.11.2026 war dieser Teil
+        // leer.
+        ForEach(bild.waermeDamals) { p in
+            if let kw = p.wert {
+                AreaMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "damalsFlaeche"), stacking: .unstacked
+                )
+                .foregroundStyle(Farbe.warmwasser.opacity(0.12))
+                .interpolationMethod(.stepEnd)
+            }
+        }
+        ForEach(bild.waermeDamals) { p in
+            if let kw = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
+                    series: .value("Reihe", "damals")
+                )
+                .foregroundStyle(Farbe.warmwasser.opacity(0.7))
+                .lineStyle(StrokeStyle(lineWidth: 1.4))
+                .interpolationMethod(.stepEnd)
+            }
+        }
         ForEach(bild.waermeSumme) { p in
             if let kw = p.wert {
                 AreaMark(x: .value("Zeit", p.zeit), y: .value("kW", kw))
@@ -456,6 +481,19 @@ struct Fahrplanzeichnung: View {
                 )
                 .foregroundStyle(Farbe.puffer)
                 .lineStyle(StrokeStyle(lineWidth: 1.8, dash: [5, 4]))
+            }
+        }
+        // Was der Fahrplan von damals am Ende jeder vergangenen Viertelstunde erwartete. Eine
+        // eigene Reihe und nicht die Verlängerung des Plans von jetzt: an der Jetzt-Linie setzt
+        // der neue Plan an der Messung an.
+        ForEach(bild.pufferDamals) { p in
+            if let kwh = p.wert {
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kWh", kwh),
+                    series: .value("Reihe", "pufferDamals")
+                )
+                .foregroundStyle(Farbe.puffer.opacity(0.75))
+                .lineStyle(StrokeStyle(lineWidth: 1.6, dash: [5, 4]))
             }
         }
         ForEach(bild.pufferGemessen) { p in
@@ -565,12 +603,16 @@ struct Fahrplanzeichnung: View {
     }
 
     private var waermespanne: ClosedRange<Double> {
-        Fahrplanbild.spanne(bild.waermeUnten, bis: bild.waermeSumme.map(\.wert)) ?? 0...5
+        Fahrplanbild.spanne(
+            bild.waermeUnten, bis: bild.waermeSumme.map(\.wert) + bild.waermeDamals.map(\.wert))
+            ?? 0...5
     }
 
     private var pufferspanne: ClosedRange<Double> {
         Fahrplanbild.spanne(
-            0, bis: bild.puffer.map(\.wert) + bild.pufferGemessen.map(\.wert) + [bild.pufferDecke])
+            0,
+            bis: bild.puffer.map(\.wert) + bild.pufferGemessen.map(\.wert)
+                + bild.pufferDamals.map(\.wert) + [bild.pufferDecke])
             ?? 0...10
     }
 

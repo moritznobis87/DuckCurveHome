@@ -7124,6 +7124,10 @@ export interface components {
             actual_hp_run_min?: number | null;
             /** Actual Buffer Kwh */
             actual_buffer_kwh?: number | null;
+            /** Past Plan Heat Kw */
+            past_plan_heat_kw?: number | null;
+            /** Past Plan Buffer Kwh */
+            past_plan_buffer_kwh?: number | null;
         };
         /** PlanOut */
         PlanOut: {

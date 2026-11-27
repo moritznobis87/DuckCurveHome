@@ -118,6 +118,22 @@ class PlanIntervalOut(BaseModel):
     # `buffer_kwh`: an der Jetzt-Linie schließt die Messung an den Plan an. `None`, wenn ein
     # Fühler schwieg oder die Viertelstunde noch nicht zu Ende ist.
     actual_buffer_kwh: float | None = None
+    # ---------------------------------------------------------------- Der Plan von damals
+    #
+    # Was der letzte aufbewahrte Fahrplan **vor** dieser Viertelstunde für sie vorhatte: der
+    # Wärmebedarf, gegen den er rechnete (Heizen und Warmwasser zusammen), und der Pufferinhalt,
+    # den er an ihrem Ende erwartete. Nur für vergangene Viertelstunden; rechts der Jetzt-Linie
+    # steht der laufende Plan in `heat_demand_kw` und `buffer_kwh`.
+    #
+    # Bis zum 27.11.2026 waren die Streifen „Wärmebedarf“ und „Pufferinhalt“ links der
+    # Jetzt-Linie leer (Hausherr: „Warum ist in der Retrospektive nicht ersichtlich, wie die
+    # Wärmeplanung gewesen ist?“). Der Optimierer rechnet ab jetzt und weiß über die Stunden
+    # davor nichts mehr; das Archiv weiß es, es legt jeden Fahrplan stündlich ab.
+    #
+    # `None` heißt: kein aufbewahrter Fahrplan von vor dieser Viertelstunde kannte sie. Das ist
+    # nach einem Neustart für die ersten Stunden der Normalfall.
+    past_plan_heat_kw: float | None = None
+    past_plan_buffer_kwh: float | None = None
 
 
 class SunDayOut(BaseModel):

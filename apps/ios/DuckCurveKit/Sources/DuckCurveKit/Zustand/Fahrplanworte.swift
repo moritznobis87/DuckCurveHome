@@ -45,7 +45,12 @@ public enum Fahrplanworte {
             + "Maschine moduliert und zieht gemessen zeitweise deutlich mehr. Der gemessene "
             + "Pufferinhalt links der Jetzt-Linie ist aus den vier Fühlern gerechnet, so wie "
             + "der Startwert, mit dem der Optimierer beginnt; darum schließt die gestrichelte "
-            + "Kurve an der Jetzt-Linie an die gemessene an.",
+            + "Kurve an der Jetzt-Linie an die gemessene an. Der Wärmebedarf und der "
+            + "gestrichelte Pufferinhalt links der Jetzt-Linie sind eine Erinnerung: sie "
+            + "stammen aus dem letzten Fahrplan, der vor der jeweiligen Viertelstunde "
+            + "aufbewahrt wurde, und aufbewahrt wird jede Stunde einer. Der Abstand zwischen "
+            + "der gestrichelten und der gefüllten Pufferkurve ist also der Abstand zwischen "
+            + "Plan und Wirklichkeit.",
         "Was aus einem Fahrplan geworden ist, steht im Rückblick: dort liegt der aufbewahrte "
             + "Fahrplan von damals neben der Messung, in Euro. Wie gut die Prognosen waren, "
             + "steht unter System → Prognose. Noch nicht gebaut ist der Lernschritt, der das "

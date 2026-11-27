@@ -15903,6 +15903,28 @@
               }
             ],
             "title": "Actual Buffer Kwh"
+          },
+          "past_plan_heat_kw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Past Plan Heat Kw"
+          },
+          "past_plan_buffer_kwh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Past Plan Buffer Kwh"
           }
         },
         "type": "object",

@@ -170,8 +170,13 @@ export function Fahrplan() {
     const puffer = iv.map((i) => [t(i.ts), i.buffer_kwh ?? null]);
     // Der gemessene Inhalt der vergangenen Viertelstunden, auf derselben Skala wie der geplante.
     const pufferIst = iv.map((i) => [t(i.ts), i.actual_buffer_kwh ?? null]);
-    const hatWaerme = iv.some((i) => i.heat_demand_kw != null);
-    const hatPuffer = iv.some((i) => i.buffer_kwh != null || i.actual_buffer_kwh != null);
+    // **Der Plan von damals.** Für die vergangenen Viertelstunden, was der letzte aufbewahrte
+    // Fahrplan davor vorhatte: der Wärmebedarf, gegen den er rechnete, und der Pufferinhalt,
+    // den er erwartete. Der Optimierer rechnet ab jetzt; diese Erinnerung kommt aus dem Archiv.
+    const waermeDamals = iv.map((i) => [t(i.ts), i.past_plan_heat_kw ?? null]);
+    const pufferDamals = iv.map((i) => [t(i.ts), i.past_plan_buffer_kwh ?? null]);
+    const hatWaerme = iv.some((i) => i.heat_demand_kw != null || i.past_plan_heat_kw != null);
+    const hatPuffer = iv.some((i) => i.buffer_kwh != null || i.actual_buffer_kwh != null || i.past_plan_buffer_kwh != null);
     // 5 ct und 0,5 kW: die Stufen, in denen man diese beiden Größen ohnehin denkt.
     const preisUnten = untergrenze(
       iv.map((i) => i.price_ct_kwh).filter((x): x is number => x != null),
@@ -181,7 +186,10 @@ export function Fahrplan() {
     // die Kurve bildet. Dass die untere Reihe dabei am unteren Rand beschnitten wird, ist der
     // Preis der Stauchung: die Dicke des Bandes gilt weiter, seine Fläche nicht mehr.
     const waermeUnten = untergrenze(
-      iv.filter((i) => i.heat_demand_kw != null).map((i) => (i.heat_demand_kw ?? 0) + (i.dhw_demand_kw ?? 0)),
+      [
+        ...iv.filter((i) => i.heat_demand_kw != null).map((i) => (i.heat_demand_kw ?? 0) + (i.dhw_demand_kw ?? 0)),
+        ...iv.map((i) => i.past_plan_heat_kw).filter((x): x is number => x != null),
+      ],
       0.5,
     );
     const wp = iv.map((i) => {
@@ -348,7 +356,9 @@ export function Fahrplan() {
               `<div style="padding-left:12px;color:rgba(255,255,255,.65)">Heizen <b style="font-family:${MONO};color:${C.house}">${de(i.heat_demand_kw, 1)}</b> · Warmwasser <b style="font-family:${MONO};color:${C.dhw}">${de(i.dhw_demand_kw ?? 0, 1)}</b></div>`,
             );
           }
+          if (i.past_plan_heat_kw != null) zeilen.push(zeile("Wärmebedarf, damals geplant", `${de(i.past_plan_heat_kw, 1)} kW`));
           if (i.buffer_kwh != null) zeilen.push(zeile("Puffer danach, geplant", `${de(i.buffer_kwh, 1)} kWh`, C.puffer));
+          if (i.past_plan_buffer_kwh != null) zeilen.push(zeile("Puffer danach, damals geplant", `${de(i.past_plan_buffer_kwh, 1)} kWh`, C.puffer));
           if (i.actual_buffer_kwh != null) zeilen.push(zeile("Puffer danach, gemessen", `${de(i.actual_buffer_kwh, 1)} kWh`, C.puffer));
           if (i.outdoor_temp_c != null) {
             const cop = i.cop == null ? "" : ` · COP ${de(i.cop, 2)}`;
@@ -446,6 +456,21 @@ export function Fahrplan() {
           lineStyle: { color: C.dhw, width: 1.5 },
           areaStyle: { color: "rgba(74,163,199,.34)" },
         },
+        // Links der Jetzt-Linie der Bedarf, mit dem der letzte aufbewahrte Fahrplan davor
+        // rechnete: eine Linie für Heizen und Warmwasser zusammen, denn so liegt er im Archiv.
+        // Blasser als der Stapel rechts, damit die Erinnerung nicht aussieht wie der Plan von
+        // jetzt. Bis zum 27.11.2026 war dieser Teil leer.
+        {
+          name: "Wärmebedarf, damals geplant",
+          type: "line" as const,
+          xAxisIndex: 2,
+          yAxisIndex: 2,
+          data: waermeDamals,
+          step: "end" as const,
+          symbol: "none" as const,
+          lineStyle: { color: C.dhw, width: 1.4, opacity: 0.7 },
+          areaStyle: { color: "rgba(74,163,199,.12)" },
+        },
         // **Gemessen gefüllt, geplant gestrichelt**, wie bei der PV zwei Flächen darüber. Bis zum
         // 27.11.2026 war der geplante Inhalt die einzige Kurve hier und links der Jetzt-Linie
         // stand nichts (Hausherr: „Die Diagramme sind ja da leer“). Jetzt steht dort der
@@ -461,6 +486,19 @@ export function Fahrplan() {
           areaStyle: { color: "rgba(143,191,107,.07)" },
           markArea: reserve,
           markLine: jetzt,
+        },
+        // Was der Fahrplan von damals am Ende jeder vergangenen Viertelstunde erwartete. Eine
+        // eigene Reihe und nicht die Verlängerung des Plans von jetzt: an der Jetzt-Linie setzt
+        // der neue Plan an der Messung an, und eine durchgezogene Verbindung dorthin wäre ein
+        // Sprung, den keiner geplant hat.
+        {
+          name: "Pufferinhalt, damals geplant",
+          type: "line" as const,
+          xAxisIndex: 3,
+          yAxisIndex: 3,
+          data: pufferDamals,
+          symbol: "none" as const,
+          lineStyle: { color: C.puffer, width: 1.6, type: "dashed" as const, opacity: 0.75 },
         },
         {
           name: "Pufferinhalt gemessen",
@@ -656,6 +694,10 @@ export function Fahrplan() {
             Warmwasser
           </span>
           <span className="inline-flex items-center gap-1.5">
+            <span style={{ display: "inline-block", width: 14, height: 10, borderRadius: 2, background: C.dhw, opacity: 0.32 }} />
+            Wärmebedarf, damals geplant
+          </span>
+          <span className="inline-flex items-center gap-1.5">
             <span style={{ display: "inline-block", width: 14, height: 10, borderRadius: 2, background: C.puffer }} />
             Pufferinhalt gemessen
           </span>
@@ -710,7 +752,7 @@ export function Fahrplan() {
           Links der Jetzt-Linie stehen zwei verschiedene Dinge nebeneinander. Gemessen sind die PV-Leistung, die Leistung der Wärmepumpe, die Anforderung an sie und der Inhalt des Puffers; sie enden an der letzten abgeschlossenen Viertelstunde, denn die laufende ist erst zum Teil vorbei und sähe aus wie ein Einbruch. Der <em>geplante</em> Zustand der Wärmepumpe ist dort dagegen keine Erinnerung: der Optimierer rechnet ab jetzt, für die vergangenen Stunden greift die Preisregel, also steht da, was sie heute für diese Stunde sagen würde. Weicht der gemessene Kontakt davon ab, ist das deshalb kein Widerspruch, sondern der Abstand zwischen zwei verschiedenen Fragen.
         </MethodeAbsatz>
         <MethodeAbsatz>
-          Rechts der Jetzt-Linie steht im Streifen der Wärmepumpe gestrichelt die Leistung, mit der der Optimierer sie zählt. Das ist ihr Nennwert und keine Prognose: die Maschine moduliert und zieht gemessen zeitweise deutlich mehr. Der gemessene Pufferinhalt links der Jetzt-Linie ist aus den vier Fühlern gerechnet, so wie der Startwert, mit dem der Optimierer beginnt; darum schließt die gestrichelte Kurve an der Jetzt-Linie an die gemessene an.
+          Rechts der Jetzt-Linie steht im Streifen der Wärmepumpe gestrichelt die Leistung, mit der der Optimierer sie zählt. Das ist ihr Nennwert und keine Prognose: die Maschine moduliert und zieht gemessen zeitweise deutlich mehr. Der gemessene Pufferinhalt links der Jetzt-Linie ist aus den vier Fühlern gerechnet, so wie der Startwert, mit dem der Optimierer beginnt; darum schließt die gestrichelte Kurve an der Jetzt-Linie an die gemessene an. Der Wärmebedarf und der gestrichelte Pufferinhalt links der Jetzt-Linie sind eine Erinnerung: sie stammen aus dem letzten Fahrplan, der vor der jeweiligen Viertelstunde aufbewahrt wurde, und aufbewahrt wird jede Stunde einer. Der Abstand zwischen der gestrichelten und der gefüllten Pufferkurve ist also der Abstand zwischen Plan und Wirklichkeit.
         </MethodeAbsatz>
         <MethodeAbsatz>
           Was aus einem Fahrplan geworden ist, steht im Rückblick: dort liegt der aufbewahrte Fahrplan von damals neben der Messung, in Euro. Wie gut die Prognosen waren, steht unter <em>System → Prognose</em>. Noch nicht gebaut ist der Lernschritt, der das Hüllenmodell aus den Prognosefehlern nachzieht.

@@ -79,6 +79,36 @@ class Istpunkt:
     puffer_kwh: float | None = None
 
 
+@dataclass(frozen=True)
+class Damalspunkt:
+    """Was der letzte aufbewahrte Fahrplan vor einer Viertelstunde für sie vorhatte."""
+
+    #: Der Wärmebedarf, gegen den er rechnete: Heizen und Warmwasser zusammen (`heat_kw`).
+    waerme_kw: float | None = None
+    #: Der Pufferinhalt, den er am Ende der Viertelstunde erwartete.
+    puffer_kwh: float | None = None
+
+
+def damals_nachschlag(
+    waerme: Callable[[datetime], float | None] | None,
+    puffer: Callable[[datetime], float | None] | None,
+) -> Callable[[datetime], Damalspunkt | None]:
+    """Zwei Nachschlagewerke des Prognosearchivs zu einem für den Fahrplan fügen.
+
+    `waerme` und `puffer` sind je eine Rückgabe von `stand_vor`: der Wert des jüngsten Laufs vor
+    einem Zeitpunkt. `None` heißt, das Archiv kannte die Größe gar nicht.
+    """
+
+    def nachschlag(t: datetime) -> Damalspunkt | None:
+        w = waerme(t) if waerme else None
+        p = puffer(t) if puffer else None
+        if w is None and p is None:
+            return None
+        return Damalspunkt(waerme_kw=w, puffer_kwh=p)
+
+    return nachschlag
+
+
 def ist_nachschlag(
     rows: Iterable[Mapping[str, float | str | None]],
     jetzt: datetime,
@@ -197,6 +227,7 @@ def build_plan(
     hp_on: Callable[[datetime], bool | None] | None = None,
     twin: Callable[[datetime], Zwillingspunkt | None] | None = None,
     ist: Callable[[datetime], Istpunkt | None] | None = None,
+    damals: Callable[[datetime], Damalspunkt | None] | None = None,
     buffer_capacity_kwh: float | None = None,
     buffer_min_kwh: float | None = None,
     planner_status: str = "unavailable",
@@ -232,6 +263,10 @@ def build_plan(
     Preise, blinde Puffersensoren, oder schlicht außerhalb seines Horizonts -, gilt wieder die
     Regel. Ein Fahrplan, der bei fehlenden Eingängen „aus" plante, sähe von außen aus wie einer,
     der sich entschieden hat.
+
+    **`damals` ist die Erinnerung, die der Optimierer nicht hat.** Für die vergangenen
+    Viertelstunden des Tages liefert es, was der letzte aufbewahrte Fahrplan davor vorhatte.
+    Gefragt wird nur links der laufenden Viertelstunde; rechts davon gilt der Plan von jetzt.
 
     **Der Sonnenlauf kommt aus dem Ort, nicht aus der Prognose.** Mit `ort` trägt der Plan Aufgang
     und Untergang der Sonne für seine beiden Tage. Die Oberfläche zeichnet damit den Himmel; aus
@@ -275,6 +310,9 @@ def build_plan(
     # bleibt `price_ct_kwh` leer; ohne Preis gibt es dort auch kein Fenster und keinen Fahrplan,
     # sondern `free`. Eine leere Viertelstunde ist ehrlicher als eine fehlende.
     intervals: list[PlanIntervalOut] = []
+    # Der Beginn der laufenden Viertelstunde: davor liegt die Vergangenheit dieser Seite.
+    laufende = now.astimezone(UTC).replace(second=0, microsecond=0)
+    laufende = laufende.replace(minute=(laufende.minute // 15) * 15)
     t = day_start
     end_plan = day_start + timedelta(hours=48)
     vom_optimierer = 0
@@ -299,6 +337,7 @@ def build_plan(
             state, code, note = "free", "none", None
         z = twin(t) if twin else None
         gemessen = ist(t) if ist else None
+        erinnert = damals(t) if damals and t < laufende else None
         intervals.append(
             PlanIntervalOut(
                 ts=t,
@@ -329,6 +368,8 @@ def build_plan(
                 actual_hp_release=gemessen.anforderung if gemessen else None,
                 actual_hp_run_min=gemessen.laufminuten if gemessen else None,
                 actual_buffer_kwh=gemessen.puffer_kwh if gemessen else None,
+                past_plan_heat_kw=erinnert.waerme_kw if erinnert else None,
+                past_plan_buffer_kwh=erinnert.puffer_kwh if erinnert else None,
             )
         )
         t += timedelta(minutes=15)

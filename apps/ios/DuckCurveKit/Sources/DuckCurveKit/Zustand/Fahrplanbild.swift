@@ -120,6 +120,10 @@ public struct Fahrplanbild: Sendable {
             Legendenstueck(wort: "Ofen brennt", rolle: .ofenAn, dick: 10),
             Legendenstueck(wort: "Heizen", rolle: .heizen, dick: 10),
             Legendenstueck(wort: "Warmwasser", rolle: .warmwasser, dick: 10),
+            // Der Bedarf, mit dem der letzte aufbewahrte Fahrplan davor rechnete: blass, damit
+            // die Erinnerung nicht aussieht wie der Plan von jetzt.
+            Legendenstueck(
+                wort: "Wärmebedarf, damals geplant", rolle: .warmwasser, dick: 10, blass: true),
             // **Gemessen gefüllt, geplant gestrichelt**, bei Puffer und Wärmepumpe wie bei der
             // PV (`Fahrplan.tsx`, Legende). Seit dem 27.11.2026 stehen beide Reihen je zweimal
             // im Bild: links der Jetzt-Linie die Messung, rechts der Plan.
@@ -154,6 +158,12 @@ public struct Fahrplanbild: Sendable {
     public var puffer: [Punkt] = []
     /// Der gemessene Pufferinhalt am Ende jeder vergangenen Viertelstunde, auf derselben Skala.
     public var pufferGemessen: [Punkt] = []
+    /// **Der Plan von damals** für die vergangenen Viertelstunden: was der letzte aufbewahrte
+    /// Fahrplan davor vorhatte. Der Wärmebedarf, gegen den er rechnete (Heizen und Warmwasser
+    /// zusammen), und der Pufferinhalt, den er erwartete. Der Optimierer rechnet ab jetzt; diese
+    /// Erinnerung kommt aus dem Archiv des Dienstes.
+    public var waermeDamals: [Punkt] = []
+    public var pufferDamals: [Punkt] = []
     public var wpGemessen: [Punkt] = []
     /// Die elektrische Leistung, mit der der Optimierer die Wärmepumpe zählt: ihr Nennwert,
     /// wo er sie laufen lässt, null, wo nicht. Eine Lücke, wo er nicht geplant hat.
@@ -207,6 +217,8 @@ public struct Fahrplanbild: Sendable {
         }
         b.puffer = iv.map { Punkt(zeit: $0.1, wert: $0.0.bufferKwh) }
         b.pufferGemessen = iv.map { Punkt(zeit: $0.1, wert: $0.0.actualBufferKwh) }
+        b.waermeDamals = iv.map { Punkt(zeit: $0.1, wert: $0.0.pastPlanHeatKw) }
+        b.pufferDamals = iv.map { Punkt(zeit: $0.1, wert: $0.0.pastPlanBufferKwh) }
         b.wpGemessen = iv.map { Punkt(zeit: $0.1, wert: $0.0.actualHpKw) }
         b.wpGeplant = iv.map { Punkt(zeit: $0.1, wert: $0.0.plannedHpKw) }
 
@@ -247,7 +259,8 @@ public struct Fahrplanbild: Sendable {
         // die Kurve. Dass die untere dabei am Rand beschnitten wird, ist der Preis der Stauchung.
         b.waermeUnten = untergrenze(
             iv.filter { $0.0.heatDemandKw != nil }
-                .map { ($0.0.heatDemandKw ?? 0) + ($0.0.dhwDemandKw ?? 0) }, stufe: 0.5)
+                .map { ($0.0.heatDemandKw ?? 0) + ($0.0.dhwDemandKw ?? 0) }
+                + iv.compactMap { $0.0.pastPlanHeatKw }, stufe: 0.5)
         b.pufferDecke = plan.bufferCapacityKwh
         b.pufferReserve = plan.bufferMinKwh
 
@@ -255,9 +268,11 @@ public struct Fahrplanbild: Sendable {
         b.hatWpMessung = iv.contains { $0.0.actualHpKw != nil }
         b.hatWpPlan = iv.contains { $0.0.plannedHpKw != nil }
         b.hatAnforderung = !b.anforderung.isEmpty
-        b.hatWaerme = iv.contains { $0.0.heatDemandKw != nil }
+        b.hatWaerme = iv.contains { $0.0.heatDemandKw != nil || $0.0.pastPlanHeatKw != nil }
         // Gemessen oder geplant: der Streifen ist erst leer, wenn beides fehlt.
-        b.hatPuffer = iv.contains { $0.0.bufferKwh != nil || $0.0.actualBufferKwh != nil }
+        b.hatPuffer = iv.contains {
+            $0.0.bufferKwh != nil || $0.0.actualBufferKwh != nil || $0.0.pastPlanBufferKwh != nil
+        }
         b.hatOfenfahrplan = !b.ofenstreifen.isEmpty
         return b
     }
@@ -346,8 +361,14 @@ public struct Fahrplanbild: Sendable {
             zeile("Heizen", Formate.kwMitEinheit(heizen), .heizen, eingerueckt: true)
             zeile("Warmwasser", Formate.kwMitEinheit(warm), .warmwasser, eingerueckt: true)
         }
+        if let damals = i.pastPlanHeatKw {
+            zeile("Wärmebedarf, damals geplant", Formate.kwMitEinheit(damals))
+        }
         if let puffer = i.bufferKwh {
             zeile("Puffer danach, geplant", Formate.kwh(puffer), .puffer)
+        }
+        if let damals = i.pastPlanBufferKwh {
+            zeile("Puffer danach, damals geplant", Formate.kwh(damals), .puffer)
         }
         if let puffer = i.actualBufferKwh {
             zeile("Puffer danach, gemessen", Formate.kwh(puffer), .puffer)
