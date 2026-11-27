@@ -335,17 +335,20 @@ struct Fahrplanzeichnung: View {
         // **Flaeche blass, Kante voll** (`Fahrplan.tsx:402-411`: Flaeche 0,20, Linie in
         // Volldeckung, Breite 2). Eine Flaeche ohne Kante verliert ihren Rand gegen die
         // Kartenflaeche; die Linie holt die Lesbarkeit zurueck, die die blasse Flaeche abgibt.
-        ForEach(bild.pvGemessen) { p in
-            if let kw = p.wert {
-                AreaMark(x: .value("Zeit", p.zeit), y: .value("kW", kw))
-                    .foregroundStyle(Farbe.pv.opacity(0.20))
+        ForEach(Fahrplanbild.stuecke(bild.pvGemessen)) { s in
+            ForEach(s.punkte) { p in
+                AreaMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", p.wert),
+                    series: .value("Reihe", "gemessenFlaeche\(s.nummer)"), stacking: .unstacked
+                )
+                .foregroundStyle(Farbe.pv.opacity(0.20))
             }
         }
-        ForEach(bild.pvGemessen) { p in
-            if let kw = p.wert {
+        ForEach(Fahrplanbild.stuecke(bild.pvGemessen)) { s in
+            ForEach(s.punkte) { p in
                 LineMark(
-                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
-                    series: .value("Reihe", "gemessen")
+                    x: .value("Zeit", p.zeit), y: .value("kW", p.wert),
+                    series: .value("Reihe", "gemessen\(s.nummer)")
                 )
                 .foregroundStyle(Farbe.pv)
                 .lineStyle(StrokeStyle(lineWidth: 2))
@@ -386,21 +389,21 @@ struct Fahrplanzeichnung: View {
         // rechnete: eine Linie für Heizen und Warmwasser zusammen, blasser als der Stapel rechts
         // (`Fahrplan.tsx`, „Wärmebedarf, damals geplant“). Bis zum 27.11.2026 war dieser Teil
         // leer.
-        ForEach(bild.waermeDamals) { p in
-            if let kw = p.wert {
+        ForEach(Fahrplanbild.stuecke(bild.waermeDamals)) { s in
+            ForEach(s.punkte) { p in
                 AreaMark(
-                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
-                    series: .value("Reihe", "damalsFlaeche"), stacking: .unstacked
+                    x: .value("Zeit", p.zeit), y: .value("kW", p.wert),
+                    series: .value("Reihe", "damalsFlaeche\(s.nummer)"), stacking: .unstacked
                 )
                 .foregroundStyle(Farbe.warmwasser.opacity(0.12))
                 .interpolationMethod(.stepEnd)
             }
         }
-        ForEach(bild.waermeDamals) { p in
-            if let kw = p.wert {
+        ForEach(Fahrplanbild.stuecke(bild.waermeDamals)) { s in
+            ForEach(s.punkte) { p in
                 LineMark(
-                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
-                    series: .value("Reihe", "damals")
+                    x: .value("Zeit", p.zeit), y: .value("kW", p.wert),
+                    series: .value("Reihe", "damals\(s.nummer)")
                 )
                 .foregroundStyle(Farbe.warmwasser.opacity(0.7))
                 .lineStyle(StrokeStyle(lineWidth: 1.4))
@@ -486,30 +489,30 @@ struct Fahrplanzeichnung: View {
         // Was der Fahrplan von damals am Ende jeder vergangenen Viertelstunde erwartete. Eine
         // eigene Reihe und nicht die Verlängerung des Plans von jetzt: an der Jetzt-Linie setzt
         // der neue Plan an der Messung an.
-        ForEach(bild.pufferDamals) { p in
-            if let kwh = p.wert {
+        ForEach(Fahrplanbild.stuecke(bild.pufferDamals)) { s in
+            ForEach(s.punkte) { p in
                 LineMark(
-                    x: .value("Zeit", p.zeit), y: .value("kWh", kwh),
-                    series: .value("Reihe", "pufferDamals")
+                    x: .value("Zeit", p.zeit), y: .value("kWh", p.wert),
+                    series: .value("Reihe", "pufferDamals\(s.nummer)")
                 )
                 .foregroundStyle(Farbe.puffer.opacity(0.75))
                 .lineStyle(StrokeStyle(lineWidth: 1.6, dash: [5, 4]))
             }
         }
-        ForEach(bild.pufferGemessen) { p in
-            if let kwh = p.wert {
+        ForEach(Fahrplanbild.stuecke(bild.pufferGemessen)) { s in
+            ForEach(s.punkte) { p in
                 AreaMark(
-                    x: .value("Zeit", p.zeit), y: .value("kWh", kwh),
-                    series: .value("Reihe", "pufferIstFlaeche"), stacking: .unstacked
+                    x: .value("Zeit", p.zeit), y: .value("kWh", p.wert),
+                    series: .value("Reihe", "pufferIstFlaeche\(s.nummer)"), stacking: .unstacked
                 )
                 .foregroundStyle(Farbe.puffer.opacity(0.20))
             }
         }
-        ForEach(bild.pufferGemessen) { p in
-            if let kwh = p.wert {
+        ForEach(Fahrplanbild.stuecke(bild.pufferGemessen)) { s in
+            ForEach(s.punkte) { p in
                 LineMark(
-                    x: .value("Zeit", p.zeit), y: .value("kWh", kwh),
-                    series: .value("Reihe", "pufferIst")
+                    x: .value("Zeit", p.zeit), y: .value("kWh", p.wert),
+                    series: .value("Reihe", "pufferIst\(s.nummer)")
                 )
                 .foregroundStyle(Farbe.puffer)
                 .lineStyle(StrokeStyle(lineWidth: 2))
@@ -543,21 +546,35 @@ struct Fahrplanzeichnung: View {
                 .interpolationMethod(.stepEnd)
             }
         }
-        ForEach(bild.wpGemessen) { p in
-            if let kw = p.wert {
+        // Die Leistung, mit der der Fahrplan von damals die Maschine zählte, neben dem, was sie
+        // zog (`Fahrplan.tsx`, „Wärmepumpe, damals geplant, kW“). Eine eigene Reihe wie beim
+        // Puffer: An der Jetzt-Linie endet der eine Plan und beginnt der andere.
+        ForEach(Fahrplanbild.stuecke(bild.wpDamals)) { s in
+            ForEach(s.punkte) { p in
+                LineMark(
+                    x: .value("Zeit", p.zeit), y: .value("kW", p.wert),
+                    series: .value("Reihe", "wpDamals\(s.nummer)")
+                )
+                .foregroundStyle(Farbe.waermepumpe.opacity(0.75))
+                .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                .interpolationMethod(.stepEnd)
+            }
+        }
+        ForEach(Fahrplanbild.stuecke(bild.wpGemessen)) { s in
+            ForEach(s.punkte) { p in
                 AreaMark(
-                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
-                    series: .value("Reihe", "wpIstFlaeche"), stacking: .unstacked
+                    x: .value("Zeit", p.zeit), y: .value("kW", p.wert),
+                    series: .value("Reihe", "wpIstFlaeche\(s.nummer)"), stacking: .unstacked
                 )
                 .foregroundStyle(Farbe.waermepumpe.opacity(0.22))
                 .interpolationMethod(.stepEnd)
             }
         }
-        ForEach(bild.wpGemessen) { p in
-            if let kw = p.wert {
+        ForEach(Fahrplanbild.stuecke(bild.wpGemessen)) { s in
+            ForEach(s.punkte) { p in
                 LineMark(
-                    x: .value("Zeit", p.zeit), y: .value("kW", kw),
-                    series: .value("Reihe", "wp")
+                    x: .value("Zeit", p.zeit), y: .value("kW", p.wert),
+                    series: .value("Reihe", "wp\(s.nummer)")
                 )
                 .foregroundStyle(Farbe.waermepumpe)
                 .lineStyle(StrokeStyle(lineWidth: 1.8))
@@ -617,7 +634,10 @@ struct Fahrplanzeichnung: View {
     }
 
     private var wpspanne: ClosedRange<Double> {
-        Fahrplanbild.spanne(0, bis: bild.wpGemessen.map(\.wert) + bild.wpGeplant.map(\.wert))
+        Fahrplanbild.spanne(
+            0,
+            bis: bild.wpGemessen.map(\.wert) + bild.wpGeplant.map(\.wert)
+                + bild.wpDamals.map(\.wert))
             ?? 0...3
     }
 

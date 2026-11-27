@@ -11,6 +11,7 @@ import { EChart } from "@/components/charts/EChart";
 import { C, MONO } from "@/components/charts/palette";
 import { hhmm } from "@/lib/format";
 import { isoToday } from "@/lib/day";
+import { absicht, damalsFreigegeben, damalsWort, laufendeViertelstunde } from "./fahrplanband";
 import { hausTag, kurzDatum } from "./wirkung";
 
 /**
@@ -160,8 +161,10 @@ export function Fahrplan() {
     // Die Leistung, mit der der Optimierer die Wärmepumpe zählt: ihr Nennwert, wo er sie laufen
     // lässt. `null`, wo er nicht geplant hat; siehe die Reihe „Wärmepumpe geplant, kW“ unten.
     const wpPlan = iv.map((i) => [t(i.ts), i.planned_hp_kw ?? null]);
+    // Dieselbe Zahl aus dem Fahrplan von damals, für die vergangenen Viertelstunden.
+    const wpDamals = iv.map((i) => [t(i.ts), i.past_plan_hp_kw ?? null]);
     const hatIst = iv.some((i) => i.actual_pv_kw != null || i.actual_hp_kw != null);
-    const hatWpIst = iv.some((i) => i.actual_hp_kw != null || i.planned_hp_kw != null);
+    const hatWpIst = iv.some((i) => i.actual_hp_kw != null || i.planned_hp_kw != null || i.past_plan_hp_kw != null);
     const hatAnforderung = iv.some((i) => i.actual_hp_release != null);
     // `null` und nicht `0`: eine Viertelstunde ohne Fahrplan ist eine Lücke in der Fläche. Eine
     // Null wäre die Behauptung, das Haus brauche dort keine Wärme.
@@ -192,9 +195,16 @@ export function Fahrplan() {
       ],
       0.5,
     );
-    const wp = iv.map((i) => {
-      const z = zustandOf(i.planned_hp_state);
-      return { value: [t(i.ts), z.hoehe], itemStyle: { color: z.farbe } };
+    // **Links der Jetzt-Linie die Absicht von damals**, rechts der Fahrplan von jetzt; die Regel
+    // und ihr Grund stehen in `fahrplanband.ts`. Der Fahrplan von damals kennt nur Ja und Nein:
+    // Ja sieht aus wie „angefordert“, Nein wie „aus“. Wo das Archiv nichts weiß, bleibt die
+    // Stelle leer, so wie eine fehlende Messung im Streifen darunter eine Lücke lässt.
+    const laufende = laufendeViertelstunde(plan);
+    const wp = iv.flatMap((i) => {
+      const a = absicht(i, laufende);
+      if (a.art === "ohne") return [];
+      const z = a.art === "jetzt" ? zustandOf(a.zustand) : WP_ZUSTAND[a.freigabe ? "release" : "off"];
+      return [{ value: [t(i.ts), z.hoehe], itemStyle: { color: z.farbe } }];
     });
     // Nur Viertelstunden mit Messung. Eine fehlende hinterlässt eine Lücke im Streifen, und das
     // ist richtig: „nicht angefordert" und „nicht gemessen" sind zwei verschiedene Aussagen.
@@ -364,11 +374,18 @@ export function Fahrplan() {
             const cop = i.cop == null ? "" : ` · COP ${de(i.cop, 2)}`;
             zeilen.push(zeile("Außen", `${de(i.outdoor_temp_c, 1)} °C${cop}`));
           }
-          zeilen.push(`<div>Wärmepumpe geplant <b style="color:${z.farbe}">${z.wort}</b></div>`);
+          // Links der Jetzt-Linie die Absicht von damals, rechts der Fahrplan von jetzt.
+          const damals = damalsWort(absicht(i, laufende));
+          if (damals == null) {
+            zeilen.push(`<div>Wärmepumpe geplant <b style="color:${z.farbe}">${z.wort}</b></div>`);
+          } else {
+            zeilen.push(`<div>Wärmepumpe, damals geplant <b style="color:${i.past_plan_hp_release ? C.heatPump : "inherit"}">${damals}</b></div>`);
+          }
           // Womit der Optimierer sie in dieser Viertelstunde zählt. Nur wo er sie laufen lässt:
           // „mit 0,0 kW gezählt“ unter „aus“ sagt nichts.
-          if (i.planned_hp_kw != null && i.planned_hp_kw > 0) {
-            zeilen.push(`<div style="padding-left:12px;color:rgba(255,255,255,.65)">mit <b style="font-family:${MONO};color:${C.heatPump}">${de(i.planned_hp_kw, 1)} kW</b> gezählt</div>`);
+          const gezaehlt = damals == null ? i.planned_hp_kw : i.past_plan_hp_kw;
+          if (gezaehlt != null && gezaehlt > 0) {
+            zeilen.push(`<div style="padding-left:12px;color:rgba(255,255,255,.65)">mit <b style="font-family:${MONO};color:${C.heatPump}">${de(gezaehlt, 1)} kW</b> gezählt</div>`);
           }
           if (i.actual_hp_release != null) {
             zeilen.push(
@@ -529,6 +546,19 @@ export function Fahrplan() {
           lineStyle: { color: C.heatPump, width: 1.5, type: "dashed" as const },
           areaStyle: { color: "rgba(224,150,107,.08)" },
         },
+        // Die Leistung, mit der der Fahrplan von damals die Maschine zählte, neben dem, was sie
+        // zog. Eine eigene Reihe wie beim Puffer: An der Jetzt-Linie endet der eine Plan und
+        // beginnt der andere, und eine durchgehende Linie verspräche einen einzigen.
+        {
+          name: "Wärmepumpe, damals geplant, kW",
+          type: "line" as const,
+          xAxisIndex: 4,
+          yAxisIndex: 4,
+          data: wpDamals,
+          step: "end" as const,
+          symbol: "none" as const,
+          lineStyle: { color: C.heatPump, width: 1.5, type: "dashed" as const, opacity: 0.75 },
+        },
         {
           name: "Wärmepumpe gemessen",
           type: "line" as const,
@@ -590,12 +620,17 @@ export function Fahrplan() {
     // gegen dieselbe Schwelle.
     const mitMessung = iv.filter((i) => i.actual_hp_run_min != null);
     const laufMinuten = mitMessung.reduce((s, i) => s + (i.actual_hp_run_min ?? 0), 0);
-    const geplantImSelbenFenster = mitMessung.filter((i) => i.planned_hp_state === "release").length;
+    // Der Vergleich gilt dem Fahrplan von damals: Für gemessene, also vergangene Viertelstunden
+    // ist `planned_hp_state` die Preisregel von heute und keine Absicht. Weiß das Archiv nichts,
+    // steht kein Vergleich da.
+    const damalsFrei = damalsFreigegeben(mitMessung);
     return {
       wp: viertel(iv.filter((i) => i.planned_hp_state === "release").length),
       gelaufen: mitMessung.length ? `${de(laufMinuten / 60, 1)} h` : null,
       gelaufenHinweis: mitMessung.length
-        ? `seit Mitternacht · im selben Fenster geplant ${viertel(geplantImSelbenFenster)}`
+        ? damalsFrei == null
+          ? "seit Mitternacht"
+          : `seit Mitternacht · im selben Fenster damals geplant ${viertel(damalsFrei)}`
         : "keine Messung",
       gemieden: viertel(iv.filter((i) => i.planned_hp_state === "avoid").length),
       // Null Ofenstunden sind eine Entscheidung, kein fehlender Fahrplan: die Kachel muss die
@@ -744,15 +779,15 @@ export function Fahrplan() {
         <Tabelle plan={plan} />
       </Card>
 
-      <Methode title="Woher die Zahlen kommen" kurz="Preis und Sonne sind Prognosen, der Wärmebedarf ist ein Modell · links der Jetzt-Linie stehen Messung und Regel nebeneinander">
+      <Methode title="Woher die Zahlen kommen" kurz="Preis und Sonne sind Prognosen, der Wärmebedarf ist ein Modell · links der Jetzt-Linie stehen Messung und der Plan von damals nebeneinander">
         <MethodeAbsatz>
           Preis und PV-Erwartung sind Prognosen, der Wärmebedarf ist ein Modell: Heizgradstunden gegen die Wettervorhersage plus ein Warmwasserprofil über den Tag. Es ist derselbe Bedarf, gegen den der Optimierer rechnet, nicht ein zweiter daneben. Gemessen wird er noch nicht; das kommt mit dem Wärmemengenzähler über den eBUS-Anschluss. Der COP folgt aus der Außentemperatur, noch nicht aus der Vorlauftemperatur, denn die liefert bislang kein Fühler.
         </MethodeAbsatz>
         <MethodeAbsatz>
-          Links der Jetzt-Linie stehen zwei verschiedene Dinge nebeneinander. Gemessen sind die PV-Leistung, die Leistung der Wärmepumpe, die Anforderung an sie und der Inhalt des Puffers; sie enden an der letzten abgeschlossenen Viertelstunde, denn die laufende ist erst zum Teil vorbei und sähe aus wie ein Einbruch. Der <em>geplante</em> Zustand der Wärmepumpe ist dort dagegen keine Erinnerung: der Optimierer rechnet ab jetzt, für die vergangenen Stunden greift die Preisregel, also steht da, was sie heute für diese Stunde sagen würde. Weicht der gemessene Kontakt davon ab, ist das deshalb kein Widerspruch, sondern der Abstand zwischen zwei verschiedenen Fragen.
+          Links der Jetzt-Linie stehen Messung und Erinnerung nebeneinander. Gemessen sind die PV-Leistung, die Leistung der Wärmepumpe, die Anforderung an sie und der Inhalt des Puffers; sie enden an der letzten abgeschlossenen Viertelstunde, denn die laufende ist erst zum Teil vorbei und sähe aus wie ein Einbruch. Der <em>geplante</em> Zustand der Wärmepumpe ist dort die Absicht von damals: Er stammt aus dem letzten Fahrplan, der vor der jeweiligen Viertelstunde aufbewahrt wurde, und kennt nur angefordert oder nicht. Wo jener Fahrplan nichts vorgab oder keiner aufbewahrt ist, bleibt der Streifen leer. Weicht der gemessene Kontakt davon ab, heißt das nicht sicher, dass die Anlage anders schaltete als geplant: Aufbewahrt wird jede Stunde ein Fahrplan, gerechnet wird jede Viertelstunde einer.
         </MethodeAbsatz>
         <MethodeAbsatz>
-          Rechts der Jetzt-Linie steht im Streifen der Wärmepumpe gestrichelt die Leistung, mit der der Optimierer sie zählt. Das ist ihr Nennwert und keine Prognose: die Maschine moduliert und zieht gemessen zeitweise deutlich mehr. Der gemessene Pufferinhalt links der Jetzt-Linie ist aus den vier Fühlern gerechnet, so wie der Startwert, mit dem der Optimierer beginnt; darum schließt die gestrichelte Kurve an der Jetzt-Linie an die gemessene an. Der Wärmebedarf und der gestrichelte Pufferinhalt links der Jetzt-Linie sind eine Erinnerung: sie stammen aus dem letzten Fahrplan, der vor der jeweiligen Viertelstunde aufbewahrt wurde, und aufbewahrt wird jede Stunde einer. Der Abstand zwischen der gestrichelten und der gefüllten Pufferkurve ist also der Abstand zwischen Plan und Wirklichkeit.
+          Rechts der Jetzt-Linie steht im Streifen der Wärmepumpe gestrichelt die Leistung, mit der der Optimierer sie zählt. Das ist ihr Nennwert und keine Prognose: die Maschine moduliert und zieht gemessen zeitweise deutlich mehr. Links der Jetzt-Linie steht dieselbe Zahl aus dem Fahrplan von damals neben der Messung; sie fehlt, wo die Preisregel führte und nicht der Optimierer. Der gemessene Pufferinhalt links der Jetzt-Linie ist aus den vier Fühlern gerechnet, so wie der Startwert, mit dem der Optimierer beginnt; darum schließt die gestrichelte Kurve an der Jetzt-Linie an die gemessene an. Der Wärmebedarf und der gestrichelte Pufferinhalt links der Jetzt-Linie sind eine Erinnerung: sie stammen aus dem letzten Fahrplan, der vor der jeweiligen Viertelstunde aufbewahrt wurde, und aufbewahrt wird jede Stunde einer. Der Abstand zwischen der gestrichelten und der gefüllten Pufferkurve ist also der Abstand zwischen Plan und Wirklichkeit.
         </MethodeAbsatz>
         <MethodeAbsatz>
           Was aus einem Fahrplan geworden ist, steht im Rückblick: dort liegt der aufbewahrte Fahrplan von damals neben der Messung, in Euro. Wie gut die Prognosen waren, steht unter <em>System → Prognose</em>. Noch nicht gebaut ist der Lernschritt, der das Hüllenmodell aus den Prognosefehlern nachzieht.

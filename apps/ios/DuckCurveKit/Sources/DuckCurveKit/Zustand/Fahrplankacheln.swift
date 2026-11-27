@@ -34,7 +34,11 @@ public enum Fahrplankacheln {
         // Beide Zahlen über denselben Zeitraum: „angefordert" zählt den ganzen Horizont, die
         // Messung reicht nur bis jetzt. Die Gegenzahl zählt deshalb nur die Viertelstunden,
         // für die es auch eine Messung gibt.
-        let geplantImSelbenFenster = mitMessung.filter { $0.plannedHpState == .release }.count
+        //
+        // Der Vergleich gilt dem Fahrplan von damals: Für gemessene, also vergangene
+        // Viertelstunden ist `planned_hp_state` die Preisregel von heute und keine Absicht.
+        // Weiß das Archiv nichts, steht kein Vergleich da.
+        let damalsFrei = Fahrplanbild.damalsFreigegeben(mitMessung)
 
         let ofenfahrplan = iv.contains { $0.plannedStoveOn != nil }
         let ofenviertel = iv.filter { $0.plannedStoveOn == true }.count
@@ -59,7 +63,9 @@ public enum Fahrplankacheln {
                 einheit: nil,
                 dazu: mitMessung.isEmpty
                     ? "keine Messung"
-                    : "seit Mitternacht · im selben Fenster geplant \(viertelstunden(geplantImSelbenFenster))",
+                    : damalsFrei.map {
+                        "seit Mitternacht · im selben Fenster damals geplant \(viertelstunden($0))"
+                    } ?? "seit Mitternacht",
                 ton: .bernstein),
             Kennzahl(
                 wort: "bewusst gemieden",

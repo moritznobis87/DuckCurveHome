@@ -234,7 +234,20 @@ PLAN = "plan"
 #: der Optimierer für das Intervall an Kosten gezählt hat. Ohne sie ließe sich später nur sagen,
 #: was der Fahrplan vorhatte, nicht was er versprach. Ein Lauf von davor hat die Größe nicht;
 #: das ist dann kein Versprechen von null Euro, sondern keines.
-PLAN_GROESSEN: tuple[str, ...] = ("hp_release", "stove_on", "buffer_kwh", "heat_kw", "cost_eur")
+#:
+#: Seit dem 27.11.2026 dazu `hp_kw`: die elektrische Leistung, mit der der Optimierer die
+#: Wärmepumpe im Intervall zählte, also ihr Nennwert oder null. `hp_release` allein sagt das
+#: nicht: Eine Freigabe der Preisregel ist eine Erlaubnis und kein geplanter Lauf, und nur der
+#: Optimierer rechnet mit einer Leistung. Der Fahrplan zeichnet sie für die vergangenen Stunden
+#: neben die Messung.
+PLAN_GROESSEN: tuple[str, ...] = (
+    "hp_release",
+    "stove_on",
+    "buffer_kwh",
+    "heat_kw",
+    "cost_eur",
+    "hp_kw",
+)
 
 
 def plan_lauf(

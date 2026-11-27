@@ -39,6 +39,10 @@
     {
       "bereich": "Haus",
       "text": "Über dem Hausmodell steht die Herkunft des Plans jetzt kurz und in der Uhrzeit des Hauses: der Name der Datei und wann sie gemeldet wurde. Die Hinweise zu einem fehlenden Plan sind in Dashboard und App gleich geschrieben."
+    },
+    {
+      "bereich": "Anlage",
+      "text": "Im Fahrplan steht für die vergangenen Stunden jetzt auch, ob der Plan von damals die Wärmepumpe angefordert hatte und mit welcher Leistung er sie zählte. Vorher stand dort, was die Preisregel heute über die Stunde sagen würde."
     }
   ],
   "versionen": [

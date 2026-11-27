@@ -7128,6 +7128,10 @@ export interface components {
             past_plan_heat_kw?: number | null;
             /** Past Plan Buffer Kwh */
             past_plan_buffer_kwh?: number | null;
+            /** Past Plan Hp Release */
+            past_plan_hp_release?: boolean | null;
+            /** Past Plan Hp Kw */
+            past_plan_hp_kw?: number | null;
         };
         /** PlanOut */
         PlanOut: {

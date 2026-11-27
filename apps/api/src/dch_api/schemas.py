@@ -134,6 +134,17 @@ class PlanIntervalOut(BaseModel):
     # nach einem Neustart für die ersten Stunden der Normalfall.
     past_plan_heat_kw: float | None = None
     past_plan_buffer_kwh: float | None = None
+    # Dasselbe für die Wärmepumpe: ob jener Fahrplan sie in der Viertelstunde freigab, und mit
+    # welcher elektrischen Leistung der Optimierer sie zählte (Nennwert oder null, wie
+    # `planned_hp_kw`). Bis zum 27.11.2026 zeigte der Streifen „Wärmepumpe geplant“ links der
+    # Jetzt-Linie, was die Preisregel *heute* über die Stunde sagen würde, und nicht die Absicht,
+    # mit der man in sie hineinging; neben der gemessenen Leistung stand kein Plan.
+    #
+    # `past_plan_hp_release` ist `None`, wo jener Fahrplan nichts vorgab oder keiner aufbewahrt
+    # ist. `past_plan_hp_kw` ist zusätzlich `None`, wo die Preisregel führte und nicht der
+    # Optimierer, und für jeden Fahrplan, der vor dem 27.11.2026 abgelegt wurde.
+    past_plan_hp_release: bool | None = None
+    past_plan_hp_kw: float | None = None
 
 
 class SunDayOut(BaseModel):

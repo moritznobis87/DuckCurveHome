@@ -22,6 +22,11 @@ final class FahrplanbildTests: XCTestCase {
         hpPlan: (Int) -> Double? = { _ in nil },
         waermeDamals: (Int) -> Double? = { _ in nil },
         pufferDamals: (Int) -> Double? = { _ in nil },
+        freigabeDamals: (Int) -> Bool? = { _ in nil },
+        hpDamals: (Int) -> Double? = { _ in nil },
+        // Wie viele Viertelstunden nach dem Anfang der Fahrplan gerechnet wurde. Davor liegt
+        // seine Vergangenheit; mit null gibt es keine.
+        gerechnetNach: Int = 0,
         cop: (Int) -> Double? = { _ in nil },
         zustand: (Int) -> PlanIntervalOutPlannedHpStateWahl = { _ in .off },
         ofen: (Int) -> Bool? = { _ in nil },
@@ -37,10 +42,13 @@ final class FahrplanbildTests: XCTestCase {
                 plannedHpKw: hpPlan(i),
                 actualPvKw: pvIst(i), actualHpKw: hpIst(i), actualHpRelease: anforderung(i),
                 actualHpRunMin: laufMin(i), actualBufferKwh: pufferIst(i),
-                pastPlanHeatKw: waermeDamals(i), pastPlanBufferKwh: pufferDamals(i))
+                pastPlanHeatKw: waermeDamals(i), pastPlanBufferKwh: pufferDamals(i),
+                pastPlanHpRelease: freigabeDamals(i), pastPlanHpKw: hpDamals(i))
         }
         return PlanOut(
-            createdAt: Zeit.iso(ab), planner: "greedy_v1", hpActuation: schaltet,
+            // Sieben Minuten in die Viertelstunde hinein: gerechnet wird nicht auf den Schlag.
+            createdAt: Zeit.iso(ab.addingTimeInterval(Double(gerechnetNach) * 900 + 420)),
+            planner: "greedy_v1", hpActuation: schaltet,
             horizonStart: Zeit.iso(ab),
             horizonEnd: Zeit.iso(ab.addingTimeInterval(48 * 3600)), windows: fenster,
             intervals: iv, pvForecastTodayKwh: 12.4, bufferCapacityKwh: decke,
@@ -235,6 +243,98 @@ final class FahrplanbildTests: XCTestCase {
         XCTAssertTrue(nur.hatPuffer)
     }
 
+    /// Der Streifen „Wärmepumpe geplant“ zeigte links der Jetzt-Linie die Preisregel von
+    /// heute. Jetzt steht dort die Absicht des Fahrplans von damals: Ja, Nein oder nichts.
+    func testLinksDerJetztLinieZeigtDerStreifenDieAbsichtVonDamals() {
+        let b = Fahrplanbild.baue(
+            plan(
+                anzahl: 6, freigabeDamals: { [true, false, nil, nil, nil, nil][$0] },
+                gerechnetNach: 3,
+                // Die Regel von heute sagt für die Vergangenheit etwas anderes.
+                zustand: { [.avoid, .release, .release, .release, .avoid, .free][$0] }))
+        XCTAssertEqual(
+            b.zustandsstreifen.map(\.rolle), [.angefordert, .aus, .angefordert, .gemieden, .frei],
+            "Ja, Nein, dann eine Lücke, dann der Fahrplan von jetzt ab der laufenden Viertelstunde")
+        XCTAssertEqual(
+            b.zustandsstreifen.map(\.zeit),
+            [0, 1, 3, 4, 5].map { ab.addingTimeInterval(Double($0) * 900) },
+            "die dritte Viertelstunde fehlt: das Archiv weiß nichts über sie")
+        XCTAssertEqual(b.zustandsstreifen.map(\.hoehe), [1, 0.12, 1, 0.55, 0.3])
+    }
+
+    func testDieLaufendeViertelstundeIstDieInDerGerechnetWurde() {
+        let p = plan(anzahl: 4, gerechnetNach: 2)
+        XCTAssertEqual(Fahrplanbild.laufendeViertelstunde(p), ab.addingTimeInterval(1800))
+        // Ohne lesbaren Zeitpunkt gilt jede Viertelstunde als die von jetzt.
+        var kaputt = p
+        kaputt.createdAt = "kein Datum"
+        XCTAssertNil(Fahrplanbild.laufendeViertelstunde(kaputt))
+        XCTAssertEqual(
+            Fahrplanbild.absicht(p.intervals[0], zeit: ab, laufende: nil), .jetzt(.off))
+    }
+
+    func testDieDamalsGeplanteLeistungStehtNebenDerMessung() {
+        let b = Fahrplanbild.baue(
+            plan(anzahl: 4, hpIst: { $0 < 2 ? 3.1 : nil }, hpDamals: { $0 < 2 ? 4.5 : nil },
+                gerechnetNach: 2))
+        XCTAssertEqual(b.wpDamals.map(\.wert), [4.5, 4.5, nil, nil])
+        // Auch allein füllt sie den Streifen.
+        XCTAssertTrue(Fahrplanbild.baue(plan(anzahl: 2, hpDamals: { _ in 0 })).hatWpPlan)
+    }
+
+    func testDieAuskunftNenntDieAbsichtVonDamalsUndNichtDieRegelVonHeute() {
+        let p = plan(
+            anzahl: 4, hpPlan: { _ in 9.9 }, freigabeDamals: { [true, false, nil, nil][$0] },
+            hpDamals: { [4.5, 0, nil, nil][$0] }, gerechnetNach: 3, zustand: { _ in .avoid })
+        func paare(_ n: Int) -> [String] {
+            let zeit = ab.addingTimeInterval(Double(n) * 900)
+            return Fahrplanbild.auskunft(p, zeit: zeit, jetzt: ab)!.zeilen.map {
+                "\($0.wort)=\($0.wert)"
+            }
+        }
+        XCTAssertTrue(paare(0).contains("Wärmepumpe, damals geplant=angefordert"), "\(paare(0))")
+        XCTAssertTrue(paare(0).contains("=mit 4,5 kW gezählt"), "\(paare(0))")
+        XCTAssertTrue(paare(1).contains("Wärmepumpe, damals geplant=nicht angefordert"))
+        XCTAssertFalse(paare(1).contains { $0.hasSuffix("gezählt") }, "null Kilowatt sagt nichts")
+        XCTAssertTrue(paare(2).contains("Wärmepumpe, damals geplant=ohne Vorgabe"))
+        XCTAssertFalse(paare(2).contains { $0.hasPrefix("Wärmepumpe geplant=") })
+        // Ab der laufenden Viertelstunde gilt der Fahrplan von jetzt.
+        XCTAssertTrue(paare(3).contains("Wärmepumpe geplant=gemieden"), "\(paare(3))")
+        XCTAssertTrue(paare(3).contains("=mit 9,9 kW gezählt"))
+    }
+
+    /// Swift Charts verbindet alle Marken einer Reihe; die Zeichnung gibt deshalb jedem Stück
+    /// eine eigene. Sonst stünde über einer Lücke eine Linie.
+    func testEineReiheZerfaelltAnIhrenLueckenInStuecke() {
+        func reihe(_ werte: [Double?]) -> [Fahrplanbild.Punkt] {
+            werte.enumerated().map {
+                Fahrplanbild.Punkt(zeit: ab.addingTimeInterval(Double($0.offset) * 900), wert: $0.element)
+            }
+        }
+        let stuecke = Fahrplanbild.stuecke(reihe([nil, 4.5, 4.5, nil, nil, 0, 4.5, nil, 3.0]))
+        XCTAssertEqual(stuecke.map(\.nummer), [0, 1, 2])
+        XCTAssertEqual(stuecke.map { $0.punkte.map(\.wert) }, [[4.5, 4.5], [0, 4.5], [3.0]])
+        XCTAssertEqual(
+            stuecke[1].punkte.first?.zeit, ab.addingTimeInterval(5 * 900),
+            "die Zeiten bleiben die der Reihe")
+        XCTAssertEqual(stuecke[2].punkte.count, 1, "ein einzelner Wert bleibt stehen")
+        XCTAssertTrue(Fahrplanbild.stuecke(reihe([nil, nil])).isEmpty)
+        XCTAssertTrue(Fahrplanbild.stuecke([]).isEmpty)
+        XCTAssertEqual(Fahrplanbild.stuecke(reihe([1, 2, 3])).count, 1, "ohne Lücke ein Stück")
+        XCTAssertEqual(
+            Fahrplanbild.stuecke(reihe([1, .nan, 2])).map { $0.punkte.map(\.wert) }, [[1], [2]],
+            "ein Wert, der keine Zahl ist, ist auch eine Lücke")
+    }
+
+    func testDieLeistungVonDamalsZerfaelltWoDiePreisregelFuehrte() {
+        // Zwei Viertelstunden Optimierer, zwei ohne Vorgabe, wieder zwei Optimierer.
+        let b = Fahrplanbild.baue(
+            plan(anzahl: 8, hpDamals: { [4.5, 4.5, nil, nil, 0, 4.5, nil, nil][$0] },
+                gerechnetNach: 6))
+        XCTAssertEqual(
+            Fahrplanbild.stuecke(b.wpDamals).map { $0.punkte.map(\.wert) }, [[4.5, 4.5], [0, 4.5]])
+    }
+
     func testDieAuskunftNenntDenPlanVonDamals() {
         let p = plan(anzahl: 2, waermeDamals: { _ in 3.4 }, pufferDamals: { _ in 12.0 })
         let paare = Fahrplanbild.auskunft(p, zeit: ab, jetzt: ab)!.zeilen.map { "\($0.wort)=\($0.wert)" }
@@ -366,14 +466,23 @@ final class FahrplanbildTests: XCTestCase {
     }
 
     func testGelaufenZaehltMinutenUndVergleichtMitDemselbenFenster() {
-        // Vier Viertelstunden mit Messung, davon drei voll gelaufen; geplant waren zwei davon.
+        // Vier Viertelstunden mit Messung, davon drei voll gelaufen. Der Fahrplan von damals
+        // hatte zwei davon freigegeben; die Regel von heute sagt etwas anderes und zählt nicht.
         let k = Fahrplankacheln.kacheln(
             plan(
                 anzahl: 96, laufMin: { $0 < 4 ? [15.0, 15, 15, 0][$0] : nil },
-                zustand: { $0 < 2 ? .release : .off }))
+                freigabeDamals: { $0 < 2 ? true : ($0 < 4 ? false : nil) }, gerechnetNach: 4,
+                zustand: { _ in .release }))
         let g = k.first { $0.wort == "Wärmepumpe gelaufen" }!
         XCTAssertEqual(g.wert, "0,8 h", "45 Minuten.")
-        XCTAssertEqual(g.dazu, "seit Mitternacht · im selben Fenster geplant 0,5 h")
+        XCTAssertEqual(g.dazu, "seit Mitternacht · im selben Fenster damals geplant 0,5 h")
+    }
+
+    func testOhneAufbewahrtenFahrplanStehtKeinVergleichNebenDerLaufzeit() {
+        let k = Fahrplankacheln.kacheln(
+            plan(anzahl: 8, laufMin: { $0 < 4 ? 15 : nil }, zustand: { _ in .release }))
+        let g = k.first { $0.wort == "Wärmepumpe gelaufen" }!
+        XCTAssertEqual(g.dazu, "seit Mitternacht", "null Stunden wären eine Behauptung")
     }
 
     func testOhneMessungStehtKeineMessung() {
@@ -525,13 +634,19 @@ final class FahrplanbildTests: XCTestCase {
 
     // MARK: - Die festen Saetze
 
-    func testDieMethodeHatVierAbsaetzeUndNennteBusPreisregelUndNennwert() {
+    func testDieMethodeHatVierAbsaetzeUndNennteBusAbsichtVonDamalsUndNennwert() {
         XCTAssertEqual(Fahrplanworte.methode.count, 4)
         XCTAssertTrue(Fahrplanworte.methode[0].contains("eBUS"))
-        XCTAssertTrue(Fahrplanworte.methode[1].contains("Preisregel"))
+        // Der geplante Zustand links der Jetzt-Linie ist die Absicht von damals und nicht
+        // mehr die Preisregel von heute.
+        XCTAssertTrue(Fahrplanworte.methode[1].contains("Absicht von damals"))
+        XCTAssertFalse(Fahrplanworte.methode[1].contains("heute für diese Stunde"))
         XCTAssertTrue(Fahrplanworte.methode[1].contains("Inhalt des Puffers"))
-        // Der Absatz zur geplanten Leistung: sie ist der Nennwert und keine Prognose.
+        XCTAssertTrue(Fahrplanworte.methodeKurz.contains("Plan von damals"))
+        // Der Absatz zur geplanten Leistung: sie ist der Nennwert und keine Prognose, und
+        // links der Jetzt-Linie fehlt sie, wo die Preisregel führte.
         XCTAssertTrue(Fahrplanworte.methode[2].contains("Nennwert"))
+        XCTAssertTrue(Fahrplanworte.methode[2].contains("Preisregel"))
         XCTAssertTrue(Fahrplanworte.methode[2].contains("Erinnerung"))
         XCTAssertTrue(Fahrplanworte.methode[3].contains("Rückblick"))
         XCTAssertFalse(Fahrplanworte.methodeKurz.isEmpty)

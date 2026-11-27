@@ -23,6 +23,52 @@ public struct Fahrplanbild: Sendable {
         public var id: Date { zeit }
     }
 
+    /// Ein Punkt mit Wert, in einem Stück ohne Lücke.
+    public struct Wertpunkt: Sendable, Hashable, Identifiable {
+        public let zeit: Date
+        public let wert: Double
+        public var id: Date { zeit }
+    }
+
+    /// Ein zusammenhängendes Stück einer Reihe: Zwischen seinen Punkten fehlt keiner.
+    public struct Stueck: Sendable, Hashable, Identifiable {
+        public let nummer: Int
+        public let punkte: [Wertpunkt]
+        public var id: Int { nummer }
+    }
+
+    /// Eine Reihe an ihren Lücken zerlegen, damit eine Lücke im Bild eine Lücke bleibt.
+    ///
+    /// **Warum es das gibt.** Swift Charts verbindet alle Marken einer Reihe. Wer die Punkte
+    /// ohne Wert nur auslässt, bekommt über die Lücke hinweg eine Linie: eine Messung, wo
+    /// keine war, oder eine geplante Leistung über Stunden, in denen der Fahrplan von damals
+    /// nichts vorgab. Das Dashboard bricht die Linie an einem leeren Wert ab (ECharts ohne
+    /// `connectNulls`); mit einer eigenen Reihe je Stück tut die App dasselbe. Gefunden am
+    /// 27.11.2026 an der Leistung von damals, behoben für jede Reihe der Seite, die Lücken
+    /// haben kann.
+    ///
+    /// Ein Stück aus einem einzigen Punkt bleibt stehen: Es ist ein Wert, und ihn wegzulassen
+    /// wäre falscher als ein Punkt ohne Linie.
+    public static func stuecke(_ reihe: [Punkt]) -> [Stueck] {
+        var aus: [Stueck] = []
+        var laufend: [Wertpunkt] = []
+        func schliessen() {
+            if !laufend.isEmpty {
+                aus.append(Stueck(nummer: aus.count, punkte: laufend))
+                laufend = []
+            }
+        }
+        for p in reihe {
+            guard let wert = p.wert, wert.isFinite else {
+                schliessen()
+                continue
+            }
+            laufend.append(Wertpunkt(zeit: p.zeit, wert: wert))
+        }
+        schliessen()
+        return aus
+    }
+
     /// Ein Feld eines Streifens: eine Viertelstunde mit Höhe und Rolle.
     public struct Feld: Sendable, Hashable, Identifiable {
         public let zeit: Date
@@ -168,6 +214,9 @@ public struct Fahrplanbild: Sendable {
     /// Die elektrische Leistung, mit der der Optimierer die Wärmepumpe zählt: ihr Nennwert,
     /// wo er sie laufen lässt, null, wo nicht. Eine Lücke, wo er nicht geplant hat.
     public var wpGeplant: [Punkt] = []
+    /// Dieselbe Zahl aus dem Fahrplan von damals, für die vergangenen Viertelstunden. Eine
+    /// Lücke, wo damals die Preisregel führte oder kein Fahrplan aufbewahrt ist.
+    public var wpDamals: [Punkt] = []
     public var zustandsstreifen: [Feld] = []
     public var anforderung: [Feld] = []
     public var ofenstreifen: [Feld] = []
@@ -221,10 +270,25 @@ public struct Fahrplanbild: Sendable {
         b.pufferDamals = iv.map { Punkt(zeit: $0.1, wert: $0.0.pastPlanBufferKwh) }
         b.wpGemessen = iv.map { Punkt(zeit: $0.1, wert: $0.0.actualHpKw) }
         b.wpGeplant = iv.map { Punkt(zeit: $0.1, wert: $0.0.plannedHpKw) }
+        b.wpDamals = iv.map { Punkt(zeit: $0.1, wert: $0.0.pastPlanHpKw) }
 
-        b.zustandsstreifen = iv.map { i, t in
-            let z = zustand(i.plannedHpState)
-            return Feld(zeit: t, hoehe: z.hoehe, rolle: z.rolle)
+        // **Links der Jetzt-Linie die Absicht von damals**, rechts der Fahrplan von jetzt; die
+        // Regel und ihr Grund stehen an ``absicht(_:zeit:laufende:)``. Der Fahrplan von damals
+        // kennt nur Ja und Nein: Ja sieht aus wie „angefordert“, Nein wie „aus“. Wo das Archiv
+        // nichts weiß, bleibt die Stelle leer, so wie eine fehlende Messung im Streifen
+        // darunter eine Lücke lässt.
+        let laufende = laufendeViertelstunde(plan)
+        b.zustandsstreifen = iv.compactMap { i, t in
+            switch absicht(i, zeit: t, laufende: laufende) {
+            case .jetzt(let wahl):
+                let z = zustand(wahl)
+                return Feld(zeit: t, hoehe: z.hoehe, rolle: z.rolle)
+            case .damals(let freigabe):
+                return Feld(
+                    zeit: t, hoehe: freigabe ? 1 : 0.12, rolle: freigabe ? .angefordert : .aus)
+            case .ohne:
+                return nil
+            }
         }
         // Nur Viertelstunden mit Messung. Eine fehlende hinterlässt eine Lücke, und das ist
         // richtig: „nicht angefordert“ und „nicht gemessen“ sind zwei verschiedene Aussagen.
@@ -266,7 +330,7 @@ public struct Fahrplanbild: Sendable {
 
         b.hatMessung = iv.contains { $0.0.actualPvKw != nil || $0.0.actualHpKw != nil }
         b.hatWpMessung = iv.contains { $0.0.actualHpKw != nil }
-        b.hatWpPlan = iv.contains { $0.0.plannedHpKw != nil }
+        b.hatWpPlan = iv.contains { $0.0.plannedHpKw != nil || $0.0.pastPlanHpKw != nil }
         b.hatAnforderung = !b.anforderung.isEmpty
         b.hatWaerme = iv.contains { $0.0.heatDemandKw != nil || $0.0.pastPlanHeatKw != nil }
         // Gemessen oder geplant: der Streifen ist erst leer, wenn beides fehlt.
@@ -275,6 +339,64 @@ public struct Fahrplanbild: Sendable {
         }
         b.hatOfenfahrplan = !b.ofenstreifen.isEmpty
         return b
+    }
+
+    // MARK: - Die Absicht der Wärmepumpe
+
+    /// Was der Streifen „Wärmepumpe geplant“ für eine Viertelstunde zeigt.
+    ///
+    /// `jetzt`: der laufende Fahrplan mit seinen vier Zuständen. `damals`: der Fahrplan von
+    /// damals, der nur Ja oder Nein kennt, weil das Archiv „gemieden“ und „aus“ als dasselbe
+    /// Nein ablegt. `ohne`: Der Fahrplan von damals gab nichts vor, oder es ist keiner
+    /// aufbewahrt. Beides sieht im Archiv gleich aus, und im Streifen bleibt die Stelle leer.
+    public enum Absicht: Sendable, Hashable {
+        case jetzt(PlanIntervalOutPlannedHpStateWahl)
+        case damals(freigabe: Bool)
+        case ohne
+    }
+
+    /// Der Beginn der Viertelstunde, in der der Fahrplan gerechnet wurde. Davor liegt seine
+    /// Vergangenheit: Der Dienst fragt das Archiv genau für diese Viertelstunden.
+    public static func laufendeViertelstunde(_ plan: PlanOut) -> Date? {
+        guard let gerechnet = Zeit.ausIso(plan.createdAt) else { return nil }
+        let viertel = 15.0 * 60
+        return Date(
+            timeIntervalSince1970: (gerechnet.timeIntervalSince1970 / viertel).rounded(.down)
+                * viertel)
+    }
+
+    /// **Warum es das gibt.** Der Optimierer rechnet ab jetzt. Für die Viertelstunden davor
+    /// griff im Dienst die Preisregel, und sie antwortet mit den Fenstern von heute. Der
+    /// Streifen zeigte links der Jetzt-Linie also nicht, was man vorhatte, als man in die
+    /// Stunde hineinging, sondern was die Regel heute über sie sagen würde. Seit dem
+    /// 27.11.2026 liefert der Dienst die Absicht des Fahrplans von damals aus dem Archiv
+    /// (`past_plan_hp_release`), und die vergangenen Viertelstunden werden daraus gezeichnet.
+    ///
+    /// Dieselbe Regel steht im Dashboard in `fahrplanband.ts`. Ohne lesbaren Zeitpunkt des
+    /// Fahrplans gilt jede Viertelstunde als die von jetzt, wie vor dieser Änderung.
+    public static func absicht(_ i: PlanIntervalOut, zeit: Date, laufende: Date?) -> Absicht {
+        guard let laufende, zeit < laufende else { return .jetzt(i.plannedHpState) }
+        guard let freigabe = i.pastPlanHpRelease else { return .ohne }
+        return .damals(freigabe: freigabe)
+    }
+
+    /// Das Wort zur Absicht von damals, für die Auskunft zur Viertelstunde.
+    public static func damalsWort(_ absicht: Absicht) -> String? {
+        switch absicht {
+        case .jetzt: return nil
+        case .ohne: return "ohne Vorgabe"
+        case .damals(let freigabe): return freigabe ? "angefordert" : "nicht angefordert"
+        }
+    }
+
+    /// Wie viele der gemessenen Viertelstunden der Fahrplan von damals freigegeben hatte.
+    ///
+    /// `nil`, wenn das Archiv für keine von ihnen etwas weiß: Dann gibt es keinen Vergleich,
+    /// und null Stunden wären eine Behauptung.
+    public static func damalsFreigegeben(_ gemessen: [PlanIntervalOut]) -> Int? {
+        let bekannt = gemessen.compactMap(\.pastPlanHpRelease)
+        guard !bekannt.isEmpty else { return nil }
+        return bekannt.filter { $0 }.count
     }
 
     /// Die Untergrenze einer Achse: der kleinste Wert, abgerundet auf eine runde Stufe.
@@ -377,11 +499,19 @@ public struct Fahrplanbild: Sendable {
             let cop = i.cop.map { " · COP \(Formate.zahl($0, stellen: 2))" } ?? ""
             zeile("Außen", Formate.celsius(aussen, stellen: 1) + cop)
         }
-        let zustand = zustand(i.plannedHpState)
-        zeile("Wärmepumpe geplant", zustand.wort, zustand.rolle)
+        // Links der Jetzt-Linie die Absicht von damals, rechts der Fahrplan von jetzt.
+        let damals = damalsWort(absicht(i, zeit: t, laufende: laufendeViertelstunde(plan)))
+        if let damals {
+            zeile(
+                "Wärmepumpe, damals geplant", damals,
+                i.pastPlanHpRelease == true ? .angefordert : .neutral)
+        } else {
+            let zustand = zustand(i.plannedHpState)
+            zeile("Wärmepumpe geplant", zustand.wort, zustand.rolle)
+        }
         // Womit der Optimierer sie in dieser Viertelstunde zählt. Nur wo er sie laufen lässt:
         // „mit 0,0 kW gezählt“ unter „aus“ sagt nichts.
-        if let kw = i.plannedHpKw, kw > 0 {
+        if let kw = damals == nil ? i.plannedHpKw : i.pastPlanHpKw, kw > 0 {
             zeile("", "mit \(Formate.zahl(kw, stellen: 1)) kW gezählt", .wpGemessen, eingerueckt: true)
         }
         if let an = i.actualHpRelease {
