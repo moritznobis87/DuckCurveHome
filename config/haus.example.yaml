@@ -146,5 +146,5 @@ decks:
   - {kind: flight, y: -0.6, b: 1.0, x0: 5.0, z0: 7.7, x1: 5.0, z1: 5.9, y1: 0.0, steps: 8}
   places:
   - {text: Garten, x: 6.0, z: -0.6}
-note_de: Vorfuehrung mit erfundenem Grundriss. Der Plan des eigenen Hauses kommt aus der Datei haus.yaml neben der
+note_de: Vorführung mit erfundenem Grundriss. Der Plan des eigenen Hauses kommt aus der Datei haus.yaml neben der
   Entity-Zuordnung.

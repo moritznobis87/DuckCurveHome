@@ -21,7 +21,7 @@ PLAN = HousePlan.model_validate(
     {
         "version": 1,
         "name": "Beispielhaus",
-        "note_de": "Vorfuehrung mit erfundenem Grundriss. Der Plan des eigenen Hauses kommt aus "
+        "note_de": "Vorführung mit erfundenem Grundriss. Der Plan des eigenen Hauses kommt aus "
         "der Datei haus.yaml neben der Entity-Zuordnung.",
         "decks": [
             {

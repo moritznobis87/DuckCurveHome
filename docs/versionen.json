@@ -35,6 +35,10 @@
     {
       "bereich": "Hausgerät",
       "text": "Die Einrichtung des Hausgeräts beschreibt jetzt eine Anmeldung, die im Heimnetz wirklich gelingt: mit Passwort oder Wiederherstellungscode. Wer noch kein Passwort hat, findet den Weg dorthin, und Passkeys funktionieren, sobald der Zugang von unterwegs eingerichtet ist."
+    },
+    {
+      "bereich": "Haus",
+      "text": "Über dem Hausmodell steht die Herkunft des Plans jetzt kurz und in der Uhrzeit des Hauses: der Name der Datei und wann sie gemeldet wurde. Die Hinweise zu einem fehlenden Plan sind in Dashboard und App gleich geschrieben."
     }
   ],
   "versionen": [

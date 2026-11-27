@@ -1898,7 +1898,7 @@ class LiveRuntime:
                 plan=None,
                 source_de="",
                 received_at=None,
-                error_de="Die Bruecke hat noch keinen Hausplan gemeldet. Er kommt aus der Datei "
+                error_de="Die Brücke hat noch keinen Hausplan gemeldet. Er kommt aus der Datei "
                 "haus.yaml neben der Entity-Zuordnung, sobald sie dort liegt.",
                 contacts=[],
             )

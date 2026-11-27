@@ -40,9 +40,10 @@ def test_ein_fehler_der_bruecke_wird_durchgereicht() -> None:
 
 def test_ohne_plan_im_zusammenhang_gibt_es_einen_grund() -> None:
     plan, fehler = house.plan_from_context({})
-    assert plan is None and "keinen Plan" in fehler
+    assert plan is None and fehler == "Die Meldung der Brücke enthält keinen Hausplan."
     plan, fehler = house.plan_from_context({house.CTX_PLAN: json.dumps({"decks": []})})
-    assert plan is None and "Schema" in fehler
+    assert plan is None and fehler.startswith("Der Hausplan der Brücke passt nicht zu dem, was")
+    assert "Fehler)" in fehler
 
 
 def test_ein_kontakt_ist_nur_mit_frischem_wert_offen_oder_zu() -> None:
@@ -126,9 +127,30 @@ def _plan_ereignis(now: datetime) -> str:
     ).model_dump_json()
 
 
+def test_die_herkunft_nennt_die_datei_und_die_uhr_des_hauses() -> None:
+    """Im Winter ist 07:19 Weltzeit 08:19 im Haus. Der Pfad im Add-on steht nicht in der Zeile."""
+    um = datetime(2026, 11, 26, 7, 19, tzinfo=UTC)
+    zeile = house.source_text({house.CTX_FILE: "/config/duckcurve/haus.yaml"}, um)
+    assert zeile == "aus haus.yaml, gemeldet am 26.11.2026 um 08:19 Uhr"
+
+
+def test_die_herkunft_rechnet_im_sommer_zwei_stunden_und_ueber_mitternacht() -> None:
+    um = datetime(2026, 7, 1, 22, 30, tzinfo=UTC)
+    zeile = house.source_text({house.CTX_FILE: "haus.yaml"}, um)
+    assert zeile == "aus haus.yaml, gemeldet am 02.07.2026 um 00:30 Uhr"
+
+
+def test_die_herkunft_ohne_datei_oder_ohne_zeit() -> None:
+    um = datetime(2026, 11, 26, 7, 19, tzinfo=UTC)
+    assert house.source_text({}, um) == "von der Brücke gemeldet am 26.11.2026 um 08:19 Uhr"
+    assert house.source_text({house.CTX_FILE: "/config/haus.yaml"}, None) == "aus haus.yaml"
+    assert house.source_text({}, None) == "von der Brücke gemeldet"
+
+
 def test_ohne_bruecke_sagt_die_antwort_warum(live_client: TestClient) -> None:
     antwort = live_client.get("/api/v1/haus", headers=KOPF).json()
     assert antwort["present"] is False and antwort["plan"] is None
+    assert antwort["error_de"].startswith("Die Brücke hat noch keinen Hausplan gemeldet.")
     assert "haus.yaml" in antwort["error_de"]
 
 
@@ -159,7 +181,8 @@ def test_der_plan_kommt_von_der_bruecke_bis_in_die_anzeige(live_client: TestClie
         antwort = live_client.get("/api/v1/haus", headers=KOPF).json()
         assert antwort["present"] is True and antwort["error_de"] == ""
         assert antwort["plan"]["name"] == "Beispielhaus"
-        assert "haus.yaml" in antwort["source_de"]
+        assert antwort["source_de"].startswith("aus haus.yaml, gemeldet am ")
+        assert "/config" not in antwort["source_de"] and "UTC" not in antwort["source_de"]
         kontakte = {k["key"]: k for k in antwort["contacts"]}
         assert kontakte["kontakt_terrassentuer"]["open"] is True
         assert kontakte["kontakt_kochen_fenster"]["open"] is False

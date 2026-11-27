@@ -258,7 +258,7 @@ export function HouseReport() {
           <p className="m-0 max-w-[72ch] text-[13px] leading-[1.5] text-text-2">{house.error_de}</p>
           <p className="m-0 mt-2 max-w-[72ch] text-[12px] leading-[1.5] text-text-3">
             Die Vorlage liegt im Repository unter <code>config/haus.example.yaml</code>; sie beschreibt jede Art von Eintrag.
-            Die Bruecke liest die Datei alle 30 Sekunden neu, ein Neustart ist nicht noetig.
+            Die Brücke liest die Datei alle 30 Sekunden neu, ein Neustart ist nicht nötig.
           </p>
         </Card>
       ) : null}
