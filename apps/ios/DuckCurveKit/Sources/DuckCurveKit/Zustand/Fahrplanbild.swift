@@ -23,6 +23,52 @@ public struct Fahrplanbild: Sendable {
         public var id: Date { zeit }
     }
 
+    /// Ein Punkt mit Wert, in einem Stück ohne Lücke.
+    public struct Wertpunkt: Sendable, Hashable, Identifiable {
+        public let zeit: Date
+        public let wert: Double
+        public var id: Date { zeit }
+    }
+
+    /// Ein zusammenhängendes Stück einer Reihe: Zwischen seinen Punkten fehlt keiner.
+    public struct Stueck: Sendable, Hashable, Identifiable {
+        public let nummer: Int
+        public let punkte: [Wertpunkt]
+        public var id: Int { nummer }
+    }
+
+    /// Eine Reihe an ihren Lücken zerlegen, damit eine Lücke im Bild eine Lücke bleibt.
+    ///
+    /// **Warum es das gibt.** Swift Charts verbindet alle Marken einer Reihe. Wer die Punkte
+    /// ohne Wert nur auslässt, bekommt über die Lücke hinweg eine Linie: eine Messung, wo
+    /// keine war, oder eine geplante Leistung über Stunden, in denen der Fahrplan von damals
+    /// nichts vorgab. Das Dashboard bricht die Linie an einem leeren Wert ab (ECharts ohne
+    /// `connectNulls`); mit einer eigenen Reihe je Stück tut die App dasselbe. Gefunden am
+    /// 27.11.2026 an der Leistung von damals, behoben für jede Reihe der Seite, die Lücken
+    /// haben kann.
+    ///
+    /// Ein Stück aus einem einzigen Punkt bleibt stehen: Es ist ein Wert, und ihn wegzulassen
+    /// wäre falscher als ein Punkt ohne Linie.
+    public static func stuecke(_ reihe: [Punkt]) -> [Stueck] {
+        var aus: [Stueck] = []
+        var laufend: [Wertpunkt] = []
+        func schliessen() {
+            if !laufend.isEmpty {
+                aus.append(Stueck(nummer: aus.count, punkte: laufend))
+                laufend = []
+            }
+        }
+        for p in reihe {
+            guard let wert = p.wert, wert.isFinite else {
+                schliessen()
+                continue
+            }
+            laufend.append(Wertpunkt(zeit: p.zeit, wert: wert))
+        }
+        schliessen()
+        return aus
+    }
+
     /// Ein Feld eines Streifens: eine Viertelstunde mit Höhe und Rolle.
     public struct Feld: Sendable, Hashable, Identifiable {
         public let zeit: Date

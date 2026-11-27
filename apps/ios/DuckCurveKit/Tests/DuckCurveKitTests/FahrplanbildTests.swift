@@ -303,6 +303,38 @@ final class FahrplanbildTests: XCTestCase {
         XCTAssertTrue(paare(3).contains("=mit 9,9 kW gezählt"))
     }
 
+    /// Swift Charts verbindet alle Marken einer Reihe; die Zeichnung gibt deshalb jedem Stück
+    /// eine eigene. Sonst stünde über einer Lücke eine Linie.
+    func testEineReiheZerfaelltAnIhrenLueckenInStuecke() {
+        func reihe(_ werte: [Double?]) -> [Fahrplanbild.Punkt] {
+            werte.enumerated().map {
+                Fahrplanbild.Punkt(zeit: ab.addingTimeInterval(Double($0.offset) * 900), wert: $0.element)
+            }
+        }
+        let stuecke = Fahrplanbild.stuecke(reihe([nil, 4.5, 4.5, nil, nil, 0, 4.5, nil, 3.0]))
+        XCTAssertEqual(stuecke.map(\.nummer), [0, 1, 2])
+        XCTAssertEqual(stuecke.map { $0.punkte.map(\.wert) }, [[4.5, 4.5], [0, 4.5], [3.0]])
+        XCTAssertEqual(
+            stuecke[1].punkte.first?.zeit, ab.addingTimeInterval(5 * 900),
+            "die Zeiten bleiben die der Reihe")
+        XCTAssertEqual(stuecke[2].punkte.count, 1, "ein einzelner Wert bleibt stehen")
+        XCTAssertTrue(Fahrplanbild.stuecke(reihe([nil, nil])).isEmpty)
+        XCTAssertTrue(Fahrplanbild.stuecke([]).isEmpty)
+        XCTAssertEqual(Fahrplanbild.stuecke(reihe([1, 2, 3])).count, 1, "ohne Lücke ein Stück")
+        XCTAssertEqual(
+            Fahrplanbild.stuecke(reihe([1, .nan, 2])).map { $0.punkte.map(\.wert) }, [[1], [2]],
+            "ein Wert, der keine Zahl ist, ist auch eine Lücke")
+    }
+
+    func testDieLeistungVonDamalsZerfaelltWoDiePreisregelFuehrte() {
+        // Zwei Viertelstunden Optimierer, zwei ohne Vorgabe, wieder zwei Optimierer.
+        let b = Fahrplanbild.baue(
+            plan(anzahl: 8, hpDamals: { [4.5, 4.5, nil, nil, 0, 4.5, nil, nil][$0] },
+                gerechnetNach: 6))
+        XCTAssertEqual(
+            Fahrplanbild.stuecke(b.wpDamals).map { $0.punkte.map(\.wert) }, [[4.5, 4.5], [0, 4.5]])
+    }
+
     func testDieAuskunftNenntDenPlanVonDamals() {
         let p = plan(anzahl: 2, waermeDamals: { _ in 3.4 }, pufferDamals: { _ in 12.0 })
         let paare = Fahrplanbild.auskunft(p, zeit: ab, jetzt: ab)!.zeilen.map { "\($0.wort)=\($0.wert)" }
