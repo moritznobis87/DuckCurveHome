@@ -82,7 +82,7 @@ ersetzt das Startbild. Am Ende steht, ob ein Neustart nötig ist.
 
 **Zur Uhr.** Der Pi hat keine gepufferte Echtzeituhr: Ohne Zeitdienst startet er mit einer geratenen
 Zeit und läuft weiter weg. Daran hängt mehr als die Anzeige: Jeder Messwert, jeder Tagesabschluss
-und jeder Vergleich mit dem Börsenpreis trägt einen Zeitstempel von dieser Uhr, und gemerkt hätte
+und jeder Vergleich mit dem Börsenpreis hat einen Zeitstempel von dieser Uhr, und gemerkt hätte
 es niemand — eine falsch gestellte Maschinenuhr zeigt sich sonst an keiner Stelle.
 
 Den Anstoß gab ein Foto vom 22.11.2026 (große Uhr der Wandanzeige 22:04, Statusleiste desselben
@@ -188,10 +188,43 @@ Zwei Dinge danach:
 1. `http://duckcurve-home.local/zertifikat` öffnen und das Profil installieren. Auf dem iPad danach
    unter Einstellungen → Allgemein → Info → Zertifikatsvertrauenseinstellungen „Caddy Local
    Authority“ einschalten. Ohne das zeigt Safari eine Warnung, und die Anmeldung hält nicht.
-2. `https://duckcurve-home.local/anmeldung` öffnen und sich als Person anmelden. Einen Link, der
-   von sich aus Zugang vergibt, gibt es seit dem 23.11.2026 nicht mehr; den ersten Hausherrn legt
-   `DCH_ERSTE_PERSON` beim Start an (`dch protokoll api` zeigt seinen Einladungslink einmalig).
-   Die Sitzung läuft nicht ab, solange das Gerät benutzt wird.
+2. `https://duckcurve-home.local/anmeldung` öffnen und sich mit E-Mail-Adresse und Passwort
+   anmelden oder mit einem Wiederherstellungscode. Die Sitzung läuft nicht ab, solange das Gerät
+   benutzt wird.
+
+**Was im Heimnetz geht und was nicht.** Seit `dch uebernehmen` (Abschnitt 5) kommen die Personen
+von Railway, mit ihren Passkeys, Passwörtern und Wiederherstellungscodes. Passwort und
+Wiederherstellungscode sind an keine Adresse gebunden und funktionieren unter
+`duckcurve-home.local` genauso wie unter `home.duckcurve.de`. Ein Passkey dagegen gehört zur Domain
+`home.duckcurve.de` (`DCH_PASSKEY_RP_ID`), und ein Browser setzt ihn nur auf dieser Domain oder
+einer ihrer Subdomains ein. Unter `duckcurve-home.local` lässt sich mit einem Passkey darum weder
+anmelden noch einer anlegen. Passkeys funktionieren erst wieder, wenn `home.duckcurve.de` über
+den Cloudflare Tunnel auf das Gerät zeigt (Abschnitt 8); dann meldet man sich dort an, auch von
+zu Hause aus.
+
+**Wer noch kein Passwort hat**, holt sich einen Einladungslink über den Notzugang:
+
+1. In `/opt/duckcurve/.env` die Zeile `DCH_NOTZUGANG=` einkommentieren und die eigene
+   E-Mail-Adresse eintragen. In einer `.env`, die vor dem 27.11.2026 angelegt wurde, fehlt die
+   Zeile; dann wird `DCH_NOTZUGANG=<E-Mail-Adresse>` am Ende angefügt. Danach
+   `sudo dch neustart` ausführen. Gibt es die Person noch nicht, legt der Dienst sie
+   an; gibt es sie, wird sie wieder aktiv und Hausherr.
+2. `sudo dch logs api | grep -i link` zeigt den Link. Der Befehl folgt dem Protokoll weiter und
+   endet mit Strg+C.
+3. Der Link beginnt mit `https://home.duckcurve.de`. Solange dieser Name noch auf Railway zeigt,
+   kennt Railway den Link nicht. Deshalb im Link alles vor `/anmeldung` durch
+   `https://duckcurve-home.local` ersetzen und ihn so öffnen.
+4. Auf der Seite „Passwort“ wählen und eines vergeben. Danach ist man angemeldet und bekommt zehn
+   Wiederherstellungscodes, die nur dieses eine Mal angezeigt werden. Ein Passkey lässt sich hier
+   nicht anlegen; das geht später unter `home.duckcurve.de` auf der Seite „Mein Zugang“ (`/konto`).
+5. `DCH_NOTZUGANG` wieder auskommentieren oder löschen und `sudo dch neustart` ausführen. Solange die Variable
+   steht, entsteht bei jedem Start ein neuer Link, und jeder, der das Protokoll lesen kann, kommt
+   herein.
+
+Ein Gerät ganz ohne übernommene Daten bekommt seinen ersten Hausherrn über `DCH_ERSTE_PERSON`:
+Ist die Personentabelle beim Start leer, legt der Dienst diese Person an und schreibt ihren Link
+einmal ins Protokoll. Für den Link gelten die Schritte 2 bis 4 genauso. Einen Link, der von sich
+aus Zugang vergibt, gibt es seit dem 23.11.2026 nicht mehr.
 
 **Offen: das Display am Gerät selbst.** Der Kiosk öffnet `http://localhost:3000` und hatte seinen
 Zugang bisher über denselben Pairing-Link. Den gibt es nicht mehr, und ein Passkey lässt sich in
@@ -212,7 +245,7 @@ Mit Cloudflare Tunnel, ohne offenen Port am Router:
 3. In `/opt/duckcurve/.env` `CLOUDFLARE_TUNNEL_TOKEN=…` und `DCH_FERNZUGANG=1` setzen, dann
    `sudo dch neustart`.
 4. Empfohlen: in Cloudflare Access eine Anmeldung vor den Namen legen (E-Mail-Code), als zweite
-   Schranke vor dem Pairing der Anwendung.
+   Schranke vor der Anmeldung der Anwendung.
 
 ## 9. Sicherung
 
